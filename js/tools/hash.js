@@ -1,6 +1,6 @@
 import { loadStateWithStorage, saveStateWithStorage } from '/js/url-state.js';
 import { toast, on, copy, qs } from '/js/ui.js';
-import { hashText, hashFile, hashTextBase64, hashFileBase64, ALGORITHMS } from '/js/utils/hash.js';
+import { hashText, hashFile, hashTextBase64, hashFileBase64, hashTextBinary, hashFileBinary, ALGORITHMS } from '/js/utils/hash.js';
 
 const input = qs('#input');
 const output = qs('#output');
@@ -24,17 +24,17 @@ if (state?.input) {
 }
 
 async function generateHash() {
-  // Check if Web Crypto API is available
-  if (!crypto || !crypto.subtle) {
+  const algorithm = algorithmSelect.value;
+  const format = formatSelect.value;
+  
+  // Check if Web Crypto API is available (only for non-MD5 algorithms)
+  if (algorithm !== 'MD5' && (!crypto || !crypto.subtle)) {
     const errorMsg = 'Web Crypto API is not available. Please access this page via HTTPS or localhost (http://localhost:8000).';
     output.textContent = errorMsg;
     output.className = 'error';
     toast(errorMsg, 'error');
     return;
   }
-  
-  const algorithm = algorithmSelect.value;
-  const format = formatSelect.value;
   
   if (currentFile) {
     // Hash file
@@ -43,10 +43,22 @@ async function generateHash() {
       let hash;
       if (format === 'base64') {
         hash = await hashFileBase64(currentFile, algorithm);
+        output.classList.remove('binary-output');
+        output.textContent = hash;
+      } else if (format === 'binary') {
+        hash = await hashFileBinary(currentFile, algorithm);
+        // Convert binary string to zeros and ones
+        const binaryString = Array.from(hash).map(c => {
+          const byte = c.charCodeAt(0);
+          return byte.toString(2).padStart(8, '0');
+        }).join('');
+        output.textContent = binaryString;
+        output.classList.add('binary-output');
       } else {
         hash = await hashFile(currentFile, algorithm);
+        output.classList.remove('binary-output');
+        output.textContent = hash;
       }
-      output.textContent = hash;
       output.className = 'ok';
       toast('Hash generated successfully', 'success');
     } catch (e) {
@@ -67,10 +79,22 @@ async function generateHash() {
       let hash;
       if (format === 'base64') {
         hash = await hashTextBase64(inputText, algorithm);
+        output.classList.remove('binary-output');
+        output.textContent = hash;
+      } else if (format === 'binary') {
+        hash = await hashTextBinary(inputText, algorithm);
+        // Convert binary string to zeros and ones
+        const binaryString = Array.from(hash).map(c => {
+          const byte = c.charCodeAt(0);
+          return byte.toString(2).padStart(8, '0');
+        }).join('');
+        output.textContent = binaryString;
+        output.classList.add('binary-output');
       } else {
         hash = await hashText(inputText, algorithm);
+        output.classList.remove('binary-output');
+        output.textContent = hash;
       }
-      output.textContent = hash;
       output.className = 'ok';
       
       // Save state

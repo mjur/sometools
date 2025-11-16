@@ -161,6 +161,25 @@ main:has(.json-tool) .options {
   background-color: var(--bg-elev);
 }
 
+/* Binary output - wrap for display but keep as one line when copied */
+pre.binary-output {
+  word-break: break-all !important;
+  overflow-wrap: break-word !important;
+  white-space: pre-wrap !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  word-wrap: break-word !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure pane container doesn't overflow */
+.pane pre.binary-output {
+  min-width: 0 !important;
+  flex-shrink: 1 !important;
+}
+
 /* Large textareas for JSON tools */
 body:has([href*="/json/validate"]),
 body:has([href*="/json/format"]) {

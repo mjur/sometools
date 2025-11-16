@@ -177,6 +177,8 @@ main > p {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-width: 0; /* Allow flex items to shrink below content size */
+  overflow: hidden; /* Prevent container overflow */
 }
 
 .pane label {
@@ -232,6 +234,8 @@ pre {
   white-space: pre-wrap;
   word-wrap: break-word;
   min-height: 200px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 pre.ok {

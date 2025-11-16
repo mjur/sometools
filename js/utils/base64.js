@@ -12,7 +12,15 @@ export function encodeBase64(str) {
 // Decode from base64
 export function decodeBase64(str) {
   try {
-    return decodeURIComponent(escape(atob(str)));
+    const binaryString = atob(str);
+    // Try to decode as UTF-8 text
+    try {
+      return decodeURIComponent(escape(binaryString));
+    } catch (e) {
+      // If UTF-8 decoding fails (e.g., for binary data), return raw binary string
+      // This handles cases like hash outputs that are binary data
+      return binaryString;
+    }
   } catch (e) {
     throw new Error('Failed to decode: ' + e.message);
   }
@@ -43,17 +51,19 @@ export function isBase64(str) {
   const cleaned = str.replace(/\s/g, '');
   if (cleaned.length === 0) return false;
   
-  // Check for base64url characters (no padding)
-  const base64urlPattern = /^[A-Za-z0-9_-]+$/;
-  if (!base64urlPattern.test(cleaned)) return false;
+  // Check for valid base64 characters (standard or URL-safe)
+  // Standard base64: A-Z, a-z, 0-9, +, /, =
+  // Base64url: A-Z, a-z, 0-9, -, _, (no padding or =)
+  const base64Pattern = /^[A-Za-z0-9+\/_-]+=*$/;
+  if (!base64Pattern.test(cleaned)) return false;
   
-  // Try to decode
+  // Try to decode - first try standard base64, then base64url
   try {
-    decodeBase64URL(cleaned);
+    decodeBase64(cleaned);
     return true;
   } catch (e) {
     try {
-      decodeBase64(cleaned);
+      decodeBase64URL(cleaned);
       return true;
     } catch (e2) {
       return false;

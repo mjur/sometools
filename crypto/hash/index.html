@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Generate SHA-1, SHA-256, SHA-384, and SHA-512 hashes from text or files. All processing happens locally in your browser.">
   <link rel="canonical" href="https://example.com/crypto/hash">
-  <link rel="stylesheet" href="/css/base.css">
-  <link rel="stylesheet" href="/css/tool.css">
-  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="stylesheet" href="/css/base.css?v=5">
+  <link rel="stylesheet" href="/css/tool.css?v=5">
+  <link rel="preload" href="/css/base.css?v=5" as="style">
   <link rel="icon" href="/favicon.ico">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta property="og:title" content="Hash Generator">
@@ -76,12 +76,13 @@
   
   <main id="main">
     <h1>Hash Generator</h1>
-    <p>Generate cryptographic hashes from text or files. All processing happens locally using the Web Crypto API.</p>
+    <p>Generate cryptographic hashes from text or files. Supports MD5, SHA-1, SHA-256, SHA-384, and SHA-512. All processing happens locally.</p>
     
     <div class="options">
       <div class="option-group">
         <label for="algorithm">Algorithm:</label>
         <select id="algorithm">
+          <option value="MD5">MD5</option>
           <option value="SHA-1">SHA-1</option>
           <option value="SHA-256" selected>SHA-256</option>
           <option value="SHA-384">SHA-384</option>
@@ -93,6 +94,7 @@
         <select id="format">
           <option value="hex" selected>Hex</option>
           <option value="base64">Base64</option>
+          <option value="binary">Binary</option>
         </select>
       </div>
     </div>
@@ -123,7 +125,11 @@
       <h2 id="faq-h">FAQ</h2>
       <details>
         <summary>What hash algorithms are supported?</summary>
-        <p>Currently supported: SHA-1, SHA-256, SHA-384, and SHA-512. All hashing is done using the Web Crypto API.</p>
+        <p>Currently supported: MD5, SHA-1, SHA-256, SHA-384, and SHA-512. SHA algorithms use the Web Crypto API, while MD5 uses a pure JavaScript implementation.</p>
+      </details>
+      <details>
+        <summary>What output formats are available?</summary>
+        <p>You can output hashes in hexadecimal (hex), Base64, or binary format. Binary format shows both hex representation and raw binary data.</p>
       </details>
       <details>
         <summary>Can I hash files?</summary>
