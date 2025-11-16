@@ -1,5 +1,12 @@
 // Hash utilities using Web Crypto API
 
+// Check if Web Crypto API is available
+function checkWebCrypto() {
+  if (!crypto || !crypto.subtle) {
+    throw new Error('Web Crypto API is not available. Please use HTTPS or localhost.');
+  }
+}
+
 // Available algorithms
 export const ALGORITHMS = {
   'SHA-1': 'SHA-1',
@@ -10,6 +17,8 @@ export const ALGORITHMS = {
 
 // Hash text using Web Crypto API
 export async function hashText(text, algorithm = 'SHA-256') {
+  checkWebCrypto();
+  
   if (!ALGORITHMS[algorithm]) {
     throw new Error(`Unsupported algorithm: ${algorithm}`);
   }
@@ -22,6 +31,8 @@ export async function hashText(text, algorithm = 'SHA-256') {
 
 // Hash file using Web Crypto API
 export async function hashFile(file, algorithm = 'SHA-256') {
+  checkWebCrypto();
+  
   if (!ALGORITHMS[algorithm]) {
     throw new Error(`Unsupported algorithm: ${algorithm}`);
   }
@@ -46,6 +57,8 @@ function arrayBufferToBase64(buffer) {
 
 // Hash to base64
 export async function hashTextBase64(text, algorithm = 'SHA-256') {
+  checkWebCrypto();
+  
   if (!ALGORITHMS[algorithm]) {
     throw new Error(`Unsupported algorithm: ${algorithm}`);
   }
@@ -58,6 +71,8 @@ export async function hashTextBase64(text, algorithm = 'SHA-256') {
 
 // Hash file to base64
 export async function hashFileBase64(file, algorithm = 'SHA-256') {
+  checkWebCrypto();
+  
   if (!ALGORITHMS[algorithm]) {
     throw new Error(`Unsupported algorithm: ${algorithm}`);
   }

@@ -24,6 +24,15 @@ if (state?.input) {
 }
 
 async function generateHash() {
+  // Check if Web Crypto API is available
+  if (!crypto || !crypto.subtle) {
+    const errorMsg = 'Web Crypto API is not available. Please access this page via HTTPS or localhost (http://localhost:8000).';
+    output.textContent = errorMsg;
+    output.className = 'error';
+    toast(errorMsg, 'error');
+    return;
+  }
+  
   const algorithm = algorithmSelect.value;
   const format = formatSelect.value;
   

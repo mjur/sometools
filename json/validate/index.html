@@ -80,20 +80,24 @@
     
     <section class="tool json-tool">
       <div class="pane">
-        <label for="input">Input JSON</label>
-        <textarea id="input" placeholder='{"foo":"bar"}'></textarea>
-        <div class="actions">
-          <button id="run" class="primary">Validate</button>
-          <button id="copy">Copy</button>
-          <button id="share">Share</button>
-          <label>
-            <input type="checkbox" id="live-mode">
-            Live validation
-          </label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label for="input">Input JSON</label>
+          <div class="actions" style="margin: 0;">
+            <button id="run" class="primary">Validate</button>
+            <button id="copy">Copy</button>
+            <button id="share">Share</button>
+            <label style="margin: 0;">
+              <input type="checkbox" id="live-mode">
+              Live validation
+            </label>
+          </div>
         </div>
+        <textarea id="input" placeholder='{"foo":"bar"}'></textarea>
       </div>
       <div class="pane">
-        <label for="output">Result</label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="output">Result</label>
+        </div>
         <pre id="output" aria-live="polite"></pre>
       </div>
     </section>

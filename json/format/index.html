@@ -97,21 +97,25 @@
     
     <section class="tool json-tool">
       <div class="pane">
-        <label for="input">Input JSON</label>
-        <textarea id="input" placeholder='{"foo":"bar","baz":123}'></textarea>
-        <div class="actions">
-          <button id="format" class="primary">Format</button>
-          <button id="minify">Minify</button>
-          <button id="copy-input">Copy Input</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="input">Input JSON</label>
+          <div class="actions">
+            <button id="format" class="primary">Format</button>
+            <button id="minify">Minify</button>
+            <button id="copy-input">Copy Input</button>
+          </div>
         </div>
+        <textarea id="input" placeholder='{"foo":"bar","baz":123}'></textarea>
       </div>
       <div class="pane">
-        <label for="output">Formatted JSON</label>
-        <textarea id="output" readonly></textarea>
-        <div class="actions">
-          <button id="copy-output">Copy Output</button>
-          <button id="download">Download</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="output">Formatted JSON</label>
+          <div class="actions">
+            <button id="copy-output">Copy Output</button>
+            <button id="download">Download</button>
+          </div>
         </div>
+        <textarea id="output" readonly></textarea>
       </div>
     </section>
     
