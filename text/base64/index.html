@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Base64 Encode/Decode | URL-Safe | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Encode and decode Base64 strings with URL-safe option. Process text or files locally in your browser.">
+  <link rel="canonical" href="https://example.com/text/base64">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta property="og:title" content="Base64 Encode/Decode">
+  <meta property="og:description" content="Encode and decode Base64 with URL-safe option.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is URL-safe Base64?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "URL-safe Base64 uses - and _ instead of + and /, and omits padding. This makes it safe to use in URLs without encoding."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I encode files?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, you can drag and drop files or use the file input to encode files to Base64."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Base64 Encode/Decode",
+        "item": "https://example.com/text/base64"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/text/base64">Base64 Encode/Decode</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Base64 Encode/Decode</h1>
+    <p>Encode and decode Base64 strings with URL-safe option. Your data is processed locally.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="url-safe">
+          URL-safe (base64url)
+        </label>
+      </div>
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="auto-detect">
+          Auto-detect mode
+        </label>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" data-tab="encode">Encode</button>
+      <button class="tab" data-tab="decode">Decode</button>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="input">Input</label>
+        <textarea id="input" placeholder="Enter text to encode or base64 to decode"></textarea>
+        <div class="drop-zone" id="drop-zone">
+          <p>Drag and drop a file here, or click to select</p>
+          <input type="file" id="file-input" style="display: none;">
+        </div>
+        <div class="actions">
+          <button id="run" class="primary">Process</button>
+          <button id="copy-input">Copy Input</button>
+          <button id="clear">Clear</button>
+        </div>
+      </div>
+      <div class="pane">
+        <label for="output">Output</label>
+        <textarea id="output" readonly></textarea>
+        <div class="actions">
+          <button id="copy-output">Copy Output</button>
+          <button id="download">Download</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What is URL-safe Base64?</summary>
+        <p>URL-safe Base64 uses - and _ instead of + and /, and omits padding. This makes it safe to use in URLs without encoding.</p>
+      </details>
+      <details>
+        <summary>Can I encode files?</summary>
+        <p>Yes, you can drag and drop files or use the file input to encode files to Base64.</p>
+      </details>
+      <details>
+        <summary>What is auto-detect mode?</summary>
+        <p>When enabled, the tool automatically detects if the input is Base64 and switches to decode mode, or encodes if it's plain text.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/json/validate">JSON Validator</a></li>
+        <li><a href="/crypto/hash">Hash Generator</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/base64.js"></script>
+</body>
+</html>
+

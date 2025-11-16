@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Regex Tester | Test Regular Expressions | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Test regular expressions with match highlighting, group extraction, and detailed match information.">
+  <link rel="canonical" href="https://example.com/regex/tester">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta property="og:title" content="Regex Tester">
+  <meta property="og:description" content="Test regular expressions with match highlighting and group extraction.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What regex flags are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "All standard JavaScript regex flags are supported: g (global), i (case-insensitive), m (multiline), s (dotAll), u (unicode), and y (sticky)."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I see capture groups?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, the tool shows all capture groups for each match in a table format."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Regex Tester",
+        "item": "https://example.com/regex/tester"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/regex/tester">Regex Tester</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Regex Tester</h1>
+    <p>Test regular expressions with match highlighting, group extraction, and detailed match information.</p>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="pattern">Regular Expression Pattern</label>
+        <input type="text" id="pattern" placeholder="Enter regex pattern, e.g., \d+">
+        <div class="options" style="margin-top: 0.5rem;">
+          <div class="option-group">
+            <label>
+              <input type="checkbox" id="flag-g" value="g">
+              Global (g)
+            </label>
+          </div>
+          <div class="option-group">
+            <label>
+              <input type="checkbox" id="flag-i" value="i">
+              Case-insensitive (i)
+            </label>
+          </div>
+          <div class="option-group">
+            <label>
+              <input type="checkbox" id="flag-m" value="m">
+              Multiline (m)
+            </label>
+          </div>
+          <div class="option-group">
+            <label>
+              <input type="checkbox" id="flag-s" value="s">
+              DotAll (s)
+            </label>
+          </div>
+          <div class="option-group">
+            <label>
+              <input type="checkbox" id="flag-u" value="u">
+              Unicode (u)
+            </label>
+          </div>
+          <div class="option-group">
+            <label>
+              <input type="checkbox" id="flag-y" value="y">
+              Sticky (y)
+            </label>
+          </div>
+        </div>
+        <label for="sample-text" style="margin-top: 1rem;">Sample Text</label>
+        <textarea id="sample-text" placeholder="Enter text to test against"></textarea>
+        <div class="actions">
+          <button id="test" class="primary">Test</button>
+          <button id="clear">Clear</button>
+        </div>
+      </div>
+      <div class="pane">
+        <label for="matches">Matches</label>
+        <pre id="matches" aria-live="polite"></pre>
+        <label for="groups" style="margin-top: 1rem;">Capture Groups</label>
+        <div id="groups" style="overflow-x: auto;"></div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What regex flags are supported?</summary>
+        <p>All standard JavaScript regex flags are supported: g (global), i (case-insensitive), m (multiline), s (dotAll), u (unicode), and y (sticky).</p>
+      </details>
+      <details>
+        <summary>Can I see capture groups?</summary>
+        <p>Yes, the tool shows all capture groups for each match in a table format.</p>
+      </details>
+      <details>
+        <summary>How do I escape special characters?</summary>
+        <p>Use backslashes to escape special regex characters. For example, \. matches a literal dot, and \\ matches a literal backslash.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/diff/text">Text Diff</a></li>
+        <li><a href="/json/validate">JSON Validator</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/regex-tester.js"></script>
+</body>
+</html>
+

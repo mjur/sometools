@@ -1,0 +1,156 @@
+/* Tool-specific shared styles */
+
+/* Line numbers for textareas (optional enhancement) */
+.textarea-with-lines {
+  position: relative;
+}
+
+.textarea-with-lines textarea {
+  padding-left: 3rem;
+}
+
+.line-numbers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2.5rem;
+  padding: 0.75rem 0.25rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted);
+  background-color: var(--bg-elev);
+  border-right: 1px solid var(--border);
+  user-select: none;
+  pointer-events: none;
+  text-align: right;
+}
+
+/* Error highlighting */
+.error-line {
+  background-color: rgba(211, 47, 47, 0.1);
+  border-left: 3px solid var(--error);
+  padding-left: 0.5rem;
+}
+
+/* Diff specific */
+.diff-added {
+  background-color: rgba(46, 125, 50, 0.1);
+  color: var(--ok);
+}
+
+.diff-removed {
+  background-color: rgba(211, 47, 47, 0.1);
+  color: var(--error);
+}
+
+.diff-context {
+  color: var(--muted);
+}
+
+/* Regex match highlighting */
+.regex-match {
+  background-color: rgba(74, 158, 255, 0.2);
+  padding: 2px 0;
+}
+
+.regex-group {
+  background-color: rgba(74, 158, 255, 0.1);
+  border: 1px dashed var(--accent);
+}
+
+/* File drop zone */
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.drop-zone.dragover {
+  border-color: var(--accent);
+  background-color: rgba(74, 158, 255, 0.05);
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 4px;
+  background-color: var(--bg-elev);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.badge.success {
+  background-color: rgba(46, 125, 50, 0.1);
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.badge.error {
+  background-color: rgba(211, 47, 47, 0.1);
+  color: var(--error);
+  border-color: var(--error);
+}
+
+/* Options panel */
+.options {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+  background-color: var(--bg-elev);
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.option-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.option-group label {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Related tools */
+.related-tools {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.related-tools h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.related-tools ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.related-tools a {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: inline-block;
+  transition: background-color 0.2s;
+}
+
+.related-tools a:hover {
+  background-color: var(--bg-elev);
+}
+
