@@ -110,6 +110,13 @@
   margin-bottom: 1rem;
 }
 
+/* Reduce options panel size for JSON tools */
+.json-tool ~ .options,
+main:has(.json-tool) .options {
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
 .option-group {
   display: flex;
   align-items: center;
@@ -152,5 +159,48 @@
 
 .related-tools a:hover {
   background-color: var(--bg-elev);
+}
+
+/* Large textareas for JSON tools */
+body:has([href*="/json/validate"]),
+body:has([href*="/json/format"]) {
+  /* Fallback for browsers that don't support :has() */
+}
+
+/* JSON formatter and validator - large textareas */
+.json-tool {
+  display: grid !important;
+  min-height: calc(100vh - 180px) !important;
+  height: calc(100vh - 180px) !important;
+}
+
+.json-tool .pane {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: calc(100vh - 180px) !important;
+  flex: 1 !important;
+}
+
+.json-tool textarea,
+.json-tool pre {
+  flex: 1 1 auto !important;
+  min-height: calc(100vh - 220px) !important;
+  height: calc(100vh - 220px) !important;
+  max-height: none !important;
+  resize: vertical !important;
+}
+
+
+/* On mobile, adjust height */
+@media (max-width: 1023px) {
+  .json-tool .pane {
+    min-height: calc(100vh - 300px);
+  }
+  
+  .json-tool textarea,
+  .json-tool pre {
+    min-height: calc(100vh - 320px);
+    height: calc(100vh - 320px);
+  }
 }
 

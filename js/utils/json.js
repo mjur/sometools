@@ -38,13 +38,24 @@ export function formatJSON(obj, options = {}) {
     trailingCommas = false
   } = options;
   
+  // Convert indent to number if it's not 'tab'
+  let indentValue;
+  if (indent === 'tab') {
+    indentValue = '\t';
+  } else if (typeof indent === 'string') {
+    const parsed = parseInt(indent, 10);
+    indentValue = isNaN(parsed) ? 2 : parsed; // Default to 2 if parsing fails
+  } else {
+    indentValue = indent;
+  }
+  
   let jsonString;
   
   if (sortKeys) {
     const sorted = sortObjectKeys(obj);
-    jsonString = JSON.stringify(sorted, null, indent === 'tab' ? '\t' : indent);
+    jsonString = JSON.stringify(sorted, null, indentValue);
   } else {
-    jsonString = JSON.stringify(obj, null, indent === 'tab' ? '\t' : indent);
+    jsonString = JSON.stringify(obj, null, indentValue);
   }
   
   // Note: trailing commas are not valid JSON, so we can't add them

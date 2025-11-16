@@ -35,17 +35,28 @@ function format() {
     return;
   }
   
-  const indent = indentSelect.value;
+  const indentRaw = indentSelect.value;
+  // Convert string indent to number (select values are strings)
+  let indent;
+  if (indentRaw === 'tab') {
+    indent = 'tab';
+  } else {
+    const num = parseInt(indentRaw, 10);
+    indent = isNaN(num) ? 2 : num; // Ensure it's a number, default to 2
+  }
   const sortKeys = sortKeysCheck.checked;
   
   try {
     const formatted = formatJSON(parseResult.data, { indent, sortKeys });
+    if (!formatted || typeof formatted !== 'string') {
+      throw new Error('Formatting failed - invalid result');
+    }
     output.value = formatted;
     
-    // Save state
+    // Save state (save raw string value for select)
     saveStateWithStorage({
       input: inputText,
-      indent,
+      indent: indentRaw,
       sortKeys
     }, storageKey);
     
@@ -91,9 +102,9 @@ on(downloadBtn, 'click', () => {
   toast('File downloaded', 'success');
 });
 
-// Auto-format on option change if there's output
+// Auto-format on option change if there's input
 on(indentSelect, 'change', () => {
-  if (input.value && output.value) {
+  if (input.value.trim()) {
     format();
   }
 });

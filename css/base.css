@@ -126,6 +126,21 @@ main {
   padding: 2rem;
 }
 
+/* Reduce padding for JSON tools to maximize space */
+main:has(.json-tool) {
+  padding: 0.5rem 2rem 1rem;
+}
+
+main:has(.json-tool) > h1 {
+  margin-bottom: 0.25rem;
+  font-size: 1.5rem;
+}
+
+main:has(.json-tool) > p {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
 main > h1 {
   font-size: 2rem;
   margin-bottom: 1rem;
@@ -149,6 +164,13 @@ main > p {
   .tool {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* JSON tools - make tool section fill viewport */
+.json-tool {
+  margin-bottom: 1rem;
+  height: calc(100vh - 180px);
+  min-height: calc(100vh - 180px);
 }
 
 .pane {
@@ -177,6 +199,12 @@ textarea {
   min-height: 200px;
   width: 100%;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Override for JSON tools - must come after base textarea rule */
+.json-tool textarea {
+  min-height: calc(100vh - 220px) !important;
+  height: calc(100vh - 220px) !important;
 }
 
 textarea:focus {

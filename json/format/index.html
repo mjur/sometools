@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Format and beautify JSON with customizable indentation. Sort keys and format JSON locally in your browser.">
   <link rel="canonical" href="https://example.com/json/format">
-  <link rel="stylesheet" href="/css/base.css">
-  <link rel="stylesheet" href="/css/tool.css">
-  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="stylesheet" href="/css/base.css?v=3">
+  <link rel="stylesheet" href="/css/tool.css?v=3">
+  <link rel="preload" href="/css/base.css?v=3" as="style">
   <link rel="icon" href="/favicon.ico">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta property="og:title" content="JSON Formatter">
@@ -95,7 +95,7 @@
       </div>
     </div>
     
-    <section class="tool">
+    <section class="tool json-tool">
       <div class="pane">
         <label for="input">Input JSON</label>
         <textarea id="input" placeholder='{"foo":"bar","baz":123}'></textarea>
@@ -140,8 +140,8 @@
     </section>
   </main>
   
-  <script type="module" src="/js/header.js"></script>
-  <script type="module" src="/js/tools/json-format.js"></script>
+  <script type="module" src="/js/header.js?v=2"></script>
+  <script type="module" src="/js/tools/json-format.js?v=2"></script>
 </body>
 </html>
 
