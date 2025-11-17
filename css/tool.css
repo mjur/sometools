@@ -112,7 +112,9 @@
 
 /* Reduce options panel size for JSON tools */
 .json-tool ~ .options,
-main:has(.json-tool) .options {
+main:has(.json-tool) .options,
+.yaml-validator-tool ~ .options,
+main:has(.yaml-validator-tool) .options {
   padding: 0.5rem 1rem;
   margin-bottom: 0.5rem;
 }
@@ -178,6 +180,61 @@ pre.binary-output {
 .pane pre.binary-output {
   min-width: 0 !important;
   flex-shrink: 1 !important;
+}
+
+/* JSON/YAML converter - larger textareas */
+.json-yaml-tool {
+  min-height: calc(100vh - 300px);
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display: block !important;
+}
+
+.json-yaml-tool .split-view {
+  min-height: calc(100vh - 400px);
+  margin-bottom: 1rem;
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: 1.5rem;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+}
+
+.json-yaml-tool .pane {
+  width: 100% !important;
+  flex: 1;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding: 0;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.json-yaml-tool textarea {
+  min-height: calc(100vh - 400px) !important;
+  height: calc(100vh - 400px) !important;
+  resize: vertical !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  flex: 1 !important;
+}
+
+/* On mobile, adjust height */
+@media (max-width: 1023px) {
+  .json-yaml-tool .split-view {
+    min-height: calc(100vh - 450px);
+  }
+
+  .json-yaml-tool textarea {
+    min-height: calc(100vh - 450px) !important;
+    height: calc(100vh - 450px) !important;
+  }
 }
 
 /* Text diff tool - larger textareas */
@@ -312,7 +369,16 @@ body:has([href*="/json/format"]) {
   align-items: start !important;
 }
 
-.json-tool .pane {
+/* YAML validator - large textareas */
+.yaml-validator-tool {
+  display: grid !important;
+  min-height: calc(100vh - 180px) !important;
+  height: calc(100vh - 180px) !important;
+  align-items: start !important;
+}
+
+.json-tool .pane,
+.yaml-validator-tool .pane {
   display: flex !important;
   flex-direction: column !important;
   min-height: calc(100vh - 180px) !important;
@@ -320,14 +386,17 @@ body:has([href*="/json/format"]) {
   align-items: stretch !important;
 }
 
-.json-tool .pane > div:first-child {
+.json-tool .pane > div:first-child,
+.yaml-validator-tool .pane > div:first-child {
   min-height: 2.5rem;
   display: flex;
   align-items: center;
 }
 
 .json-tool textarea,
-.json-tool pre {
+.json-tool pre,
+.yaml-validator-tool textarea,
+.yaml-validator-tool pre {
   flex: 1 1 auto !important;
   min-height: calc(100vh - 240px) !important;
   height: calc(100vh - 240px) !important;
@@ -339,12 +408,15 @@ body:has([href*="/json/format"]) {
 
 /* On mobile, adjust height */
 @media (max-width: 1023px) {
-  .json-tool .pane {
+  .json-tool .pane,
+  .yaml-validator-tool .pane {
     min-height: calc(100vh - 300px);
   }
   
   .json-tool textarea,
-  .json-tool pre {
+  .json-tool pre,
+  .yaml-validator-tool textarea,
+  .yaml-validator-tool pre {
     min-height: calc(100vh - 320px);
     height: calc(100vh - 320px);
   }

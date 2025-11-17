@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>JSON to YAML Converter | YAML to JSON | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Convert JSON to YAML and YAML to JSON instantly. All processing happens locally in your browser.">
+  <link rel="canonical" href="https://example.com/json/yaml">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta property="og:title" content="JSON to YAML Converter">
+  <meta property="og:description" content="Convert between JSON and YAML formats instantly.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What formats are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You can convert between JSON and YAML formats. Both directions are supported."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is my data secure?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, all processing happens locally in your browser. Your data never leaves your device."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "JSON/YAML Converter",
+        "item": "https://example.com/json/yaml"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/json/yaml">JSON/YAML Converter</a>
+  </nav>
+  
+  <main id="main">
+    <h1>JSON ↔ YAML Converter</h1>
+    <p>Convert between JSON and YAML formats instantly. All processing happens locally in your browser.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="direction">Direction:</label>
+        <select id="direction">
+          <option value="json-to-yaml" selected>JSON → YAML</option>
+          <option value="yaml-to-json">YAML → JSON</option>
+        </select>
+      </div>
+      <div class="option-group" id="indent-group">
+        <label for="indent">YAML Indent:</label>
+        <select id="indent">
+          <option value="2" selected>2 spaces</option>
+          <option value="4">4 spaces</option>
+        </select>
+      </div>
+      <div class="option-group" id="pretty-group" style="display: none;">
+        <label>
+          <input type="checkbox" id="pretty" checked>
+          Pretty print JSON
+        </label>
+      </div>
+    </div>
+    
+    <section class="tool json-yaml-tool">
+      <div class="split-view">
+        <div class="pane">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <label for="input" id="input-label">JSON Input</label>
+            <div class="actions">
+              <button id="convert" class="primary">Convert</button>
+              <button id="copy-input">Copy Input</button>
+              <button id="clear">Clear</button>
+            </div>
+          </div>
+          <textarea id="input" placeholder='{"foo":"bar","baz":123}'></textarea>
+        </div>
+        <div class="pane">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <label for="output" id="output-label">YAML Output</label>
+            <div class="actions">
+              <button id="copy-output">Copy Output</button>
+              <button id="download">Download</button>
+            </div>
+          </div>
+          <textarea id="output" readonly></textarea>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What formats are supported?</summary>
+        <p>You can convert between JSON and YAML formats. Both directions are supported with customizable options.</p>
+      </details>
+      <details>
+        <summary>Is my data secure?</summary>
+        <p>Yes, all processing happens locally in your browser. Your data never leaves your device.</p>
+      </details>
+      <details>
+        <summary>What YAML features are supported?</summary>
+        <p>The converter supports basic YAML features including objects, arrays, strings, numbers, booleans, and null values. Advanced YAML features like anchors, aliases, and custom tags are not currently supported.</p>
+      </details>
+      <details>
+        <summary>Can I customize the output format?</summary>
+        <p>Yes, you can choose YAML indentation (2 or 4 spaces) and enable/disable pretty printing for JSON output.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/json/format">JSON Formatter</a></li>
+        <li><a href="/json/validate">JSON Validator</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/json-yaml.js"></script>
+</body>
+</html>
+

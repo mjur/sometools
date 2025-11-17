@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>YAML Validator | Validate YAML Syntax | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Validate YAML syntax with instant feedback and error messages. All processing happens locally in your browser.">
+  <link rel="canonical" href="https://example.com/yaml/validate">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta property="og:title" content="YAML Validator">
+  <meta property="og:description" content="Validate YAML syntax with instant feedback.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What YAML features are validated?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The validator checks for valid YAML syntax including objects, arrays, strings, numbers, booleans, and null values. Advanced YAML features like anchors and aliases are not currently validated."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is my data secure?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, all validation happens locally in your browser. Your data never leaves your device."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "YAML Validator",
+        "item": "https://example.com/yaml/validate"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/yaml/validate">YAML Validator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>YAML Validator</h1>
+    <p>Validate YAML syntax with instant feedback and error messages. All processing happens locally.</p>
+    
+    <section class="tool yaml-validator-tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label for="input">YAML Input</label>
+          <div class="actions" style="margin: 0;">
+            <button id="validate" class="primary">Validate</button>
+            <button id="copy">Copy</button>
+            <button id="share">Share</button>
+            <label style="margin: 0;">
+              <input type="checkbox" id="live-mode">
+              Live validation
+            </label>
+          </div>
+        </div>
+        <textarea id="input" placeholder='foo: bar\nbaz: 123'></textarea>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="output">Result</label>
+        </div>
+        <pre id="output" aria-live="polite"></pre>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What YAML features are validated?</summary>
+        <p>The validator checks for valid YAML syntax including objects, arrays, strings, numbers, booleans, and null values. Advanced features like anchors (&anchor), aliases (*alias), multi-line strings (| and >), flow collections, document separators (---), and merge keys (<<) are all supported.</p>
+      </details>
+      <details>
+        <summary>Is my data secure?</summary>
+        <p>Yes, all validation happens locally in your browser. Your data never leaves your device.</p>
+      </details>
+      <details>
+        <summary>What happens if my YAML is invalid?</summary>
+        <p>If your YAML is invalid, you'll see a clear error message indicating what went wrong and which line (if applicable) has the issue.</p>
+      </details>
+      <details>
+        <summary>Can I validate YAML files?</summary>
+        <p>Yes, you can paste YAML content directly into the input field, or use the live validation feature to get instant feedback as you type.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/json/validate">JSON Validator</a></li>
+        <li><a href="/json/yaml">JSON ↔ YAML Converter</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/yaml-validate.js"></script>
+</body>
+</html>
+

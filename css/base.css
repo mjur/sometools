@@ -131,6 +131,38 @@ main:has(.json-tool) {
   padding: 0.5rem 2rem 1rem;
 }
 
+/* Reduce padding for JSON/YAML converter to maximize space */
+main:has(.json-yaml-tool) {
+  padding: 0.5rem 1rem 1rem;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+main:has(.json-yaml-tool) > h1 {
+  margin-bottom: 0.25rem;
+  font-size: 1.5rem;
+}
+
+main:has(.json-yaml-tool) > p {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+/* Reduce padding for YAML validator to maximize space */
+main:has(.yaml-validator-tool) {
+  padding: 0.5rem 2rem 1rem;
+}
+
+main:has(.yaml-validator-tool) > h1 {
+  margin-bottom: 0.25rem;
+  font-size: 1.5rem;
+}
+
+main:has(.yaml-validator-tool) > p {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
 main:has(.json-tool) > h1 {
   margin-bottom: 0.25rem;
   font-size: 1.5rem;
