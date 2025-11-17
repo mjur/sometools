@@ -180,6 +180,124 @@ pre.binary-output {
   flex-shrink: 1 !important;
 }
 
+/* Text diff tool - larger textareas */
+.diff-tool {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 300px);
+}
+
+.diff-tool .split-view {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  min-height: calc(100vh - 450px);
+  margin-bottom: 1rem;
+  flex: 1;
+}
+
+@media (max-width: 1023px) {
+  .diff-tool .split-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+.diff-tool textarea {
+  min-height: calc(100vh - 450px) !important;
+  height: calc(100vh - 450px) !important;
+  resize: vertical !important;
+}
+
+/* Ensure actions are beneath the split-view */
+.diff-actions {
+  width: 100%;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Textarea wrapper for highlighting overlay */
+.textarea-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.textarea-wrapper textarea {
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+  color: inherit;
+  caret-color: var(--text);
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.highlight-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  padding: 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  color: transparent;
+  box-sizing: border-box;
+  margin: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.highlight-overlay .diff-removed {
+  background-color: rgba(211, 47, 47, 0.4) !important;
+  color: transparent !important;
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+.highlight-overlay .diff-added {
+  background-color: rgba(46, 125, 50, 0.4) !important;
+  color: transparent !important;
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+.highlight-overlay .diff-context {
+  background-color: transparent;
+  color: transparent;
+}
+
+/* On mobile, adjust height */
+@media (max-width: 1023px) {
+  .diff-tool {
+    min-height: calc(100vh - 350px);
+  }
+
+  .diff-tool .split-view {
+    min-height: calc(100vh - 450px);
+  }
+
+  .diff-tool textarea {
+    min-height: calc(100vh - 450px) !important;
+    height: calc(100vh - 450px) !important;
+  }
+}
+
 /* Large textareas for JSON tools */
 body:has([href*="/json/validate"]),
 body:has([href*="/json/format"]) {

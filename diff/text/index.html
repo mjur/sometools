@@ -82,8 +82,8 @@
       <div class="option-group">
         <label for="granularity">Granularity:</label>
         <select id="granularity">
-          <option value="line" selected>Line</option>
-          <option value="word">Word</option>
+          <option value="line">Line</option>
+          <option value="word" selected>Word</option>
           <option value="char">Character</option>
         </select>
       </div>
@@ -95,18 +95,24 @@
       </div>
     </div>
     
-    <section class="tool">
+    <section class="tool diff-tool">
       <div class="split-view">
         <div class="pane">
           <label for="old-text">Old Text</label>
-          <textarea id="old-text" placeholder="Enter old text"></textarea>
+          <div class="textarea-wrapper">
+            <textarea id="old-text" placeholder="Enter old text"></textarea>
+            <div id="old-text-highlight" class="highlight-overlay" aria-hidden="true"></div>
+          </div>
         </div>
         <div class="pane">
           <label for="new-text">New Text</label>
-          <textarea id="new-text" placeholder="Enter new text"></textarea>
+          <div class="textarea-wrapper">
+            <textarea id="new-text" placeholder="Enter new text"></textarea>
+            <div id="new-text-highlight" class="highlight-overlay" aria-hidden="true"></div>
+          </div>
         </div>
       </div>
-      <div class="actions" style="margin-top: 1rem;">
+      <div class="actions diff-actions">
         <button id="compare" class="primary">Compare</button>
         <button id="copy-diff">Copy Diff</button>
         <button id="swap">Swap Texts</button>
