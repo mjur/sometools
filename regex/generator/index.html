@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Regex Generator | AI-Powered Regex from Descriptions | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate regular expressions from natural language descriptions using AI. Runs entirely in your browser with WebLLM.">
+  <link rel="canonical" href="https://example.com/regex/generator">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Regex Generator">
+  <meta property="og:description" content="Generate regular expressions from natural language descriptions using AI.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How does the regex generator work?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The regex generator uses WebLLM, a browser-based AI model, to generate regular expressions from natural language descriptions. The model runs entirely in your browser, so your data never leaves your device."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Do I need to download a model?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, the AI model needs to be downloaded and cached in your browser. This happens automatically on first use, or you can download it manually using the 'Download & Cache Model' button. Some models are large and may require increasing your browser's cache size."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Regex Generator",
+        "item": "https://example.com/regex/generator"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/regex/generator">Regex Generator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Regex Generator</h1>
+    <p>Generate regular expressions from natural language descriptions using AI. Powered by WebLLM - runs entirely in your browser.</p>
+    
+    <div class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <h3 style="margin-top: 0;">⚠️ Important: Model Download & Browser Cache</h3>
+      <p><strong>The AI model needs to be downloaded and cached in your browser.</strong></p>
+      <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+        <li>Models are large (ranging from ~100MB to several GB)</li>
+        <li>The model is cached in your browser's IndexedDB for faster subsequent use</li>
+        <li>Some models may exceed your browser's default cache limit</li>
+        <li>If you encounter storage errors, you may need to increase your browser's cache size</li>
+      </ul>
+      <details style="margin-top: 0.5rem;">
+        <summary style="cursor: pointer; font-weight: bold;">How to increase browser cache size</summary>
+        <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+          <li><strong>Chrome/Edge:</strong> Settings → Privacy and security → Site settings → Storage → Increase quota</li>
+          <li><strong>Firefox:</strong> about:config → search "dom.storage.max_quota" → increase value</li>
+          <li><strong>Safari:</strong> Preferences → Advanced → Show Develop menu → Develop → Empty Caches (then increase in Develop menu)</li>
+        </ul>
+      </details>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="model-select">AI Model</label>
+        <select id="model-select">
+          <option value="TinyLlama-1.1B-Chat-v0.4-q4f16_1">TinyLlama 1.1B (Smallest, ~600MB)</option>
+          <option value="Phi-3-mini-4k-instruct-q4f16_1" selected>Phi-3 Mini 4K (Recommended, ~2.3GB)</option>
+          <option value="Phi-3-mini-128k-instruct-q4f16_1">Phi-3 Mini 128K (Larger context, ~2.3GB)</option>
+          <option value="Llama-3-8B-Instruct-q4f16_1">Llama 3 8B (Larger, ~4.6GB)</option>
+        </select>
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="download-model" class="primary">Download & Cache Model</button>
+          <button id="check-model">Check Model Status</button>
+        </div>
+        <div id="model-status" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.875rem; color: var(--muted);"></div>
+        
+        <label for="description" style="margin-top: 1.5rem;">Description</label>
+        <textarea id="description" placeholder="Describe the pattern you want, e.g., 'Match email addresses' or 'Find all phone numbers in US format' or 'Extract dates in YYYY-MM-DD format'" style="min-height: 120px;"></textarea>
+        
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="generate" class="primary">Generate Regex</button>
+          <button id="clear">Clear</button>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <label for="output">Generated Regular Expression</label>
+        <textarea id="output" readonly placeholder="Generated regex will appear here..." style="min-height: 200px;"></textarea>
+        
+        <label for="explanation" style="margin-top: 1rem;">Explanation</label>
+        <pre id="explanation" style="min-height: 150px; white-space: pre-wrap;">Explanation will appear here...</pre>
+        
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="copy-regex">Copy Regex</button>
+          <button id="test-regex">Test in Regex Tester</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>How does the regex generator work?</summary>
+        <p>The regex generator uses WebLLM, a browser-based AI model, to generate regular expressions from natural language descriptions. The model runs entirely in your browser, so your data never leaves your device.</p>
+      </details>
+      <details>
+        <summary>Do I need to download a model?</summary>
+        <p>Yes, the AI model needs to be downloaded and cached in your browser. This happens automatically on first use, or you can download it manually using the "Download & Cache Model" button. Some models are large and may require increasing your browser's cache size.</p>
+      </details>
+      <details>
+        <summary>Which model should I use?</summary>
+        <p>For most use cases, Phi-3 Mini 4K is recommended as it provides a good balance between size and performance. TinyLlama is the smallest but may be less accurate. Larger models like Llama 3 8B provide better accuracy but require more storage space.</p>
+      </details>
+      <details>
+        <summary>Can I use this offline?</summary>
+        <p>Once the model is downloaded and cached, you can use the generator offline. The model runs entirely in your browser without requiring an internet connection after the initial download.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens entirely in your browser. Your descriptions and generated regexes never leave your device.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/regex/tester">Regex Tester</a></li>
+        <li><a href="/diff/text">Text Diff</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.40/dist/index.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/regex-generator.js"></script>
+</body>
+</html>
+
