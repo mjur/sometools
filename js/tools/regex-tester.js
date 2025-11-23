@@ -1,9 +1,10 @@
 import { loadStateWithStorage, saveStateWithStorage } from '/js/url-state.js';
 import { toast, on, qs, qsa } from '/js/ui.js';
-import { testRegex, parseFlags } from '/js/utils/regex.js';
+import { testRegex, parseFlags, highlightMatches } from '/js/utils/regex.js';
 
 const patternInput = qs('#pattern');
 const sampleText = qs('#sample-text');
+const sampleTextHighlight = qs('#sample-text-highlight');
 const matchesOutput = qs('#matches');
 const groupsOutput = qs('#groups');
 const testBtn = qs('#test');
@@ -32,6 +33,11 @@ function test() {
   const pattern = patternInput.value.trim();
   const text = sampleText.value;
   const flags = getFlags();
+  
+  // Clear highlighting
+  if (sampleTextHighlight) {
+    sampleTextHighlight.innerHTML = '';
+  }
   
   if (!pattern) {
     matchesOutput.textContent = 'Enter a regex pattern';
@@ -66,6 +72,28 @@ function test() {
     });
     matchesOutput.textContent = output;
     matchesOutput.className = 'ok';
+    
+    // Highlight matches in the sample text
+    if (sampleTextHighlight && text) {
+      try {
+        // Always use global flag for highlighting to show all matches
+        const highlightFlags = flags.includes('g') ? flags : flags + 'g';
+        const parts = highlightMatches(text, pattern, highlightFlags);
+        let highlightHTML = '';
+        parts.forEach(part => {
+          if (part.type === 'match') {
+            highlightHTML += `<span class="regex-match">${escapeHtml(part.content)}</span>`;
+          } else {
+            highlightHTML += escapeHtml(part.content);
+          }
+        });
+        sampleTextHighlight.innerHTML = highlightHTML;
+      } catch (e) {
+        // If highlighting fails, just clear it
+        sampleTextHighlight.innerHTML = '';
+        console.error('Highlighting error:', e);
+      }
+    }
     
     // Display groups in a table
     const hasGroups = result.matches.some(m => m.groups && m.groups.length > 0);
@@ -110,6 +138,9 @@ on(clearBtn, 'click', () => {
   matchesOutput.textContent = '';
   matchesOutput.className = '';
   groupsOutput.innerHTML = '';
+  if (sampleTextHighlight) {
+    sampleTextHighlight.innerHTML = '';
+  }
   patternInput.focus();
 });
 
@@ -121,10 +152,25 @@ function debouncedTest() {
 }
 
 on(patternInput, 'input', debouncedTest);
-on(sampleText, 'input', debouncedTest);
+on(sampleText, 'input', () => {
+  // Clear highlighting when text changes
+  if (sampleTextHighlight) {
+    sampleTextHighlight.innerHTML = '';
+  }
+  debouncedTest();
+});
 flagCheckboxes.forEach(cb => {
   on(cb, 'change', debouncedTest);
 });
+
+// Sync scroll between textarea and highlight overlay
+if (sampleText && sampleTextHighlight) {
+  function syncScroll() {
+    sampleTextHighlight.scrollTop = sampleText.scrollTop;
+    sampleTextHighlight.scrollLeft = sampleText.scrollLeft;
+  }
+  sampleText.addEventListener('scroll', syncScroll);
+}
 
 // Keyboard shortcuts
 on(document, 'keydown', (e) => {

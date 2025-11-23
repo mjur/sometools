@@ -51,8 +51,16 @@
 
 /* Regex match highlighting */
 .regex-match {
-  background-color: rgba(74, 158, 255, 0.2);
-  padding: 2px 0;
+  background-color: rgba(74, 158, 255, 0.4);
+  padding: 1px 0;
+  border-radius: 2px;
+}
+
+.highlight-overlay .regex-match {
+  background-color: rgba(74, 158, 255, 0.4) !important;
+  color: transparent !important;
+  border-radius: 2px;
+  padding: 1px 0;
 }
 
 .regex-group {

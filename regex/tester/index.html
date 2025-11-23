@@ -122,7 +122,10 @@
           </div>
         </div>
         <label for="sample-text" style="margin-top: 1rem;">Sample Text</label>
-        <textarea id="sample-text" placeholder="Enter text to test against"></textarea>
+        <div class="textarea-wrapper">
+          <textarea id="sample-text" placeholder="Enter text to test against"></textarea>
+          <div id="sample-text-highlight" class="highlight-overlay" aria-hidden="true"></div>
+        </div>
         <div class="actions">
           <button id="test" class="primary">Test</button>
           <button id="clear">Clear</button>
