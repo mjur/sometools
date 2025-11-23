@@ -2,7 +2,7 @@ import { loadStateWithStorage, saveStateWithStorage } from '/js/url-state.js';
 import { toast, on, copy, qs } from '/js/ui.js';
 
 // WebLLM will be loaded dynamically
-let WebLLM = null;
+let CreateMLCEngine = null;
 let currentEngine = null;
 let isModelLoading = false;
 
@@ -28,36 +28,72 @@ if (state?.explanation) explanationPre.textContent = state.explanation;
 
 // Load WebLLM library
 async function loadWebLLM() {
-  if (WebLLM) return WebLLM;
+  if (CreateMLCEngine) return CreateMLCEngine;
   
   try {
     toast('Loading WebLLM library...', 'info');
     
-    // Wait for WebLLM to be available (loaded via script tag)
-    let attempts = 0;
-    while (attempts < 50) {
-      if (typeof window !== 'undefined' && (window.webllm || window.Engine)) {
-        WebLLM = window.Engine || window.webllm?.Engine || window.webllm;
-        if (WebLLM) {
-          toast('WebLLM library loaded', 'success');
-          return WebLLM;
-        }
-      }
-      await new Promise(resolve => setTimeout(resolve, 100));
-      attempts++;
+    // First, try to load from bundled version (if available)
+    if (typeof window !== 'undefined' && window.CreateMLCEngine) {
+      CreateMLCEngine = window.CreateMLCEngine;
+      console.log('WebLLM CreateMLCEngine loaded from bundled version');
+      toast('WebLLM library loaded', 'success');
+      return CreateMLCEngine;
     }
     
-    // If still not loaded, try dynamic import as fallback
+    // Try to load bundled version dynamically
     try {
-      const module = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.40/dist/index.js');
-      WebLLM = module.Engine || module.default || module;
-      toast('WebLLM library loaded', 'success');
-      return WebLLM;
-    } catch (importError) {
-      throw new Error('WebLLM library not found. Please refresh the page and ensure you have an internet connection.');
+      const bundledModule = await import('/js/tools/bundled/regex-generator-bundle.js');
+      CreateMLCEngine = bundledModule.CreateMLCEngine || window.CreateMLCEngine;
+      if (CreateMLCEngine && typeof CreateMLCEngine === 'function') {
+        console.log('WebLLM CreateMLCEngine loaded from bundled module');
+        toast('WebLLM library loaded', 'success');
+        return CreateMLCEngine;
+      }
+    } catch (bundleError) {
+      console.log('Bundled version not available, trying CDN fallbacks...', bundleError);
     }
+    
+    // Fallback: Try CDN sources (may not work due to WebLLM's complexity)
+    const cdnSources = [
+      {
+        url: 'https://esm.run/@mlc-ai/web-llm',
+        name: 'esm.run'
+      }
+    ];
+    
+    let lastError = null;
+    
+    for (const source of cdnSources) {
+      try {
+        console.log(`Trying to load WebLLM from: ${source.name}`);
+        const module = await import(/* @vite-ignore */ source.url);
+        
+        CreateMLCEngine = module.CreateMLCEngine || module.default?.CreateMLCEngine || module.default;
+        
+        if (CreateMLCEngine && typeof CreateMLCEngine === 'function') {
+          console.log('WebLLM CreateMLCEngine loaded successfully from', source.name);
+          toast('WebLLM library loaded', 'success');
+          return CreateMLCEngine;
+        }
+        
+        console.warn('WebLLM loaded but Engine class not found. Module keys:', Object.keys(module));
+        lastError = new Error(`Engine class not found in module from ${source.name}`);
+      } catch (importError) {
+        console.warn(`Failed to load from ${source.name}:`, importError);
+        lastError = importError;
+        continue;
+      }
+    }
+    
+    // If all sources failed, provide helpful error
+    throw new Error(`WebLLM library not found. Please build the bundled version by running: npm install && npm run build. 
+    
+WebLLM requires bundling and cannot be loaded directly from CDN. 
+See README.md for build instructions.`);
+    
   } catch (e) {
-    toast(`Failed to load WebLLM: ${e.message}`, 'error');
+    toast(`Failed to load WebLLM: ${e.message.split('\n')[0]}`, 'error');
     console.error('WebLLM load error:', e);
     throw e;
   }
@@ -130,28 +166,32 @@ async function downloadModel() {
     modelStatus.style.color = 'var(--muted)';
     
     // Load WebLLM if not already loaded
-    const EngineClass = await loadWebLLM();
+    const createEngine = await loadWebLLM();
+    
+    if (!createEngine || typeof createEngine !== 'function') {
+      throw new Error('WebLLM CreateMLCEngine is not available. Please refresh the page.');
+    }
     
     toast(`Starting download of ${modelName}...`, 'info');
     
     // Initialize engine with the selected model
-    // WebLLM API: new Engine(model, initProgressCallback)
-    const engine = new EngineClass(
+    // WebLLM API: CreateMLCEngine(model, config)
+    const engine = await createEngine(
       modelName,
-      (report) => {
-        const progress = report.progress || 0;
-        const text = report.text || '';
-        modelStatus.textContent = `Downloading: ${(progress * 100).toFixed(1)}% - ${text}`;
-        
-        if (progress === 1) {
-          modelStatus.textContent = `✓ Model "${modelName}" downloaded and cached successfully!`;
-          modelStatus.style.color = 'var(--ok)';
+      {
+        initProgressCallback: (report) => {
+          const progress = report.progress || 0;
+          const text = report.text || '';
+          const percentage = (progress * 100).toFixed(1);
+          modelStatus.textContent = `Downloading: ${percentage}% - ${text}`;
+          
+          if (progress === 1) {
+            modelStatus.textContent = `✓ Model "${modelName}" downloaded and cached successfully!`;
+            modelStatus.style.color = 'var(--ok)';
+          }
         }
       }
     );
-    
-    // Wait for model to be ready
-    await engine.ready;
     
     currentEngine = engine;
     isModelLoading = false;
@@ -189,23 +229,27 @@ async function initializeEngine() {
   const modelName = modelSelect.value;
   
   try {
-    const EngineClass = await loadWebLLM();
+    const createEngine = await loadWebLLM();
+    
+    if (!createEngine || typeof createEngine !== 'function') {
+      throw new Error('WebLLM CreateMLCEngine is not available. Please refresh the page.');
+    }
     
     toast('Loading model from cache...', 'info');
     
-    const engine = new EngineClass(
+    const engine = await createEngine(
       modelName,
-      (report) => {
-        const progress = report.progress || 0;
-        const text = report.text || '';
-        if (progress < 1) {
-          modelStatus.textContent = `Loading: ${(progress * 100).toFixed(1)}% - ${text}`;
+      {
+        initProgressCallback: (report) => {
+          const progress = report.progress || 0;
+          const text = report.text || '';
+          if (progress < 1) {
+            const percentage = (progress * 100).toFixed(1);
+            modelStatus.textContent = `Loading: ${percentage}% - ${text}`;
+          }
         }
       }
     );
-    
-    // Wait for model to be ready
-    await engine.ready;
     currentEngine = engine;
     
     toast('Model loaded successfully!', 'success');
@@ -263,36 +307,64 @@ Example format:
 Matches three digits, a hyphen, two digits, a hyphen, and four digits (like a SSN format).`;
 
     // Generate response using WebLLM API
-    // WebLLM uses a different API: engine.chat() returns a generator
+    // WebLLM API: engine.chat() or engine.generate()
     let generatedText = '';
-    const response = await engine.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a helpful assistant that generates JavaScript regular expressions from natural language descriptions. Always return the regex pattern first, then an explanation on a new line.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.3, // Lower temperature for more consistent output
-      max_tokens: 200
-    });
     
-    // Handle streaming response if needed
-    if (response && typeof response === 'object' && 'choices' in response) {
-      generatedText = response.choices[0].message.content.trim();
-    } else if (typeof response === 'string') {
-      generatedText = response.trim();
-    } else {
-      // Handle async generator
-      for await (const chunk of response) {
-        if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta) {
-          generatedText += chunk.choices[0].delta.content || '';
+    try {
+      // Try OpenAI-compatible API first
+      if (engine.chat && engine.chat.completions && engine.chat.completions.create) {
+        const response = await engine.chat.completions.create({
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a helpful assistant that generates JavaScript regular expressions from natural language descriptions. Always return the regex pattern first, then an explanation on a new line.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 200
+        });
+        
+        if (response && typeof response === 'object' && 'choices' in response) {
+          generatedText = response.choices[0].message.content.trim();
+        } else if (typeof response === 'string') {
+          generatedText = response.trim();
         }
+      } 
+      // Fallback: use generate method
+      else if (engine.generate) {
+        generatedText = await engine.generate(prompt, {
+          temperature: 0.3,
+          max_tokens: 200
+        });
       }
+      // Fallback: use chat method directly
+      else if (engine.chat) {
+        const response = await engine.chat({
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant that generates JavaScript regular expressions from natural language descriptions. Always return the regex pattern first, then an explanation on a new line.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 200
+        });
+        
+        if (typeof response === 'string') {
+          generatedText = response;
+        } else if (response && response.content) {
+          generatedText = response.content;
+        }
+      } else {
+        throw new Error('WebLLM engine does not support chat or generate methods');
+      }
+      
       generatedText = generatedText.trim();
+    } catch (apiError) {
+      console.error('Generation API error:', apiError);
+      throw new Error(`Failed to generate regex: ${apiError.message}`);
     }
     
     // Extract regex and explanation

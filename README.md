@@ -30,7 +30,10 @@ A collection of fast, privacy-first developer tools that run entirely in your br
 
 ### Local Development
 
-1. Serve the files using a static file server. For example:
+**Note:** The Regex Generator tool requires WebLLM to be bundled. See [README-WEBLLM.md](README-WEBLLM.md) for setup instructions.
+
+1. **For most tools (no build required):**
+   Serve the files using a static file server. For example:
 
 ```bash
 # Using Python 3
@@ -43,7 +46,14 @@ npx http-server
 php -S localhost:8000
 ```
 
-2. Open `http://localhost:8000` in your browser
+2. **For Regex Generator (requires build):**
+   ```bash
+   npm install
+   npm run build
+   python3 -m http.server 8000
+   ```
+
+3. Open `http://localhost:8000` in your browser
 
 ### Deployment
 

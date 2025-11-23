@@ -1,0 +1,18 @@
+{
+  "name": "devtools-toolset",
+  "version": "1.0.0",
+  "description": "Framework-free client-side developer tools",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "^0.2.40"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
+
