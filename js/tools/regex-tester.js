@@ -172,6 +172,22 @@ if (sampleText && sampleTextHighlight) {
     sampleTextHighlight.scrollLeft = sampleText.scrollLeft;
   }
   sampleText.addEventListener('scroll', syncScroll);
+  
+  // Enforce fixed height to prevent expansion
+  function enforceHeight() {
+    if (sampleText.style.height !== '400px') {
+      sampleText.style.height = '400px';
+      sampleText.style.maxHeight = '600px';
+      sampleText.style.minHeight = '400px';
+      sampleText.style.overflowY = 'auto';
+      sampleText.style.resize = 'none';
+    }
+  }
+  
+  // Enforce on load and input
+  enforceHeight();
+  sampleText.addEventListener('input', enforceHeight);
+  window.addEventListener('resize', enforceHeight);
 }
 
 // Keyboard shortcuts

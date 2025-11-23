@@ -63,6 +63,61 @@
   padding: 1px 0;
 }
 
+/* Regex tester - fix matches output height */
+.regex-tester-tool #matches,
+.pane #matches {
+  min-height: 400px !important;
+  max-height: 600px !important;
+  height: 400px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  resize: none !important;
+}
+
+/* Regex tester - make textareas taller and side by side */
+.regex-tester-tool {
+  max-width: 100% !important;
+  width: 100% !important;
+  grid-template-columns: 1fr !important;
+  display: grid !important;
+}
+
+.regex-tester-tool .pane {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.regex-tester-tool .textarea-wrapper {
+  min-height: 400px !important;
+  max-height: 600px !important;
+  height: 400px !important;
+}
+
+.regex-tester-tool .textarea-wrapper textarea {
+  min-height: 400px !important;
+  max-height: 600px !important;
+  height: 400px !important;
+}
+
+.regex-tester-tool .split-view {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 1rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.regex-tester-tool .split-view > div {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 1023px) {
+  .regex-tester-tool .split-view {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .regex-group {
   background-color: rgba(74, 158, 255, 0.1);
   border: 1px dashed var(--accent);
@@ -286,12 +341,20 @@ pre.binary-output {
 /* Textarea wrapper for highlighting overlay */
 .textarea-wrapper {
   position: relative;
-  flex: 1;
+  flex: 0 0 300px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  align-self: stretch !important;
   display: flex;
   flex-direction: column;
   background-color: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
+  min-height: 200px !important;
+  max-height: 600px !important;
+  height: 300px !important;
+  overflow: hidden !important;
+  box-sizing: border-box;
 }
 
 .textarea-wrapper textarea {
@@ -302,6 +365,17 @@ pre.binary-output {
   caret-color: var(--text);
   border: none !important;
   box-shadow: none !important;
+  resize: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: 200px !important;
+  max-height: 600px !important;
+  height: 300px !important;
+  flex: 0 0 300px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
 }
 
 .highlight-overlay {
@@ -363,11 +437,7 @@ pre.binary-output {
   }
 }
 
-/* Large textareas for JSON tools */
-body:has([href*="/json/validate"]),
-body:has([href*="/json/format"]) {
-  /* Fallback for browsers that don't support :has() */
-}
+/* Large textareas for JSON tools - empty ruleset removed */
 
 /* JSON formatter and validator - large textareas */
 .json-tool {

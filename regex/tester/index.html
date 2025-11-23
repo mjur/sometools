@@ -79,7 +79,7 @@
     <h1>Regex Tester</h1>
     <p>Test regular expressions with match highlighting, group extraction, and detailed match information.</p>
     
-    <section class="tool">
+    <section class="tool regex-tester-tool">
       <div class="pane">
         <label for="pattern">Regular Expression Pattern</label>
         <input type="text" id="pattern" placeholder="Enter regex pattern, e.g., \d+">
@@ -121,19 +121,23 @@
             </label>
           </div>
         </div>
-        <label for="sample-text" style="margin-top: 1rem;">Sample Text</label>
-        <div class="textarea-wrapper">
-          <textarea id="sample-text" placeholder="Enter text to test against"></textarea>
-          <div id="sample-text-highlight" class="highlight-overlay" aria-hidden="true"></div>
+        <div class="split-view" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+          <div>
+            <label for="sample-text">Sample Text</label>
+            <div class="textarea-wrapper">
+              <textarea id="sample-text" placeholder="Enter text to test against"></textarea>
+              <div id="sample-text-highlight" class="highlight-overlay" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div>
+            <label for="matches">Matches</label>
+            <pre id="matches" aria-live="polite"></pre>
+          </div>
         </div>
-        <div class="actions">
+        <div class="actions" style="margin-top: 1rem;">
           <button id="test" class="primary">Test</button>
           <button id="clear">Clear</button>
         </div>
-      </div>
-      <div class="pane">
-        <label for="matches">Matches</label>
-        <pre id="matches" aria-live="polite"></pre>
         <label for="groups" style="margin-top: 1rem;">Capture Groups</label>
         <div id="groups" style="overflow-x: auto;"></div>
       </div>

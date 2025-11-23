@@ -126,6 +126,13 @@ main {
   padding: 2rem;
 }
 
+/* Regex tester - full width */
+main:has(.regex-tester-tool) {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 1rem 2rem !important;
+}
+
 /* Reduce padding for JSON tools to maximize space */
 main:has(.json-tool) {
   padding: 0.5rem 2rem 1rem;
