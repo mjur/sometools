@@ -12,14 +12,37 @@ export function testRegex(pattern, flags, text) {
     regex.lastIndex = 0;
     
     while ((match = regex.exec(text)) !== null) {
+      // Extract capture groups
+      const groups = [];
+      // Numbered groups (excluding full match at index 0)
+      for (let i = 1; i < match.length; i++) {
+        groups.push({
+          index: i,
+          value: match[i],
+          name: null
+        });
+      }
+      // Named groups (if any)
+      if (match.groups && typeof match.groups === 'object') {
+        Object.entries(match.groups).forEach(([name, value]) => {
+          // Find corresponding numbered group or add as new
+          const groupIndex = groups.findIndex(g => g.value === value && g.name === null);
+          if (groupIndex !== -1) {
+            groups[groupIndex].name = name;
+          } else {
+            groups.push({
+              index: groups.length + 1,
+              value: value,
+              name: name
+            });
+          }
+        });
+      }
+      
       matches.push({
         match: match[0],
         index: match.index,
-        groups: match.slice(1).map((g, i) => ({
-          index: i + 1,
-          value: g,
-          name: match.groups ? Object.keys(match.groups)[i] : null
-        })),
+        groups: groups,
         fullMatch: match
       });
       

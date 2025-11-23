@@ -68,16 +68,16 @@ function test() {
     matchesOutput.className = 'ok';
     
     // Display groups in a table
-    if (result.matches.some(m => m.groups && m.groups.length > 0)) {
-      let groupsHTML = '<table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;"><thead><tr><th style="padding: 0.5rem; border: 1px solid var(--border);">Match</th><th style="padding: 0.5rem; border: 1px solid var(--border);">Group</th><th style="padding: 0.5rem; border: 1px solid var(--border);">Value</th></tr></thead><tbody>';
+    const hasGroups = result.matches.some(m => m.groups && m.groups.length > 0);
+    if (hasGroups) {
+      let groupsHTML = '<table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;"><thead><tr><th style="padding: 0.5rem; border: 1px solid var(--border);">Match</th><th style="padding: 0.5rem; border: 1px solid var(--border);">Group</th><th style="padding: 0.5rem; border: 1px solid var(--border);">Name</th><th style="padding: 0.5rem; border: 1px solid var(--border);">Value</th></tr></thead><tbody>';
       
       result.matches.forEach((match, matchIdx) => {
         if (match.groups && match.groups.length > 0) {
-          match.groups.forEach((group, groupIdx) => {
-            groupsHTML += `<tr><td style="padding: 0.5rem; border: 1px solid var(--border);">${matchIdx + 1}</td><td style="padding: 0.5rem; border: 1px solid var(--border);">${group.index}</td><td style="padding: 0.5rem; border: 1px solid var(--border); font-family: monospace;">${escapeHtml(group.value || '(empty)')}</td></tr>`;
+          match.groups.forEach((group) => {
+            const groupLabel = group.name ? `${group.index} (${group.name})` : group.index;
+            groupsHTML += `<tr><td style="padding: 0.5rem; border: 1px solid var(--border);">${matchIdx + 1}</td><td style="padding: 0.5rem; border: 1px solid var(--border);">${group.index}</td><td style="padding: 0.5rem; border: 1px solid var(--border); font-family: monospace; color: var(--muted);">${group.name ? escapeHtml(group.name) : '—'}</td><td style="padding: 0.5rem; border: 1px solid var(--border); font-family: monospace;">${escapeHtml(group.value !== undefined && group.value !== null ? group.value : '(empty)')}</td></tr>`;
           });
-        } else {
-          groupsHTML += `<tr><td style="padding: 0.5rem; border: 1px solid var(--border);" colspan="3">No capture groups</td></tr>`;
         }
       });
       

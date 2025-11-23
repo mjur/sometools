@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Regex Tester - Test Suite</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/base.css">
+  <style>
+    body {
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .test-results {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: var(--bg-elev);
+      border-radius: 6px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .summary {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .summary.passed {
+      background: rgba(46, 125, 50, 0.1);
+      color: var(--ok);
+    }
+    .summary.failed {
+      background: rgba(211, 47, 47, 0.1);
+      color: var(--error);
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Regex Tester - Test Suite</h1>
+  <p>Comprehensive test suite for the regex tester tool. Click the button below to run all tests.</p>
+  <div id="server-warning" style="display: none; padding: 1rem; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 6px; margin-bottom: 1rem; color: var(--text);">
+    <strong>⚠️ Warning:</strong> This page must be accessed through a web server (not file://). 
+    <br>Run: <code style="background: var(--bg-elev); padding: 0.25rem 0.5rem; border-radius: 3px;">python3 -m http.server 8000</code> 
+    <br>Then open: <code style="background: var(--bg-elev); padding: 0.25rem 0.5rem; border-radius: 3px;">http://localhost:8000/tests/regex.html</code>
+  </div>
+  
+  <button id="run-tests" class="primary">Run Tests</button>
+  <button id="clear-results">Clear Results</button>
+  
+  <div id="test-results" class="test-results" style="display: none;"></div>
+  <div id="summary" class="summary" style="display: none;"></div>
+  
+  <script type="module">
+    let runTests;
+    let moduleLoaded = false;
+    
+    const runBtn = document.getElementById('run-tests');
+    const clearBtn = document.getElementById('clear-results');
+    const resultsDiv = document.getElementById('test-results');
+    const summaryDiv = document.getElementById('summary');
+    
+    // Show loading state
+    runBtn.disabled = true;
+    runBtn.textContent = 'Loading tests...';
+    
+    // Load module
+    import('/js/tests/regex-tester.test.js')
+      .then(module => {
+        runTests = module.runTests;
+        moduleLoaded = true;
+        console.log('Test module loaded successfully');
+        runBtn.textContent = 'Run Tests';
+        runBtn.disabled = false;
+      })
+      .catch(e => {
+        console.error('Failed to load test module:', e);
+        resultsDiv.style.display = 'block';
+        resultsDiv.textContent = 'Error loading test module: ' + e.message + '\n\nCheck the browser console for details.\n\nMake sure you are running this from a web server (not file://).';
+        summaryDiv.style.display = 'block';
+        summaryDiv.className = 'summary failed';
+        summaryDiv.textContent = '✗ Failed to load test module';
+        runBtn.textContent = 'Run Tests (Error)';
+        runBtn.disabled = true;
+      });
+    
+    // Capture console output
+    const originalLog = console.log;
+    const originalError = console.error;
+    let output = '';
+    
+    function captureLog(...args) {
+      const message = args.map(arg => {
+        if (typeof arg === 'object') {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch (e) {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      }).join(' ');
+      output += message + '\n';
+      originalLog.apply(console, args);
+    }
+    
+    function captureError(...args) {
+      const message = args.map(arg => {
+        if (typeof arg === 'object') {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch (e) {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      }).join(' ');
+      output += 'ERROR: ' + message + '\n';
+      originalError.apply(console, args);
+    }
+    
+    runBtn.addEventListener('click', () => {
+      if (!moduleLoaded || !runTests) {
+        resultsDiv.style.display = 'block';
+        resultsDiv.textContent = 'Test module not loaded yet. Please wait a moment and try again.\n\nIf this persists, check the browser console for errors.';
+        summaryDiv.style.display = 'block';
+        summaryDiv.className = 'summary failed';
+        summaryDiv.textContent = '✗ Test module not available';
+        return;
+      }
+      
+      output = '';
+      console.log = captureLog;
+      console.error = captureError;
+      
+      resultsDiv.style.display = 'block';
+      summaryDiv.style.display = 'block';
+      resultsDiv.textContent = 'Running tests...\n';
+      summaryDiv.textContent = '';
+      runBtn.disabled = true;
+      
+      // Use setTimeout to allow UI to update
+      setTimeout(() => {
+        try {
+          const result = runTests();
+          resultsDiv.textContent = output || 'No output generated';
+          
+          if (result && result.failed === 0) {
+            summaryDiv.className = 'summary passed';
+            summaryDiv.textContent = `✓ All ${result.total} tests passed!`;
+          } else if (result) {
+            summaryDiv.className = 'summary failed';
+            summaryDiv.textContent = `✗ ${result.failed} of ${result.total} tests failed (${result.successRate.toFixed(1)}% pass rate)`;
+          } else {
+            summaryDiv.className = 'summary failed';
+            summaryDiv.textContent = '✗ Test execution returned no result';
+          }
+        } catch (e) {
+          const errorMsg = e.message + '\n' + (e.stack || '');
+          resultsDiv.textContent = (output || '') + '\n\nError running tests:\n' + errorMsg;
+          summaryDiv.className = 'summary failed';
+          summaryDiv.textContent = '✗ Test execution failed: ' + e.message;
+          console.error('Test error:', e);
+        } finally {
+          console.log = originalLog;
+          console.error = originalError;
+          runBtn.disabled = false;
+        }
+      }, 10);
+    });
+    
+    clearBtn.addEventListener('click', () => {
+      resultsDiv.style.display = 'none';
+      summaryDiv.style.display = 'none';
+      resultsDiv.textContent = '';
+      summaryDiv.textContent = '';
+      output = '';
+    });
+    
+    // Check if module loaded
+    console.log('Test page loaded. Click "Run Tests" to start.');
+    
+    // Check if running from file:// protocol
+    if (window.location.protocol === 'file:') {
+      document.getElementById('server-warning').style.display = 'block';
+      runBtn.disabled = true;
+      runBtn.textContent = 'Cannot run (use web server)';
+    }
+  </script>
+</body>
+</html>
+
