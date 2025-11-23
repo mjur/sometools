@@ -46,7 +46,9 @@ function test() {
     return;
   }
   
-  const result = testRegex(pattern, flags, text);
+  // Always use global flag for finding all matches (like highlighting does)
+  const testFlags = flags.includes('g') ? flags : flags + 'g';
+  const result = testRegex(pattern, testFlags, text);
   
   if (!result.valid) {
     matchesOutput.textContent = `Invalid regex: ${result.error}`;
