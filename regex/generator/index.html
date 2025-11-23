@@ -80,15 +80,15 @@
     <p>Generate regular expressions from natural language descriptions using AI. Powered by WebLLM - runs entirely in your browser.</p>
     
     <div class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
-      <h3 style="margin-top: 0;">⚠️ Important: WebLLM Library & Model Download</h3>
-      <p><strong>The WebLLM library and AI model need to be loaded in your browser.</strong></p>
+      <h3 style="margin-top: 0;">⚠️ Important: WebLLM Requirements</h3>
+      <p><strong>WebLLM requires WebGPU support in your browser.</strong></p>
       <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-        <li><strong>WebLLM Library:</strong> Loads automatically from CDN when you first use the tool</li>
+        <li><strong>WebGPU Support:</strong> Required for model execution. Check support at <a href="https://webgpureport.org/" target="_blank">webgpureport.org</a></li>
+        <li><strong>Browser Requirements:</strong> Chrome 113+, Edge 113+, or Safari 18+ (with WebGPU enabled)</li>
+        <li><strong>GPU:</strong> A compatible GPU (dedicated or integrated) is recommended for best performance</li>
         <li><strong>AI Models:</strong> Large files (ranging from ~300MB to several GB) that need to be downloaded</li>
         <li>Models are cached in your browser's IndexedDB for faster subsequent use</li>
         <li>Some models may exceed your browser's default cache limit</li>
-        <li>If you encounter storage errors, you may need to increase your browser's cache size</li>
-        <li><strong>Note:</strong> If you see "WebLLM library not found" errors, check your internet connection and browser console for details</li>
       </ul>
       <details style="margin-top: 0.5rem;">
         <summary style="cursor: pointer; font-weight: bold;">How to increase browser cache size</summary>
@@ -99,13 +99,18 @@
         </ul>
       </details>
       <details style="margin-top: 0.5rem;">
-        <summary style="cursor: pointer; font-weight: bold;">Troubleshooting WebLLM Loading Issues</summary>
+        <summary style="cursor: pointer; font-weight: bold;">Troubleshooting WebLLM Issues</summary>
         <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+          <li><strong>WebGPU errors:</strong> WebLLM requires WebGPU support. Use Chrome 113+, Edge 113+, or Safari 18+. Check support at <a href="https://webgpureport.org/" target="_blank">webgpureport.org</a></li>
+          <li><strong>Enable WebGPU in Chrome:</strong> Go to chrome://flags/#enable-unsafe-webgpu and enable it, then restart Chrome</li>
+          <li><strong>Shader compilation errors:</strong> Usually indicates GPU compatibility issues. Try updating GPU drivers, using a different browser, or selecting a smaller model</li>
+          <li><strong>GPU requirements:</strong> A compatible GPU (dedicated or integrated) is required. Some older or integrated GPUs may not support all WebGPU features</li>
+          <li><strong>Update GPU drivers:</strong> Outdated drivers can cause shader errors. Update to the latest drivers from your GPU manufacturer</li>
+          <li><strong>Try smaller models:</strong> If you encounter errors, try the smallest models first (Qwen2.5-0.5B or Qwen2-0.5B)</li>
           <li><strong>If you see "Failed to load WebLLM":</strong> Check the browser console (F12) for detailed errors</li>
           <li><strong>CORS errors:</strong> Make sure you're accessing via http://localhost:8000 or https:// (not file://)</li>
-          <li><strong>Module errors:</strong> WebLLM requires modern browser with ES modules support (Chrome 90+, Firefox 90+, Safari 14+)</li>
           <li><strong>Network errors:</strong> Ensure you have internet connection for initial library download</li>
-          <li><strong>Note:</strong> WebLLM may require bundling for production use. For development, CDN loading should work.</li>
+          <li><strong>Model download errors:</strong> Check your browser's storage quota and internet connection</li>
         </ul>
       </details>
     </div>
@@ -160,7 +165,7 @@
           <button id="download-model" class="primary">Download & Cache Model</button>
           <button id="check-model">Check Model Status</button>
         </div>
-        <div id="model-status" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.875rem; color: var(--muted);"></div>
+        <div id="model-status" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.875rem; color: var(--muted); white-space: pre-wrap; min-height: 3rem; max-height: 20rem; overflow-y: auto;"></div>
         
         <label for="description" style="margin-top: 1.5rem;">Description</label>
         <textarea id="description" placeholder="Describe the pattern you want, e.g., 'Match email addresses' or 'Find all phone numbers in US format' or 'Extract dates in YYYY-MM-DD format'" style="min-height: 120px;"></textarea>

@@ -6,6 +6,14 @@ let CreateMLCEngine = null;
 let currentEngine = null;
 let isModelLoading = false;
 
+// Check WebGPU support
+function checkWebGPUSupport() {
+  if (typeof navigator !== 'undefined' && navigator.gpu) {
+    return true;
+  }
+  return false;
+}
+
 const modelSelect = qs('#model-select');
 const downloadModelBtn = qs('#download-model');
 const checkModelBtn = qs('#check-model');
@@ -157,6 +165,15 @@ async function downloadModel() {
   }
   
   const modelName = modelSelect.value;
+  // Use a shared flag that progress callback can check
+  let hasError = false;
+  let errorMessage = null;
+  
+  // Helper function to set error and prevent progress updates
+  const setError = (msg) => {
+    hasError = true;
+    errorMessage = msg;
+  };
   
   try {
     isModelLoading = true;
@@ -176,22 +193,39 @@ async function downloadModel() {
     
     // Initialize engine with the selected model
     // WebLLM API: CreateMLCEngine(model, config)
-    const engine = await createEngine(
-      modelName,
-      {
-        initProgressCallback: (report) => {
-          const progress = report.progress || 0;
-          const text = report.text || '';
-          const percentage = (progress * 100).toFixed(1);
-          modelStatus.textContent = `Downloading: ${percentage}% - ${text}`;
-          
-          if (progress === 1) {
-            modelStatus.textContent = `✓ Model "${modelName}" downloaded and cached successfully!`;
-            modelStatus.style.color = 'var(--ok)';
-          }
+    // Wrap in try-catch to catch errors immediately
+    let engine;
+    try {
+      engine = await createEngine(
+        modelName,
+        {
+          initProgressCallback: (report) => {
+            // Don't update progress if an error has occurred
+            if (hasError) {
+              // Error already set, don't overwrite it
+              return;
+            }
+            
+            const progress = report.progress || 0;
+            const text = report.text || '';
+            const percentage = (progress * 100).toFixed(1);
+            modelStatus.textContent = `Downloading: ${percentage}% - ${text}`;
+            
+            if (progress === 1) {
+              modelStatus.textContent = `✓ Model "${modelName}" downloaded and cached successfully!`;
+              modelStatus.style.color = 'var(--ok)';
+            }
+          },
+          // Try to use WebGPU, but allow fallback to CPU/WASM if needed
+          gpuDevice: null, // Let WebLLM auto-detect
+          // Note: WebLLM will try WebGPU first, then fall back to CPU if WebGPU is not available
         }
-      }
-    );
+      );
+    } catch (engineError) {
+      // Catch errors during engine creation immediately
+      setError(engineError.message);
+      throw engineError;
+    }
     
     currentEngine = engine;
     isModelLoading = false;
@@ -203,18 +237,55 @@ async function downloadModel() {
     modelStatus.style.color = 'var(--ok)';
     
   } catch (e) {
+    // Mark that an error occurred (in case progress callback is still running)
+    setError(e.message || 'Unknown error');
+    
     isModelLoading = false;
     downloadModelBtn.disabled = false;
     downloadModelBtn.textContent = 'Download & Cache Model';
     
-    const errorMsg = e.message || 'Unknown error';
+    const errorMsg = errorMessage || e.message || 'Unknown error';
     toast(`Failed to download model: ${errorMsg}`, 'error');
-    modelStatus.textContent = `✗ Error: ${errorMsg}`;
-    modelStatus.style.color = 'var(--error)';
     
-    if (errorMsg.includes('quota') || errorMsg.includes('storage') || errorMsg.includes('space')) {
-      modelStatus.textContent += '\n\n⚠️ Your browser cache may be full. Try increasing your browser cache size (see instructions above).';
+    let errorText = `✗ Error: ${errorMsg}`;
+    
+    // Provide helpful messages for common errors
+    if (errorMsg.includes('GPU') || errorMsg.includes('WebGPU') || errorMsg.includes('compatible GPU')) {
+      errorText += '\n\n⚠️ WebGPU is required but not available.';
+      errorText += '\n\nSolutions:';
+      errorText += '\n1. Use Chrome 113+, Edge 113+, or Safari 18+';
+      errorText += '\n2. Enable WebGPU in Chrome: chrome://flags/#enable-unsafe-webgpu';
+      errorText += '\n3. Check GPU support at: https://webgpureport.org/';
+      errorText += '\n4. WebLLM requires a GPU (dedicated or integrated) for model execution';
+    } else if (errorMsg.includes('ShaderModule') || errorMsg.includes('shader') || errorMsg.includes('compute stage') || errorMsg.includes('Invalid ShaderModule')) {
+      errorText += '\n\n⚠️ WebGPU shader compilation error. This usually indicates a GPU compatibility issue.';
+      errorText += '\n\nSolutions:';
+      errorText += '\n1. Update your GPU drivers to the latest version';
+      errorText += '\n2. Try a different browser (Chrome/Edge recommended)';
+      errorText += '\n3. Try a smaller model (e.g., Qwen2.5-0.5B-Instruct)';
+      errorText += '\n4. Check if your GPU is compatible at: https://webgpureport.org/';
+      errorText += '\n5. Some integrated GPUs may not support all WebGPU features';
+      errorText += '\n6. Try disabling hardware acceleration and re-enabling it in browser settings';
+    } else if (errorMsg.includes('quota') || errorMsg.includes('storage') || errorMsg.includes('space')) {
+      errorText += '\n\n⚠️ Your browser cache may be full. Try increasing your browser cache size (see instructions above).';
+    } else if (errorMsg.includes('model record') || errorMsg.includes('appConfig')) {
+      errorText += '\n\n⚠️ Model ID not found. Please select a different model from the dropdown.';
     }
+    
+    // Set error message and prevent it from being overwritten
+    // Use a small delay to ensure progress callback doesn't overwrite it
+    setTimeout(() => {
+      if (hasError) {
+        modelStatus.textContent = errorText;
+        modelStatus.style.color = 'var(--error)';
+        modelStatus.style.whiteSpace = 'pre-wrap'; // Allow multi-line error messages
+      }
+    }, 100);
+    
+    // Also set immediately
+    modelStatus.textContent = errorText;
+    modelStatus.style.color = 'var(--error)';
+    modelStatus.style.whiteSpace = 'pre-wrap';
     
     console.error('Model download error:', e);
   }
@@ -227,6 +298,15 @@ async function initializeEngine() {
   }
   
   const modelName = modelSelect.value;
+  // Use a shared flag that progress callback can check
+  let hasError = false;
+  let errorMessage = null;
+  
+  // Helper function to set error and prevent progress updates
+  const setError = (msg) => {
+    hasError = true;
+    errorMessage = msg;
+  };
   
   try {
     const createEngine = await loadWebLLM();
@@ -237,19 +317,35 @@ async function initializeEngine() {
     
     toast('Loading model from cache...', 'info');
     
-    const engine = await createEngine(
-      modelName,
-      {
-        initProgressCallback: (report) => {
-          const progress = report.progress || 0;
-          const text = report.text || '';
-          if (progress < 1) {
-            const percentage = (progress * 100).toFixed(1);
-            modelStatus.textContent = `Loading: ${percentage}% - ${text}`;
-          }
+    // Wrap in try-catch to catch errors immediately
+    let engine;
+    try {
+      engine = await createEngine(
+        modelName,
+        {
+          initProgressCallback: (report) => {
+            // Don't update progress if an error has occurred
+            if (hasError) {
+              // Error already set, don't overwrite it
+              return;
+            }
+            
+            const progress = report.progress || 0;
+            const text = report.text || '';
+            if (progress < 1) {
+              const percentage = (progress * 100).toFixed(1);
+              modelStatus.textContent = `Loading: ${percentage}% - ${text}`;
+            }
+          },
+          // Try to use WebGPU, but allow fallback to CPU/WASM if needed
+          gpuDevice: null, // Let WebLLM auto-detect
         }
-      }
-    );
+      );
+    } catch (engineError) {
+      // Catch errors during engine creation immediately
+      setError(engineError.message);
+      throw engineError;
+    }
     currentEngine = engine;
     
     toast('Model loaded successfully!', 'success');
@@ -258,14 +354,43 @@ async function initializeEngine() {
     
     return engine;
   } catch (e) {
-    const errorMsg = e.message || 'Unknown error';
-    toast(`Failed to load model: ${errorMsg}`, 'error');
-    modelStatus.textContent = `✗ Error loading model: ${errorMsg}`;
-    modelStatus.style.color = 'var(--error)';
+    // Mark that an error occurred (in case progress callback is still running)
+    setError(e.message || 'Unknown error');
     
-    if (errorMsg.includes('not found') || errorMsg.includes('cache')) {
-      modelStatus.textContent += '\n\nClick "Download & Cache Model" to download it.';
+    const errorMsg = errorMessage || e.message || 'Unknown error';
+    toast(`Failed to load model: ${errorMsg}`, 'error');
+    
+    let errorText = `✗ Error loading model: ${errorMsg}`;
+    
+    // Provide helpful messages for common errors
+    if (errorMsg.includes('ShaderModule') || errorMsg.includes('shader') || errorMsg.includes('compute stage') || errorMsg.includes('Invalid ShaderModule')) {
+      errorText += '\n\n⚠️ WebGPU shader compilation error. This usually indicates a GPU compatibility issue.';
+      errorText += '\n\nSolutions:';
+      errorText += '\n1. Update your GPU drivers to the latest version';
+      errorText += '\n2. Try a different browser (Chrome/Edge recommended)';
+      errorText += '\n3. Try a smaller model (e.g., Qwen2.5-0.5B-Instruct)';
+      errorText += '\n4. Check if your GPU is compatible at: https://webgpureport.org/';
+      errorText += '\n5. Some integrated GPUs may not support all WebGPU features';
+    } else if (errorMsg.includes('not found') || errorMsg.includes('cache')) {
+      errorText += '\n\nClick "Download & Cache Model" to download it.';
+    } else if (errorMsg.includes('GPU') || errorMsg.includes('WebGPU') || errorMsg.includes('compatible GPU')) {
+      errorText += '\n\n⚠️ WebGPU is required but not available. Check browser compatibility and GPU support.';
     }
+    
+    // Set error message and prevent it from being overwritten
+    // Use a small delay to ensure progress callback doesn't overwrite it
+    setTimeout(() => {
+      if (hasError) {
+        modelStatus.textContent = errorText;
+        modelStatus.style.color = 'var(--error)';
+        modelStatus.style.whiteSpace = 'pre-wrap'; // Allow multi-line error messages
+      }
+    }, 100);
+    
+    // Also set immediately
+    modelStatus.textContent = errorText;
+    modelStatus.style.color = 'var(--error)';
+    modelStatus.style.whiteSpace = 'pre-wrap';
     
     throw e;
   }
@@ -452,6 +577,15 @@ on(modelSelect, 'change', () => {
     explanation: explanationPre.textContent
   }, storageKey);
 });
+
+// Check WebGPU support on load
+if (!checkWebGPUSupport()) {
+  const warningMsg = '⚠️ WebGPU is not available in your browser. WebLLM requires WebGPU to run models. Please use Chrome 113+, Edge 113+, or Safari 18+ with WebGPU enabled.';
+  modelStatus.textContent = warningMsg;
+  modelStatus.style.color = 'var(--error)';
+  console.warn(warningMsg);
+  console.log('Check WebGPU support at: https://webgpureport.org/');
+}
 
 // Check model status on load
 checkModelStatus();
