@@ -86,6 +86,9 @@ function handleFile(file) {
     currentImageData = dataUrl;
     imagePreview.style.display = 'flex';
     
+    // Hide drop zone when image is uploaded
+    dropZone.style.display = 'none';
+    
     // Show image info
     const img = new Image();
     img.onload = () => {
@@ -331,15 +334,18 @@ async function convert() {
     // Show preview inline
     const url = URL.createObjectURL(blob);
     outputArea.innerHTML = `
-      <img src="${url}" alt="Converted image" style="max-width: 100%; max-height: 400px; border-radius: 6px; object-fit: contain;">
-      <p style="color: var(--ok); font-weight: 500; margin-top: 0.5rem; text-align: center;">✓ Converted successfully</p>
-      <p class="text-sm text-muted" style="margin-top: 0.5rem; text-align: center;">
-        ${(blob.size / 1024).toFixed(1)} KB • ${outputFormat.toUpperCase()}
-      </p>
+      <img src="${url}" alt="Converted image" style="max-width: 100%; max-height: calc(100% - 3rem); border-radius: 6px; object-fit: contain;">
+      <div style="position: absolute; bottom: 0.75rem; left: 0; right: 0; text-align: center;">
+        <p style="color: var(--ok); font-weight: 500; margin: 0; font-size: 0.875rem;">✓ Converted successfully</p>
+        <p class="text-sm text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.75rem;">
+          ${(blob.size / 1024).toFixed(1)} KB • ${outputFormat.toUpperCase()}
+        </p>
+      </div>
     `;
     outputArea.style.display = 'flex';
     outputArea.style.flexDirection = 'column';
     outputArea.style.alignItems = 'center';
+    outputArea.style.justifyContent = 'center';
     
     downloadBtn.disabled = false;
     toast('Conversion successful', 'success');
@@ -395,6 +401,10 @@ on(clearBtn, 'click', () => {
   convertedBlob = null;
   fileInput.value = '';
   imagePreview.style.display = 'none';
+  
+  // Show drop zone again when cleared
+  dropZone.style.display = 'flex';
+  
   outputArea.innerHTML = '<p>Upload an image to convert</p>';
   outputArea.style.display = 'flex';
   outputArea.style.flexDirection = 'column';
