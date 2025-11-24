@@ -28,6 +28,7 @@ Tools (each its own URL and HTML doc for SEO):
 /convert/json-yaml
 /convert/json-xml
 /convert/image-pdf
+/convert/image
 /text/base64
 /crypto/hash
 /crypto/hmac
@@ -496,11 +497,12 @@ Regex tools:
 Image conversion tools:
 - File upload: drag & drop zone with preview, or file picker button
 - Image preview: max-height 400px, centered, maintain aspect ratio
-- Settings panel: page size selector, orientation toggle, margin inputs
-- Output: download button (primary), preview PDF in new tab option
+- Settings panel: format selector, quality sliders (JPEG/WebP), size options (SVG/ICO)
+- Output: download button (primary), preview converted image
 - Progress indicator: show during conversion for large images
-- Supported formats: display badges (JPG, PNG, GIF, WebP)
+- Supported formats: display badges (PNG, JPEG, WebP, SVG, ICO)
 - Error handling: invalid file type, file too large, conversion failure
+- Format-specific options: JPEG/WebP quality, SVG dimensions, ICO multi-size selection
 
 4.19 Print Styles
 Media query: @media print
@@ -560,6 +562,8 @@ Base64 /text/base64
 Encode/decode tabs; URL‑safe toggle; input/output panes; auto‑detect; file drop.
 Image to PDF /convert/image-pdf
 Image upload (drag & drop or file picker); support JPG, PNG, GIF, WebP; PDF output with page size options (A4, Letter, custom); orientation (portrait/landscape); margin settings; download PDF button; preview before download.
+Image Format Converter /convert/image
+Image upload (drag & drop or file picker); convert between PNG, JPEG, WebP, SVG, ICO formats; quality settings for JPEG/WebP; SVG size options; ICO multi-size support (16×16 to 256×256); download converted image.
 Hash /crypto/hash
 Algorithms: MD5, SHA‑1, SHA‑256/384/512, SHA‑3 (keccak note), BLAKE2s/2b (if lightweight).
 Input as text or file; output formats: hex/base64; copy.
@@ -588,6 +592,7 @@ json.js (safe parse with pos info), base64.js, hash.js (WebCrypto wrappers), dif
 /json/format/index.html
 /text/base64/index.html
 /convert/image-pdf/index.html
+/convert/image/index.html
 /crypto/hash/index.html
 /diff/text/index.html
 /regex/tester/index.html
@@ -595,7 +600,7 @@ json.js (safe parse with pos info), base64.js, hash.js (WebCrypto wrappers), dif
 /css/tool.css (shared tool styles)
 /js/ui.js, /js/url-state.js
 /js/utils/json.js, base64.js, hash.js, diff.js, regex.js
-/js/tools/json-validate.js, json-format.js, base64.js, hash.js, text-diff.js, regex-tester.js, image-pdf.js
+/js/tools/json-validate.js, json-format.js, base64.js, hash.js, text-diff.js, regex-tester.js, image-pdf.js, image-convert.js
 /workers/json-worker.js, /workers/diff-worker.js
 /assets/logo.svg, icons, manifest
 /manifest.webmanifest, favicon.ico, robots.txt, sitemap.xml
