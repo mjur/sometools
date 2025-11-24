@@ -144,21 +144,21 @@
           <p class="text-sm text-muted">Supported: PNG, JPEG, WebP, SVG, ICO</p>
           <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon" style="display: none;">
         </div>
-        <div id="image-preview" style="display: none; margin-top: 1rem;">
-          <img id="preview-img" alt="Preview" style="max-width: 100%; max-height: 400px; border-radius: 6px;">
+        <div id="image-preview" style="display: none; margin-top: 1rem; flex: 1; flex-direction: column;">
+          <img id="preview-img" alt="Preview" style="max-width: 100%; max-height: 400px; border-radius: 6px; object-fit: contain;">
           <p id="image-info" class="text-sm text-muted" style="margin-top: 0.5rem;"></p>
         </div>
-        <div class="actions">
+        <div class="actions" style="margin-top: 1rem;">
           <button id="clear" class="secondary">Clear</button>
+          <button id="convert" class="primary" disabled>Convert</button>
         </div>
       </div>
       <div class="pane">
         <label>Converted Image</label>
-        <div id="output-area" style="min-height: 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--muted);">
+        <div id="output-area" style="min-height: 300px; flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--muted); overflow: auto;">
           <p>Upload an image to convert</p>
         </div>
-        <div class="actions">
-          <button id="convert" class="primary" disabled>Convert</button>
+        <div class="actions" style="margin-top: 1rem;">
           <button id="download" class="secondary" disabled>Download</button>
         </div>
       </div>

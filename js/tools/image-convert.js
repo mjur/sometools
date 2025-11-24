@@ -84,7 +84,7 @@ function handleFile(file) {
     const dataUrl = e.target.result;
     previewImg.src = dataUrl;
     currentImageData = dataUrl;
-    imagePreview.style.display = 'block';
+    imagePreview.style.display = 'flex';
     
     // Show image info
     const img = new Image();
@@ -99,6 +99,10 @@ function handleFile(file) {
     // Enable convert button
     convertBtn.disabled = false;
     outputArea.innerHTML = '<p>Ready to convert</p>';
+    outputArea.style.display = 'flex';
+    outputArea.style.flexDirection = 'column';
+    outputArea.style.alignItems = 'center';
+    outputArea.style.justifyContent = 'center';
     toast('Image loaded successfully', 'success');
   };
   reader.onerror = () => {
@@ -324,17 +328,18 @@ async function convert() {
     
     convertedBlob = blob;
     
-    // Show preview
+    // Show preview inline
     const url = URL.createObjectURL(blob);
     outputArea.innerHTML = `
-      <div style="text-align: center;">
-        <img src="${url}" alt="Converted image" style="max-width: 100%; max-height: 400px; border-radius: 6px;">
-        <p style="color: var(--ok); font-weight: 500; margin-top: 0.5rem;">✓ Converted successfully</p>
-        <p class="text-sm text-muted" style="margin-top: 0.5rem;">
-          ${(blob.size / 1024).toFixed(1)} KB • ${outputFormat.toUpperCase()}
-        </p>
-      </div>
+      <img src="${url}" alt="Converted image" style="max-width: 100%; max-height: 400px; border-radius: 6px; object-fit: contain;">
+      <p style="color: var(--ok); font-weight: 500; margin-top: 0.5rem; text-align: center;">✓ Converted successfully</p>
+      <p class="text-sm text-muted" style="margin-top: 0.5rem; text-align: center;">
+        ${(blob.size / 1024).toFixed(1)} KB • ${outputFormat.toUpperCase()}
+      </p>
     `;
+    outputArea.style.display = 'flex';
+    outputArea.style.flexDirection = 'column';
+    outputArea.style.alignItems = 'center';
     
     downloadBtn.disabled = false;
     toast('Conversion successful', 'success');
@@ -391,6 +396,10 @@ on(clearBtn, 'click', () => {
   fileInput.value = '';
   imagePreview.style.display = 'none';
   outputArea.innerHTML = '<p>Upload an image to convert</p>';
+  outputArea.style.display = 'flex';
+  outputArea.style.flexDirection = 'column';
+  outputArea.style.alignItems = 'center';
+  outputArea.style.justifyContent = 'center';
   convertBtn.disabled = true;
   downloadBtn.disabled = true;
   toast('Cleared', 'info');
