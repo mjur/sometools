@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Image to PDF Converter | Client-Side | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Convert images to PDF files locally in your browser. Support for JPG, PNG, GIF, WebP. No data leaves your device.">
+  <link rel="canonical" href="https://example.com/convert/image-pdf">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Image to PDF Converter">
+  <meta property="og:description" content="Convert images to PDF files locally in your browser.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is my image sent to a server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. All processing happens locally in your browser. Your images never leave your device."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What image formats are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We support JPG, PNG, GIF, and WebP image formats."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I customize the PDF page size?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, you can choose from A4, Letter, or custom page sizes, and set portrait or landscape orientation."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Image to PDF",
+        "item": "https://example.com/convert/image-pdf"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/image-pdf">Image to PDF</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Image to PDF Converter</h1>
+    <p>Convert images to PDF files locally in your browser. Your images never leave your device.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="page-size">Page Size</label>
+        <select id="page-size">
+          <option value="a4">A4</option>
+          <option value="letter">Letter</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="option-group" id="custom-size-group" style="display: none; flex-wrap: wrap; gap: 0.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <label for="custom-width">Width (mm)</label>
+          <input type="number" id="custom-width" value="210" min="1" step="1" style="width: 80px;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <label for="custom-height">Height (mm)</label>
+          <input type="number" id="custom-height" value="297" min="1" step="1" style="width: 80px;">
+        </div>
+      </div>
+      <div class="option-group">
+        <label for="orientation">Orientation</label>
+        <select id="orientation">
+          <option value="portrait">Portrait</option>
+          <option value="landscape">Landscape</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label for="margin">Margin (mm)</label>
+        <input type="number" id="margin" value="10" min="0" step="1">
+      </div>
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="fit-to-page">
+          Fit image to page
+        </label>
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="file-input">Upload Image</label>
+        <div class="drop-zone" id="drop-zone">
+          <p>Drag and drop an image here, or click to select</p>
+          <p class="text-sm text-muted">Supported: JPG, PNG, GIF, WebP</p>
+          <input type="file" id="file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
+        </div>
+        <div id="image-preview" style="display: none; margin-top: 1rem;">
+          <img id="preview-img" alt="Preview" style="max-width: 100%; max-height: 400px; border-radius: 6px;">
+          <p id="image-info" class="text-sm text-muted" style="margin-top: 0.5rem;"></p>
+        </div>
+        <div class="actions">
+          <button id="clear" class="secondary">Clear</button>
+        </div>
+      </div>
+      <div class="pane">
+        <label>PDF Output</label>
+        <div id="output-area" style="min-height: 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--muted);">
+          <p>Upload an image to convert to PDF</p>
+        </div>
+        <div class="actions">
+          <button id="convert" class="primary" disabled>Convert to PDF</button>
+          <button id="download" class="secondary" disabled>Download PDF</button>
+          <button id="preview" class="secondary" disabled>Preview PDF</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my image sent to a server?</summary>
+        <p>No. All processing happens locally in your browser. Your images never leave your device.</p>
+      </details>
+      <details>
+        <summary>What image formats are supported?</summary>
+        <p>We support JPG, PNG, GIF, and WebP image formats.</p>
+      </details>
+      <details>
+        <summary>Can I customize the PDF page size?</summary>
+        <p>Yes, you can choose from A4, Letter, or custom page sizes, and set portrait or landscape orientation.</p>
+      </details>
+      <details>
+        <summary>What happens if my image is larger than the page?</summary>
+        <p>If "Fit image to page" is enabled, the image will be scaled to fit within the page margins. Otherwise, the image will be placed at its original size, which may extend beyond the page.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/text/base64">Base64 Encode/Decode</a></li>
+        <li><a href="/crypto/hash">Hash Generator</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/image-pdf.js"></script>
+</body>
+</html>
+
