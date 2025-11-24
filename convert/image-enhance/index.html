@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Image Enhancement | AI-Powered | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Enhance, restore, colorize, and upscale images using AI models. All processing happens locally in your browser.">
+  <link rel="canonical" href="https://example.com/convert/image-enhance">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Image Enhancement | AI-Powered">
+  <meta property="og:description" content="Enhance, restore, colorize, and upscale images using AI models locally.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is my image sent to a server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. All processing happens locally in your browser using AI models. Your images never leave your device."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do the AI models work?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The AI models are downloaded once and cached in your browser. They run entirely on your device using WebGL/WebGPU acceleration."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What image formats are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We support PNG, JPEG, WebP, and other common image formats. The models work best with photos and realistic images."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Image Enhancement",
+        "item": "https://example.com/convert/image-enhance"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/image-enhance">Image Enhancement</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Image Enhancement</h1>
+    <p>Enhance, restore, colorize, and upscale images using AI models. All processing happens locally in your browser.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="model-select">Enhancement Type</label>
+        <select id="model-select">
+          <option value="upscale">Upscale (Real-ESRGAN)</option>
+          <option value="enhance">Enhance Quality</option>
+          <option value="restore">Restore Faces (GFPGAN)</option>
+          <option value="colorize">Colorize B&W</option>
+          <option value="style">Style Transfer</option>
+        </select>
+      </div>
+      <div class="option-group" id="scale-factor-group">
+        <label for="scale-factor">Scale Factor</label>
+        <select id="scale-factor">
+          <option value="2">2x</option>
+          <option value="4" selected>4x</option>
+        </select>
+      </div>
+      <div class="option-group" id="strength-group" style="display: none;">
+        <label for="strength">Strength</label>
+        <input type="range" id="strength" min="0.1" max="1" step="0.1" value="1">
+        <span id="strength-value">100%</span>
+      </div>
+    </div>
+    
+    <div id="model-status" style="padding: 1rem; background-color: var(--bg-elev); border-radius: 6px; margin-bottom: 1rem;">
+      <p style="margin: 0; color: var(--muted);">Select an enhancement type and upload an image to begin</p>
+      <p style="margin: 0.5rem 0 0 0; color: var(--text-subtle); font-size: 0.75rem;">
+        <strong>Note:</strong> Models need to be set up first. See <code>README-IMAGE-ENHANCE.md</code> for instructions.
+      </p>
+    </div>
+    
+    <section class="tool">
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label for="file-input">Upload Image</label>
+        <div class="drop-zone" id="drop-zone" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0;">
+          <p>Drag and drop an image here, or click to select</p>
+          <p class="text-sm text-muted">Supported: PNG, JPEG, WebP</p>
+          <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp" style="display: none;">
+        </div>
+        <div id="image-preview" style="display: none; height: 400px; flex: 0 0 400px; flex-direction: column; margin: 0; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-elev); padding: 0.75rem; overflow: hidden;">
+          <img id="preview-img" alt="Preview" style="max-width: 100%; max-height: calc(100% - 2rem); border-radius: 6px; object-fit: contain;">
+          <p id="image-info" class="text-sm text-muted" style="margin-top: 0.5rem; text-align: center;"></p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="clear" class="secondary">Clear</button>
+          <button id="enhance" class="primary" disabled>Enhance</button>
+        </div>
+      </div>
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label>Enhanced Image</label>
+        <div id="output-area" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--muted); overflow: auto; margin: 0; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-elev); padding: 0.75rem; position: relative;">
+          <p>Upload an image to enhance</p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="download" class="secondary" disabled>Download</button>
+        </div>
+      </div>
+    </section>
+    
+    <div id="progress-container" style="display: none; margin-top: 1rem; padding: 1rem; background-color: var(--bg-elev); border-radius: 6px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+        <span id="progress-text">Processing...</span>
+        <span id="progress-percent">0%</span>
+      </div>
+      <div style="width: 100%; height: 8px; background-color: var(--border); border-radius: 4px; overflow: hidden;">
+        <div id="progress-bar" style="width: 0%; height: 100%; background-color: var(--accent); transition: width 0.3s;"></div>
+      </div>
+    </div>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my image sent to a server?</summary>
+        <p>No. All processing happens locally in your browser using AI models. Your images never leave your device.</p>
+      </details>
+      <details>
+        <summary>How do the AI models work?</summary>
+        <p>The AI models are downloaded once and cached in your browser. They run entirely on your device using WebGL/WebGPU acceleration.</p>
+      </details>
+      <details>
+        <summary>What image formats are supported?</summary>
+        <p>We support PNG, JPEG, WebP, and other common image formats. The models work best with photos and realistic images.</p>
+      </details>
+      <details>
+        <summary>How long does processing take?</summary>
+        <p>Processing time depends on the image size and model. Typically 5-30 seconds for balanced quality settings.</p>
+      </details>
+      <details>
+        <summary>Can I clear the model cache?</summary>
+        <p>Yes, you can clear cached models from your browser's storage settings, or we'll provide a cache management option soon.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/convert/image">Image Format Converter</a></li>
+        <li><a href="/convert/image-pdf">Image to PDF</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <!-- Load ONNX Runtime from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js" crossorigin="anonymous"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/image-enhance.js"></script>
+</body>
+</html>
+

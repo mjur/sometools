@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@mlc-ai/web-llm": "^0.2.40"
+    "@mlc-ai/web-llm": "^0.2.40",
+    "onnxruntime-web": "^1.23.2"
   },
   "devDependencies": {
     "vite": "^5.0.0"
   }
 }
-
