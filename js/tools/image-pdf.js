@@ -100,7 +100,10 @@ function handleFile(file) {
     const dataUrl = e.target.result;
     previewImg.src = dataUrl;
     currentImageData = dataUrl;
-    imagePreview.style.display = 'block';
+    imagePreview.style.display = 'flex';
+    
+    // Hide drop zone when image is uploaded
+    dropZone.style.display = 'none';
     
     // Show image info
     const img = new Image();
@@ -112,6 +115,10 @@ function handleFile(file) {
     // Enable convert button
     convertBtn.disabled = false;
     outputArea.innerHTML = '<p>Ready to convert</p>';
+    outputArea.style.display = 'flex';
+    outputArea.style.flexDirection = 'column';
+    outputArea.style.alignItems = 'center';
+    outputArea.style.justifyContent = 'center';
     toast('Image loaded successfully', 'success');
   };
   reader.onerror = () => {
@@ -236,14 +243,18 @@ on(convertBtn, 'click', async () => {
     
     // Update UI
     outputArea.innerHTML = `
-      <div style="text-align: center;">
-        <p style="color: var(--ok); font-weight: 500;">✓ PDF created successfully</p>
-        <p class="text-sm text-muted" style="margin-top: 0.5rem;">
+      <div style="text-align: center; width: 100%;">
+        <p style="color: var(--ok); font-weight: 500; margin: 0;">✓ PDF created successfully</p>
+        <p class="text-sm text-muted" style="margin-top: 0.5rem; margin-bottom: 0;">
           ${pageWidth.toFixed(1)} × ${pageHeight.toFixed(1)} mm
           ${orientationSelect.value === 'landscape' ? '(Landscape)' : '(Portrait)'}
         </p>
       </div>
     `;
+    outputArea.style.display = 'flex';
+    outputArea.style.flexDirection = 'column';
+    outputArea.style.alignItems = 'center';
+    outputArea.style.justifyContent = 'center';
     
     downloadBtn.disabled = false;
     previewBtn.disabled = false;
@@ -302,7 +313,15 @@ on(clearBtn, 'click', () => {
   pdfBlob = null;
   fileInput.value = '';
   imagePreview.style.display = 'none';
+  
+  // Show drop zone again when cleared
+  dropZone.style.display = 'flex';
+  
   outputArea.innerHTML = '<p>Upload an image to convert to PDF</p>';
+  outputArea.style.display = 'flex';
+  outputArea.style.flexDirection = 'column';
+  outputArea.style.alignItems = 'center';
+  outputArea.style.justifyContent = 'center';
   convertBtn.disabled = true;
   downloadBtn.disabled = true;
   previewBtn.disabled = true;
