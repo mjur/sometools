@@ -324,6 +324,15 @@ on(convertBtn, 'click', async () => {
     // Check if audio-only format
     const isAudioFormat = audioFormats.includes(outputFormat);
     
+    // For video formats, always add scale filter to reduce memory usage
+    // Browser memory is limited, so scale down high-resolution videos
+    if (!isAudioFormat) {
+      console.log('Adding scale filter to reduce memory usage for video conversion');
+      // Scale to max 1280x720 to ensure it fits in browser memory
+      // This is a good balance between quality and memory usage
+      ffmpegArgs.push('-vf', 'scale=1280:720:force_original_aspect_ratio=decrease');
+    }
+    
     if (isAudioFormat) {
       // Audio-only conversion
       if (outputFormat === 'mp3') {
@@ -566,9 +575,22 @@ on(convertBtn, 'click', async () => {
     toast(`Conversion complete! Output size: ${outputSizeMB} MB`, 'success');
     
   } catch (e) {
-    toast(`Conversion failed: ${e.message}`, 'error');
+    const errorMsg = e?.message || String(e);
+    let userMessage = `Conversion failed: ${errorMsg}`;
+    
+    // Provide helpful error messages for common issues
+    if (errorMsg.includes('memory access out of bounds') || errorMsg.includes('out of memory')) {
+      userMessage = 'Video is too large for browser memory. Try:\n' +
+        '1. Using a smaller video file (< 100MB recommended)\n' +
+        '2. Converting to a lower resolution format\n' +
+        '3. Splitting the video into smaller segments';
+    } else if (errorMsg.includes('FS error') || errorMsg.includes('Invalid data')) {
+      userMessage = 'Error processing video file. The file may be corrupted or in an unsupported format.';
+    }
+    
+    toast(userMessage, 'error');
     console.error('Conversion error:', e);
-    outputArea.innerHTML = `<p style="color: var(--error);">Error: ${e.message}</p>`;
+    outputArea.innerHTML = `<p style="color: var(--error);">Error: ${userMessage}</p>`;
     progressContainer.style.display = 'none';
   } finally {
     isConverting = false;
