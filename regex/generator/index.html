@@ -224,11 +224,10 @@
   </main>
   
   <script type="module" src="/js/header.js"></script>
-  <!-- Load bundled WebLLM if available -->
+  <!-- Load bundled WebLLM (shared by regex generator and chatbot) -->
   <script type="module">
-    // Try to load bundled WebLLM
     try {
-      await import('/js/tools/bundled/regex-generator-bundle.js');
+      await import('/js/tools/bundled/webllm-bundle.js');
     } catch (e) {
       console.log('Bundled WebLLM not found. Run "npm install && npm run build" to create it.');
     }

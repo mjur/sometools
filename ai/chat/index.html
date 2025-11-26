@@ -101,6 +101,7 @@
         </div>
 
         <div id="chat-model-status" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.875rem; color: var(--muted); white-space: pre-wrap; min-height: 3rem; max-height: 20rem; overflow-y: auto;"></div>
+        <div id="chat-model-list" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.8rem; color: var(--muted); max-height: 10rem; overflow-y: auto;"></div>
       </div>
 
       <div class="pane" style="display: flex; flex-direction: column; height: 100%;">
@@ -139,12 +140,12 @@
   </main>
 
   <script type="module" src="/js/header.js"></script>
-  <!-- Try to load bundled WebLLM engine (same bundle used by regex generator) -->
+  <!-- Load bundled WebLLM (shared with regex generator) -->
   <script type="module">
     try {
-      await import('/js/tools/bundled/regex-generator-bundle.js');
+      await import('/js/tools/bundled/webllm-bundle.js');
     } catch (e) {
-      console.log('Bundled WebLLM not found. Run "npm install && npm run build" to create it.');
+      console.log('Bundled WebLLM not found. Run \"npm install && npm run build\" to create it.');
     }
   </script>
   <script type="module" src="/js/tools/webllm-chat.js"></script>

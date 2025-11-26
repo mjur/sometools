@@ -4,6 +4,7 @@
 import { toast, on, qs } from '/js/ui.js';
 
 let CreateMLCEngine = null;
+let webllmApi = null;
 let chatEngine = null;
 let isModelLoading = false;
 
@@ -19,6 +20,45 @@ const chatSendBtn = qs('#chat-send');
 const chatClearConversationBtn = qs('#chat-clear-conversation');
 
 let messages = [];
+
+async function listCachedModels() {
+  const listEl = qs('#chat-model-list');
+  if (!listEl) return;
+  if (!webllmApi || typeof webllmApi.hasModelInCache !== 'function') {
+    listEl.innerHTML = '<p class="text-sm text-muted" style="margin: 0;">Cache API not available yet. Download a model first.</p>';
+    return;
+  }
+
+  const options = Array.from(modelSelect?.options || []).map(o => o.value);
+  const cached = [];
+
+  for (const id of options) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const ok = await webllmApi.hasModelInCache(id);
+      if (ok) cached.push(id);
+    } catch {
+      // Ignore individual errors
+    }
+  }
+
+  if (cached.length === 0) {
+    listEl.innerHTML = '<p class="text-sm text-muted" style="margin: 0;">No cached models found.</p>';
+    return;
+  }
+
+  const items = cached.map(key => {
+    const isSelected = key === modelSelect.value;
+    return `<li${isSelected ? ' style="font-weight: 600;"' : ''}>${key}</li>`;
+  }).join('');
+
+  listEl.innerHTML = `
+    <p class="text-sm text-muted" style="margin: 0 0 0.25rem 0;">Cached models:</p>
+    <ul class="text-sm" style="margin: 0; padding-left: 1.25rem;">
+      ${items}
+    </ul>
+  `;
+}
 
 function appendMessage(role, content) {
   const wrapper = document.createElement('div');
@@ -43,6 +83,7 @@ async function loadWebLLM() {
 
     if (typeof window !== 'undefined' && window.CreateMLCEngine) {
       CreateMLCEngine = window.CreateMLCEngine;
+      webllmApi = window.webllm || webllmApi;
       toast('WebLLM library loaded', 'success');
       return CreateMLCEngine;
     }
@@ -51,6 +92,7 @@ async function loadWebLLM() {
     try {
       const bundledModule = await import('/js/tools/bundled/regex-generator-bundle.js');
       CreateMLCEngine = bundledModule.CreateMLCEngine || window.CreateMLCEngine;
+      webllmApi = window.webllm || bundledModule.webllm || webllmApi;
       if (CreateMLCEngine && typeof CreateMLCEngine === 'function') {
         toast('WebLLM library loaded', 'success');
         return CreateMLCEngine;
@@ -73,47 +115,23 @@ async function checkModelStatus() {
     modelStatus.textContent = 'Checking model status...';
     modelStatus.style.color = 'var(--muted)';
 
-    const dbName = 'webllm';
-    const request = indexedDB.open(dbName);
+    if (!webllmApi || typeof webllmApi.hasModelInCache !== 'function') {
+      modelStatus.textContent = 'WebLLM cache API not available yet. Make sure the WebLLM bundle is loaded.';
+      modelStatus.style.color = 'var(--error)';
+      await listCachedModels();
+      return false;
+    }
 
-    return new Promise((resolve) => {
-      request.onsuccess = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains('model')) {
-          modelStatus.textContent = `✗ Model "${modelName}" is not cached.`;
-          modelStatus.style.color = 'var(--error)';
-          resolve(false);
-          return;
-        }
-        const transaction = db.transaction(['model'], 'readonly');
-        const store = transaction.objectStore('model');
-        const checkRequest = store.get(modelName);
-
-        checkRequest.onsuccess = () => {
-          if (checkRequest.result) {
-            modelStatus.textContent = `✓ Model "${modelName}" is cached and ready`;
-            modelStatus.style.color = 'var(--ok)';
-            resolve(true);
-          } else {
-            modelStatus.textContent = `✗ Model "${modelName}" is not cached. Click "Download & Cache Model" to download it.`;
-            modelStatus.style.color = 'var(--error)';
-            resolve(false);
-          }
-        };
-
-        checkRequest.onerror = () => {
-          modelStatus.textContent = `✗ Model "${modelName}" is not cached.`;
-          modelStatus.style.color = 'var(--error)';
-          resolve(false);
-        };
-      };
-
-      request.onerror = () => {
-        modelStatus.textContent = `✗ Model "${modelName}" is not cached.`;
-        modelStatus.style.color = 'var(--error)';
-        resolve(false);
-      };
-    });
+    const cached = await webllmApi.hasModelInCache(modelName);
+    if (cached) {
+      modelStatus.textContent = `✓ Model "${modelName}" is cached and ready`;
+      modelStatus.style.color = 'var(--ok)';
+    } else {
+      modelStatus.textContent = `✗ Model "${modelName}" is not cached. Click "Download & Cache Model" to download it.`;
+      modelStatus.style.color = 'var(--error)';
+    }
+    await listCachedModels();
+    return cached;
   } catch (e) {
     modelStatus.textContent = `Error checking model status: ${e.message}`;
     modelStatus.style.color = 'var(--error)';
@@ -181,6 +199,7 @@ async function downloadModel() {
     toast('Model downloaded and cached successfully!', 'success');
     modelStatus.textContent = `✓ Model "${modelName}" is ready to use`;
     modelStatus.style.color = 'var(--ok)';
+    listCachedModels().catch(console.error);
   } catch (e) {
     setError(e.message || 'Unknown error');
     isModelLoading = false;
@@ -360,34 +379,19 @@ async function sendMessage() {
 async function clearSelectedModel() {
   const modelName = modelSelect.value;
   try {
-    const dbName = 'webllm';
-    const request = indexedDB.open(dbName);
+    if (!webllmApi || typeof webllmApi.deleteModelAllInfoInCache !== 'function') {
+      toast('WebLLM cache API not available to clear a single model.', 'error');
+      return;
+    }
 
-    request.onsuccess = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains('model')) {
-        toast('No WebLLM model store found.', 'info');
-        return;
-      }
-      const tx = db.transaction(['model'], 'readwrite');
-      const store = tx.objectStore('model');
-      const delReq = store.delete(modelName);
-      delReq.onsuccess = () => {
-        toast(`Cleared cache for model "${modelName}"`, 'success');
-        if (chatEngine) {
-          chatEngine = null;
-        }
-        modelStatus.textContent = `✗ Model "${modelName}" is not cached.`;
-        modelStatus.style.color = 'var(--error)';
-      };
-      delReq.onerror = () => {
-        toast('Failed to clear model cache.', 'error');
-      };
-    };
-
-    request.onerror = () => {
-      toast('Failed to open WebLLM cache database.', 'error');
-    };
+    await webllmApi.deleteModelAllInfoInCache(modelName);
+    toast(`Cleared cache for model "${modelName}"`, 'success');
+    if (chatEngine) {
+      chatEngine = null;
+    }
+    modelStatus.textContent = `✗ Model "${modelName}" is not cached.`;
+    modelStatus.style.color = 'var(--error)';
+    listCachedModels().catch(console.error);
   } catch (e) {
     console.error('Clear selected model error:', e);
     toast(`Failed to clear model cache: ${e.message}`, 'error');
@@ -396,18 +400,17 @@ async function clearSelectedModel() {
 
 async function clearAllModels() {
   try {
-    const dbName = 'webllm';
-    const request = indexedDB.deleteDatabase(dbName);
+    if (!webllmApi || typeof webllmApi.clearCache !== 'function') {
+      toast('WebLLM cache API not available to clear all models.', 'error');
+      return;
+    }
 
-    request.onsuccess = () => {
-      toast('Cleared all WebLLM models from cache.', 'success');
-      chatEngine = null;
-      modelStatus.textContent = 'All WebLLM models cleared from cache.';
-      modelStatus.style.color = 'var(--muted)';
-    };
-    request.onerror = () => {
-      toast('Failed to clear WebLLM cache.', 'error');
-    };
+    await webllmApi.clearCache();
+    toast('Cleared all WebLLM models from cache.', 'success');
+    chatEngine = null;
+    modelStatus.textContent = 'All WebLLM models cleared from cache.';
+    modelStatus.style.color = 'var(--muted)';
+    listCachedModels().catch(console.error);
   } catch (e) {
     console.error('Clear all models error:', e);
     toast(`Failed to clear all models: ${e.message}`, 'error');
@@ -451,7 +454,9 @@ if (!checkWebGPUSupport()) {
   modelStatus.style.color = 'var(--error)';
   console.warn(warningMsg);
 } else {
-  checkModelStatus();
+  checkModelStatus().finally(() => {
+    listCachedModels().catch(console.error);
+  });
 }
 
 

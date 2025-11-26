@@ -5,7 +5,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        'regex-generator-bundle': resolve(__dirname, 'js/tools/regex-generator-bundle.js')
+        'regex-generator-bundle': resolve(__dirname, 'js/tools/regex-generator-bundle.js'),
+        'webllm-bundle': resolve(__dirname, 'js/tools/webllm-bundle-entry.js')
       },
       output: {
         format: 'es',
