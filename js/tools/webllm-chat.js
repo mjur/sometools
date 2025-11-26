@@ -12,7 +12,6 @@ const modelSelect = qs('#chat-model-select');
 const downloadModelBtn = qs('#chat-download-model');
 const checkModelBtn = qs('#chat-check-model');
 const clearModelBtn = qs('#chat-clear-model');
-const clearAllBtn = qs('#chat-clear-all');
 const modelStatus = qs('#chat-model-status');
 const chatLog = qs('#chat-log');
 const chatInput = qs('#chat-input');
@@ -398,25 +397,6 @@ async function clearSelectedModel() {
   }
 }
 
-async function clearAllModels() {
-  try {
-    if (!webllmApi || typeof webllmApi.clearCache !== 'function') {
-      toast('WebLLM cache API not available to clear all models.', 'error');
-      return;
-    }
-
-    await webllmApi.clearCache();
-    toast('Cleared all WebLLM models from cache.', 'success');
-    chatEngine = null;
-    modelStatus.textContent = 'All WebLLM models cleared from cache.';
-    modelStatus.style.color = 'var(--muted)';
-    listCachedModels().catch(console.error);
-  } catch (e) {
-    console.error('Clear all models error:', e);
-    toast(`Failed to clear all models: ${e.message}`, 'error');
-  }
-}
-
 function clearConversation() {
   messages = [];
   chatLog.innerHTML = '<p class="text-sm text-muted">Conversation cleared. Start a new chat.</p>';
@@ -426,7 +406,6 @@ function clearConversation() {
 if (downloadModelBtn) on(downloadModelBtn, 'click', downloadModel);
 if (checkModelBtn) on(checkModelBtn, 'click', checkModelStatus);
 if (clearModelBtn) on(clearModelBtn, 'click', clearSelectedModel);
-if (clearAllBtn) on(clearAllBtn, 'click', clearAllModels);
 if (chatSendBtn) on(chatSendBtn, 'click', sendMessage);
 if (chatClearConversationBtn) on(chatClearConversationBtn, 'click', clearConversation);
 
