@@ -17,26 +17,23 @@ const MODEL_CONFIGS = {
   upscale: {
     name: 'Real-ESRGAN Upscaling',
     key: 'realesrgan-x4plus-v1',
-    url: '/models/realesrgan/RealESRGAN_x4plus.onnx', // Requires local hosting
-    // To use: Download and convert Real-ESRGAN model, place in /models/realesrgan/
-    // Source: https://github.com/xinntao/Real-ESRGAN
-    // Note: Model needs to be converted from PyTorch to ONNX and hosted locally
+    url: 'http://localhost:3000/Real-ESRGAN-x4plus.onnx', // Local server
     inputName: 'input',
     outputName: 'output',
     scaleFactor: 4,
     description: 'Upscale images by 4x with AI-powered super-resolution',
-    requiresSetup: true
+    requiresSetup: false
   },
   enhance: {
     name: 'Image Enhancement',
     key: 'image-enhance-v1',
-    url: '/models/realesrgan/RealESRGAN_x4plus.onnx', // Can reuse Real-ESRGAN
+    url: 'http://localhost:3000/Real-ESRGAN-x4plus.onnx', // Local server - can reuse Real-ESRGAN
     // Real-ESRGAN also works for general enhancement
     inputName: 'input',
     outputName: 'output',
     scaleFactor: 1,
     description: 'Enhance image quality, reduce noise, and improve details',
-    requiresSetup: true
+    requiresSetup: false
   },
   restore: {
     name: 'Face Restoration (GFPGAN)',
@@ -52,15 +49,15 @@ const MODEL_CONFIGS = {
   },
   colorize: {
     name: 'Image Colorization',
-    key: 'ddcolor-paper-tiny-v1',
-    url: '/models/ddcolor_paper_tiny.onnx', // DDColor model - ready to use!
-    // Model: DDColor Paper Tiny (smaller, faster variant)
-    // Source: https://github.com/instant-high/DDColor-onnx
+    key: 'ddcolor-modelscope-v1',
+    url: 'http://localhost:3000/ddcolor_modelscope.onnx', // DDColor ModelScope model
+    // Model: DDColor ModelScope
     inputName: 'input',
     outputName: 'output',
     scaleFactor: 1,
     description: 'Add realistic color to black and white photographs',
-    requiresSetup: false // Model is available locally
+    requiresSetup: false,
+    inputSize: 512 // This model expects 512x512 input
   },
   style: {
     name: 'Style Transfer',
@@ -79,6 +76,18 @@ const MODEL_CONFIGS = {
     scaleFactor: 1,
     description: 'Apply artistic styles to your images',
     requiresSetup: true // Easy setup: Download pre-converted ONNX model and place in /models/style-transfer/
+  },
+  super_resolution: {
+    name: 'Super Resolution',
+    key: 'super-resolution-v1',
+    url: 'http://localhost:3000/animesr.onnx', // Local server
+    inputName: 'input', // Will be auto-detected if different
+    outputName: 'output', // Will be auto-detected if different
+    scaleFactor: 4,
+    description: 'Upscale images with super resolution AI',
+    requiresSetup: false,
+    inputSize: 512, // This model expects 512x512
+    grayscale: false // This model expects RGB (3 channels)
   }
 };
 
@@ -131,7 +140,7 @@ on(modelSelect, 'change', () => {
   currentModelConfig = MODEL_CONFIGS[modelType];
   
   // Show/hide scale factor for upscaling
-  scaleFactorGroup.style.display = (modelType === 'upscale' || modelType === 'enhance') ? 'flex' : 'none';
+  scaleFactorGroup.style.display = (modelType === 'upscale' || modelType === 'enhance' || modelType === 'super_resolution') ? 'flex' : 'none';
   
   // Show/hide strength for style transfer
   strengthGroup.style.display = (modelType === 'style') ? 'flex' : 'none';
@@ -289,6 +298,10 @@ async function loadModelSession() {
   }
   
   try {
+    // Disable enhance button during download
+    enhanceBtn.disabled = true;
+    enhanceBtn.textContent = 'Loading model...';
+    
     // Initialize ONNX
     await initONNX();
     
@@ -297,16 +310,29 @@ async function loadModelSession() {
     progressText.textContent = 'Loading model...';
     progressBar.style.width = '10%';
     
+    // Throttle progress updates to prevent UI blocking
+    let lastUpdate = 0;
+    const throttleDelay = 100; // Update UI every 100ms max
+    
     // Get or download model
     const modelData = await getOrDownloadModel(
       currentModelConfig.key,
       currentModelConfig.url,
       (loaded, total) => {
-        if (total > 0) {
-          const percent = Math.round((loaded / total) * 90); // 90% for download
-          progressBar.style.width = percent + '%';
-          progressPercent.textContent = percent + '%';
-          progressText.textContent = `Downloading model: ${formatBytes(loaded)} / ${formatBytes(total)}`;
+        const now = Date.now();
+        if (now - lastUpdate >= throttleDelay || loaded === total) {
+          lastUpdate = now;
+          // Use requestAnimationFrame to ensure UI updates don't block
+          requestAnimationFrame(() => {
+            if (total > 0) {
+              const percent = Math.round((loaded / total) * 90); // 90% for download
+              progressBar.style.width = percent + '%';
+              progressPercent.textContent = percent + '%';
+              const loadedMB = (loaded / (1024 * 1024)).toFixed(1);
+              const totalMB = (total / (1024 * 1024)).toFixed(1);
+              progressText.textContent = `Downloading model: ${loadedMB} MB / ${totalMB} MB`;
+            }
+          });
         }
       }
     );
@@ -315,7 +341,13 @@ async function loadModelSession() {
     progressText.textContent = 'Initializing model...';
     
     // Create session
-    currentSession = await createInferenceSession(modelData);
+    // Real-ESRGAN models have WebGL compatibility issues, use WASM for them
+    const useWASMOnly = currentModelConfig.key.includes('realesrgan') || 
+                       currentModelConfig.key.includes('image-enhance');
+    currentSession = await createInferenceSession(modelData, useWASMOnly ? {
+      executionProviders: ['wasm'],
+      graphOptimizationLevel: 'all'
+    } : undefined);
     
     // Log model input/output names for debugging
     if (currentSession && currentSession.inputNames) {
@@ -344,11 +376,23 @@ async function loadModelSession() {
       }
     }
     
-    progressContainer.style.display = 'none';
+    // Re-enable button
+    enhanceBtn.disabled = false;
+    enhanceBtn.textContent = 'Enhance Image';
+    
+    progressBar.style.width = '100%';
+    progressText.textContent = 'Model ready!';
+    setTimeout(() => {
+      progressContainer.style.display = 'none';
+    }, 1000);
+    
     toast('Model loaded successfully', 'success');
     
     return currentSession;
   } catch (error) {
+    // Re-enable button on error
+    enhanceBtn.disabled = false;
+    enhanceBtn.textContent = 'Enhance Image';
     progressContainer.style.display = 'none';
     toast(`Failed to load model: ${error.message}`, 'error');
     throw error;
@@ -391,32 +435,190 @@ async function enhanceImage() {
       scaleFactor = parseInt(scaleFactorSelect.value) || scaleFactor;
     }
     
-    // Process image
-    // Note: Some models may need specific input sizes (e.g., multiples of 32)
-    // Real-ESRGAN typically works with any size, but some models need fixed sizes
+    // Get model's expected input dimensions and resize if needed
     let modelInputWidth = processedImage.width;
     let modelInputHeight = processedImage.height;
     
-    // Round to nearest multiple of 32 for some models (optional optimization)
-    if (currentModelConfig.key.includes('realesrgan') || currentModelConfig.key.includes('gfpgan')) {
-      modelInputWidth = Math.floor(modelInputWidth / 32) * 32 || 32;
-      modelInputHeight = Math.floor(modelInputHeight / 32) * 32 || 32;
+    console.log('Current image size:', processedImage.width, 'x', processedImage.height);
+    console.log('Session inputs:', session.inputs);
+    
+    // Real-ESRGAN models typically require 128x128 input
+    // Models with inputSize specified (super resolution, colorize, etc.)
+    // Since session.inputs is undefined, we'll use known fixed sizes for these models
+    const realesrganFixedSize = 128;
+    const modelInputSize = currentModelConfig.inputSize;
+    
+    // Check if this model requires a fixed input size (super resolution, colorize, etc.)
+    if (modelInputSize) {
+      console.log(`${currentModelConfig.name} model detected - using fixed input size: ${modelInputSize}x${modelInputSize}`);
+      modelInputWidth = modelInputSize;
+      modelInputHeight = modelInputSize;
+      
+      // ALWAYS resize to match model's required dimensions (exact size, no aspect ratio preservation)
+      console.log(`Current processedImage size: ${processedImage.width}x${processedImage.height}`);
+      console.log(`Target size: ${modelInputSize}x${modelInputSize}`);
+      
+      if (processedImage.width !== modelInputSize || processedImage.height !== modelInputSize) {
+        console.log(`🔄 Resizing image EXACTLY from ${processedImage.width}x${processedImage.height} to ${modelInputSize}x${modelInputSize}`);
+        progressText.textContent = `Resizing to ${modelInputSize}x${modelInputSize}...`;
+        // Create exact size canvas
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = modelInputSize;
+        resizedCanvas.height = modelInputSize;
+        const ctx = resizedCanvas.getContext('2d');
+        ctx.drawImage(processedImage, 0, 0, modelInputSize, modelInputSize);
+        console.log(`✓ Resized canvas size: ${resizedCanvas.width}x${resizedCanvas.height}`);
+        processedImage = resizedCanvas;
+        console.log(`✓ Updated processedImage size: ${processedImage.width}x${processedImage.height}`);
+      } else {
+        console.log(`✓ Image already matches required size: ${modelInputSize}x${modelInputSize}`);
+      }
+    }
+    // Check if this is a Real-ESRGAN model that requires fixed 128x128 input
+    else if (currentModelConfig.key.includes('realesrgan') || currentModelConfig.key.includes('image-enhance')) {
+      console.log(`Real-ESRGAN model detected - using fixed input size: ${realesrganFixedSize}x${realesrganFixedSize}`);
+      modelInputWidth = realesrganFixedSize;
+      modelInputHeight = realesrganFixedSize;
+      
+      // ALWAYS resize to match model's required dimensions (exact size, no aspect ratio preservation)
+      console.log(`Current processedImage size: ${processedImage.width}x${processedImage.height}`);
+      console.log(`Target size: ${realesrganFixedSize}x${realesrganFixedSize}`);
+      
+      if (processedImage.width !== realesrganFixedSize || processedImage.height !== realesrganFixedSize) {
+        console.log(`🔄 Resizing image EXACTLY from ${processedImage.width}x${processedImage.height} to ${realesrganFixedSize}x${realesrganFixedSize}`);
+        progressText.textContent = `Resizing to ${realesrganFixedSize}x${realesrganFixedSize}...`;
+        // Create exact size canvas
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = realesrganFixedSize;
+        resizedCanvas.height = realesrganFixedSize;
+        const ctx = resizedCanvas.getContext('2d');
+        ctx.drawImage(processedImage, 0, 0, realesrganFixedSize, realesrganFixedSize);
+        console.log(`✓ Resized canvas size: ${resizedCanvas.width}x${resizedCanvas.height}`);
+        processedImage = resizedCanvas;
+        console.log(`✓ Updated processedImage size: ${processedImage.width}x${processedImage.height}`);
+      } else {
+        console.log(`✓ Image already matches required size: ${realesrganFixedSize}x${realesrganFixedSize}`);
+      }
+    } else {
+      // For other models, try to get shape from session or use dynamic sizing
+      if (session.inputs && session.inputs.length > 0) {
+        const inputMetadata = session.inputs[0];
+        if (inputMetadata.shape && Array.isArray(inputMetadata.shape) && inputMetadata.shape.length >= 4) {
+          const shape = inputMetadata.shape;
+          const heightIdx = 2;
+          const widthIdx = 3;
+          const expectedHeight = shape[heightIdx];
+          const expectedWidth = shape[widthIdx];
+          
+          if (typeof expectedHeight === 'number' && expectedHeight > 0 && 
+              typeof expectedWidth === 'number' && expectedWidth > 0) {
+            modelInputWidth = expectedWidth;
+            modelInputHeight = expectedHeight;
+            
+            if (processedImage.width !== expectedWidth || processedImage.height !== expectedHeight) {
+              const resizedCanvas = document.createElement('canvas');
+              resizedCanvas.width = expectedWidth;
+              resizedCanvas.height = expectedHeight;
+              const ctx = resizedCanvas.getContext('2d');
+              ctx.drawImage(processedImage, 0, 0, expectedWidth, expectedHeight);
+              processedImage = resizedCanvas;
+            }
+          }
+        }
+      }
+      
+      // If no fixed dimensions detected, round to multiple of 32 for optimization
+      if (modelInputWidth === processedImage.width && modelInputHeight === processedImage.height) {
+        if (currentModelConfig.key.includes('gfpgan')) {
+          modelInputWidth = Math.floor(modelInputWidth / 32) * 32 || 32;
+          modelInputHeight = Math.floor(modelInputHeight / 32) * 32 || 32;
+          
+          if (processedImage.width !== modelInputWidth || processedImage.height !== modelInputHeight) {
+            const resizedCanvas = resizeImage(processedImage, modelInputWidth, modelInputHeight);
+            processedImage = resizedCanvas;
+          }
+        }
+      }
     }
     
-    const outputCanvas = await processImageWithModel(processedImage, session, {
-      preprocessOptions: {
-        targetWidth: modelInputWidth,
-        targetHeight: modelInputHeight
-      },
-      postprocessOptions: {
-        scaleFactor: scaleFactor,
-        denormalize: true,
-        mean: [0.5, 0.5, 0.5],
-        std: [0.5, 0.5, 0.5]
-      },
-      inputName: currentModelConfig.inputName,
-      outputName: currentModelConfig.outputName
-    });
+    console.log(`Final model input dimensions: ${modelInputWidth}x${modelInputHeight}`);
+    console.log(`Final processedImage size: ${processedImage.width}x${processedImage.height}`);
+    
+    // Ensure processedImage matches modelInputWidth/Height exactly
+    if (processedImage.width !== modelInputWidth || processedImage.height !== modelInputHeight) {
+      console.log(`Final resize: ${processedImage.width}x${processedImage.height} -> ${modelInputWidth}x${modelInputHeight}`);
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = modelInputWidth;
+      finalCanvas.height = modelInputHeight;
+      const finalCtx = finalCanvas.getContext('2d');
+      finalCtx.drawImage(processedImage, 0, 0, modelInputWidth, modelInputHeight);
+      processedImage = finalCanvas;
+    }
+    
+    console.log(`Final image size before processing: ${processedImage.width}x${processedImage.height}`);
+    console.log(`Model input dimensions: ${modelInputWidth}x${modelInputHeight}`);
+    
+    let outputCanvas;
+    try {
+      // Check if model requires grayscale input
+      const requiresGrayscale = currentModelConfig.grayscale === true;
+      
+      outputCanvas = await processImageWithModel(processedImage, session, {
+        originalImage: processedImage, // Pass original image for LAB color space models
+        preprocessOptions: {
+          // Don't pass targetWidth/Height - use the actual image dimensions
+          // targetWidth: modelInputWidth,
+          // targetHeight: modelInputHeight
+          grayscale: requiresGrayscale // Pass grayscale flag to preprocessing
+        },
+        postprocessOptions: {
+          scaleFactor: scaleFactor,
+          denormalize: true,
+          mean: [0.5, 0.5, 0.5],
+          std: [0.5, 0.5, 0.5]
+        },
+        inputName: currentModelConfig.inputName,
+        outputName: currentModelConfig.outputName
+      });
+    } catch (inferenceError) {
+      // Check if it's a WebGL compatibility issue (resize mode not supported)
+      if (inferenceError.message && (
+        inferenceError.message.includes('resize') && inferenceError.message.includes('does not support') ||
+        inferenceError.message.includes('packed') && inferenceError.message.includes('does not support')
+      )) {
+        console.warn('WebGL backend compatibility issue detected. Recreating session with WASM backend...');
+        progressText.textContent = 'Switching to WASM backend...';
+        
+        // Clear current session and recreate with WASM only
+        currentSession = null;
+        const modelData = await getOrDownloadModel(currentModelConfig.key, currentModelConfig.url);
+        currentSession = await createInferenceSession(modelData, {
+          executionProviders: ['wasm'],
+          graphOptimizationLevel: 'all'
+        });
+        
+        // Retry inference with WASM backend
+        progressText.textContent = 'Processing image (WASM backend)...';
+        const requiresGrayscaleRetry = currentModelConfig.grayscale === true;
+        outputCanvas = await processImageWithModel(processedImage, currentSession, {
+          preprocessOptions: {
+            targetWidth: modelInputWidth,
+            targetHeight: modelInputHeight,
+            grayscale: requiresGrayscaleRetry
+          },
+          postprocessOptions: {
+            scaleFactor: scaleFactor,
+            denormalize: true,
+            mean: [0.5, 0.5, 0.5],
+            std: [0.5, 0.5, 0.5]
+          },
+          inputName: currentModelConfig.inputName,
+          outputName: currentModelConfig.outputName
+        });
+      } else {
+        throw inferenceError;
+      }
+    }
     
     progressBar.style.width = '100%';
     progressText.textContent = 'Finalizing...';
@@ -449,8 +651,14 @@ async function enhanceImage() {
     let errorMessage = error.message;
     let userFriendlyMessage = '';
     
+    // Check for dynamic batch dimension error (ONNX Runtime Web limitation)
+    if (errorMessage.includes('expected shape') && errorMessage.includes(',') && errorMessage.includes('dynamic batch')) {
+      userFriendlyMessage = 'This model uses a dynamic batch dimension which may not be fully supported by ONNX Runtime Web. The model needs to be re-exported with a fixed batch size (e.g., batch=1) to work in the browser.';
+    } else if (errorMessage.includes('expected shape') && errorMessage.includes('[,1,224,224]')) {
+      userFriendlyMessage = 'The super resolution model expects a dynamic batch dimension, but ONNX Runtime Web may not support this. The model file needs to be re-exported with a fixed batch size (batch=1) to work in the browser.';
+    }
     // Provide helpful error messages
-    if (errorMessage.includes('CORS') || errorMessage.includes('cross-origin')) {
+    else if (errorMessage.includes('CORS') || errorMessage.includes('cross-origin')) {
       userFriendlyMessage = `
         <div style="text-align: center; padding: 2rem;">
           <p style="color: var(--error); margin-bottom: 1rem; font-weight: 500;">CORS Error</p>

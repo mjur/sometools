@@ -22,8 +22,11 @@ export function preprocessImage(image, options = {}) {
     normalize = true,
     mean = [0.5, 0.5, 0.5],
     std = [0.5, 0.5, 0.5],
-    inputName = 'input'
+    inputName = 'input',
+    grayscale = false // If true, convert to grayscale (1 channel instead of 3)
   } = options;
+  
+  console.log(`preprocessImage: grayscale=${grayscale}, targetSize=${targetWidth}x${targetHeight}`);
   
   // Create canvas for processing
   const canvas = document.createElement('canvas');
@@ -49,43 +52,56 @@ export function preprocessImage(image, options = {}) {
   const data = imageData.data;
   
   // Convert to float32 array
-  // Most ONNX models expect NCHW format: [batch, channels, height, width]
   const numPixels = width * height;
-  const inputData = new Float32Array(1 * 3 * height * width);
+  const numChannels = grayscale ? 1 : 3;
+  const inputData = new Float32Array(1 * numChannels * height * width);
   
   for (let i = 0; i < numPixels; i++) {
     const r = data[i * 4];
     const g = data[i * 4 + 1];
     const b = data[i * 4 + 2];
     
-    // Normalize to [0, 1] and apply mean/std
-    // NCHW format: R channel, then G channel, then B channel
-    if (normalize) {
-      inputData[i] = ((r / 255.0) - mean[0]) / std[0];
-      inputData[i + numPixels] = ((g / 255.0) - mean[1]) / std[1];
-      inputData[i + numPixels * 2] = ((b / 255.0) - mean[2]) / std[2];
+    if (grayscale) {
+      // Convert RGB to grayscale using luminance formula
+      const gray = (0.299 * r + 0.587 * g + 0.114 * b);
+      
+      // Normalize to [0, 1] and apply mean/std
+      if (normalize) {
+        inputData[i] = ((gray / 255.0) - mean[0]) / std[0];
+      } else {
+        inputData[i] = gray / 255.0;
+      }
     } else {
-      inputData[i] = r / 255.0;
-      inputData[i + numPixels] = g / 255.0;
-      inputData[i + numPixels * 2] = b / 255.0;
+      // RGB format: R channel, then G channel, then B channel
+      if (normalize) {
+        inputData[i] = ((r / 255.0) - mean[0]) / std[0];
+        inputData[i + numPixels] = ((g / 255.0) - mean[1]) / std[1];
+        inputData[i + numPixels * 2] = ((b / 255.0) - mean[2]) / std[2];
+      } else {
+        inputData[i] = r / 255.0;
+        inputData[i + numPixels] = g / 255.0;
+        inputData[i + numPixels * 2] = b / 255.0;
+      }
     }
   }
   
   // Store shape info on the array itself for tensor creation
   const result = {
     [inputName]: inputData,
-    shape: [1, 3, height, width], // NCHW format
+    shape: [1, numChannels, height, width], // NCHW format
     originalWidth: image.width,
     originalHeight: image.height,
     processedWidth: width,
     processedHeight: height
   };
   
-  // Attach shape info to the array for easier access
-  if (inputData && typeof inputData === 'object') {
-    inputData._shape = [1, 3, height, width];
+  // Attach shape info directly to the Float32Array for tensor creation
+  // This is critical for the tensor creation to use the correct shape
+  if (inputData && inputData instanceof Float32Array) {
+    inputData._shape = [1, numChannels, height, width];
     inputData._height = height;
     inputData._width = width;
+    console.log(`Attached shape metadata to inputData: [${inputData._shape.join(',')}], dimensions: ${width}x${height}, grayscale: ${grayscale}`);
   }
   
   return result;
@@ -110,12 +126,16 @@ export function postprocessImage(outputData, metadata, options = {}) {
     scaleFactor = 1
   } = options;
   
+  console.log('postprocessImage: Determining output dimensions from metadata.shape:', metadata.shape);
+  
   // Determine output dimensions
   let outputWidth, outputHeight;
   
   if (metadata.shape && metadata.shape.length >= 4) {
+    console.log('postprocessImage: Shape has 4+ dimensions, parsing...');
     // Most ONNX models use NCHW: [batch, channels, height, width]
-    if (metadata.shape[1] === 3 || metadata.shape[1] === 1 || metadata.shape[1] === 4) {
+    const numChannels = metadata.shape[1];
+    if (numChannels === 3 || numChannels === 1 || numChannels === 4) {
       // NCHW: [batch, channels, height, width]
       outputHeight = metadata.shape[2];
       outputWidth = metadata.shape[3];
@@ -123,6 +143,11 @@ export function postprocessImage(outputData, metadata, options = {}) {
       // NHWC: [batch, height, width, channels]
       outputHeight = metadata.shape[1];
       outputWidth = metadata.shape[2];
+    } else if (numChannels === 2) {
+      // 2-channel output (likely AB channels from LAB color space)
+      outputHeight = metadata.shape[2];
+      outputWidth = metadata.shape[3];
+      console.log('postprocessImage: Detected 2-channel output (likely LAB AB channels)');
     } else {
       // Try to infer from shape
       outputHeight = metadata.shape[metadata.shape.length - 2] || metadata.processedHeight * scaleFactor;
@@ -144,17 +169,117 @@ export function postprocessImage(outputData, metadata, options = {}) {
   // Determine data layout
   const numPixels = outputWidth * outputHeight;
   let isNCHW = true; // Default to NCHW (most common)
+  const numChannels = metadata.shape && metadata.shape.length >= 4 ? metadata.shape[1] : 3;
+  const isLABOutput = numChannels === 2; // 2-channel output is likely LAB AB channels
+  
+  console.log('postprocessImage: numChannels:', numChannels, 'isLABOutput:', isLABOutput);
   
   if (metadata.shape && metadata.shape.length >= 4) {
     // NCHW: channels in position 1, NHWC: channels in position 3
-    isNCHW = (metadata.shape[1] === 3 || metadata.shape[1] === 1 || metadata.shape[1] === 4);
+    isNCHW = (metadata.shape[1] === 3 || metadata.shape[1] === 1 || metadata.shape[1] === 4 || metadata.shape[1] === 2);
+  }
+  
+  // Pre-extract L channel from original image if needed for LAB output
+  let lChannelData = null;
+  if (isLABOutput && metadata.originalImage) {
+    console.log('postprocessImage: Extracting L channel from original image...');
+    const origCanvas = document.createElement('canvas');
+    origCanvas.width = metadata.processedWidth;
+    origCanvas.height = metadata.processedHeight;
+    const origCtx = origCanvas.getContext('2d');
+    origCtx.drawImage(metadata.originalImage, 0, 0, metadata.processedWidth, metadata.processedHeight);
+    const origData = origCtx.getImageData(0, 0, metadata.processedWidth, metadata.processedHeight);
+    
+    lChannelData = new Float32Array(numPixels);
+    for (let i = 0; i < numPixels; i++) {
+      const origR = origData.data[i * 4];
+      const origG = origData.data[i * 4 + 1];
+      const origB = origData.data[i * 4 + 2];
+      
+      // Convert RGB to LAB to get L channel
+      // RGB to XYZ
+      let r = origR / 255.0;
+      let g = origG / 255.0;
+      let b = origB / 255.0;
+      
+      // Apply gamma correction
+      r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+      g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+      b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+      
+      // Reference white (D65)
+      r *= 100;
+      g *= 100;
+      b *= 100;
+      
+      // XYZ to LAB
+      let x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 95.047;
+      let y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 100.0;
+      let z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 108.883;
+      
+      x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x + 16/116);
+      y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y + 16/116);
+      z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z + 16/116);
+      
+      lChannelData[i] = (116 * y) - 16;
+    }
+    console.log('postprocessImage: L channel extracted');
   }
   
   // Convert output to image data
   for (let i = 0; i < numPixels; i++) {
     let r, g, b;
     
-    if (isNCHW) {
+    if (isLABOutput) {
+      // 2-channel output: AB channels from LAB color space
+      // Denormalize AB channels - they might be normalized
+      let a = outputData[i];
+      let b_channel = outputData[numPixels + i];
+      
+      // Denormalize AB channels - try different ranges
+      // LAB A and B typically range from -128 to 127
+      // If normalized to [0, 1], scale to [0, 127] then shift to [-128, 127]
+      // If normalized to [-1, 1], scale to [-127, 127]
+      if (Math.abs(a) <= 1 && Math.abs(b_channel) <= 1) {
+        // Likely normalized, scale to LAB range
+        // Try assuming [-1, 1] range first
+        a = a * 127;
+        b_channel = b_channel * 127;
+      }
+      
+      // Get L channel
+      const l = lChannelData ? lChannelData[i] : 50; // Use extracted L or default
+      
+      // Convert LAB to RGB
+      // LAB to XYZ conversion
+      let y = (l + 16) / 116;
+      let x = a / 500 + y;
+      let z = y - b_channel / 200;
+      
+      // Apply inverse gamma correction
+      x = x > 0.206897 ? x * x * x : (x - 16/116) / 7.787;
+      y = y > 0.206897 ? y * y * y : (y - 16/116) / 7.787;
+      z = z > 0.206897 ? z * z * z : (z - 16/116) / 7.787;
+      
+      // Reference white (D65)
+      x *= 0.95047;
+      z *= 1.08883;
+      
+      // XYZ to RGB conversion
+      r = x * 3.2406 + y * -1.5372 + z * -0.4986;
+      g = x * -0.9689 + y * 1.8758 + z * 0.0415;
+      b = x * 0.0557 + y * -0.2040 + z * 1.0570;
+      
+      // Apply gamma correction
+      r = r > 0.0031308 ? 1.055 * Math.pow(r, 1/2.4) - 0.055 : 12.92 * r;
+      g = g > 0.0031308 ? 1.055 * Math.pow(g, 1/2.4) - 0.055 : 12.92 * g;
+      b = b > 0.0031308 ? 1.055 * Math.pow(b, 1/2.4) - 0.055 : 12.92 * b;
+      
+      // Clamp and scale to [0, 255]
+      r = Math.max(0, Math.min(1, r)) * 255;
+      g = Math.max(0, Math.min(1, g)) * 255;
+      b = Math.max(0, Math.min(1, b)) * 255;
+    } else if (isNCHW) {
       // NCHW format: [batch, channels, height, width]
       // Data is organized as: [R pixels..., G pixels..., B pixels...]
       r = outputData[i];
@@ -168,21 +293,23 @@ export function postprocessImage(outputData, metadata, options = {}) {
       b = outputData[i * 3 + 2];
     }
     
-    // Denormalize if needed
-    if (denormalize) {
-      r = (r * std[0] + mean[0]) * 255.0;
-      g = (g * std[1] + mean[1]) * 255.0;
-      b = (b * std[2] + mean[2]) * 255.0;
-    } else {
-      r = r * 255.0;
-      g = g * 255.0;
-      b = b * 255.0;
+    // Denormalize if needed (skip for LAB output as it's already converted)
+    if (!isLABOutput) {
+      if (denormalize) {
+        r = (r * std[0] + mean[0]) * 255.0;
+        g = (g * std[1] + mean[1]) * 255.0;
+        b = (b * std[2] + mean[2]) * 255.0;
+      } else {
+        r = r * 255.0;
+        g = g * 255.0;
+        b = b * 255.0;
+      }
+      
+      // Clamp to [0, 255]
+      r = Math.max(0, Math.min(255, r));
+      g = Math.max(0, Math.min(255, g));
+      b = Math.max(0, Math.min(255, b));
     }
-    
-    // Clamp to [0, 255]
-    r = Math.max(0, Math.min(255, r));
-    g = Math.max(0, Math.min(255, g));
-    b = Math.max(0, Math.min(255, b));
     
     // Set pixel data
     imageData.data[i * 4] = r;
@@ -207,14 +334,32 @@ export async function processImageWithModel(image, session, options = {}) {
     preprocessOptions = {},
     postprocessOptions = {},
     inputName = 'input',
-    outputName = 'output'
+    outputName = 'output',
+    originalImage = null // For LAB color space models that need L channel from input
   } = options;
   
+  console.log(`processImageWithModel: Input image size: ${image.width}x${image.height}`);
+  console.log(`Preprocess options:`, preprocessOptions);
+  
   // Preprocess
-  const preprocessed = preprocessImage(image, {
+  // If targetWidth/targetHeight are not provided, use actual image dimensions
+  const preprocessOpts = {
     inputName,
     ...preprocessOptions
-  });
+  };
+  
+  // If no target dimensions specified, use image's actual dimensions
+  if (!preprocessOpts.targetWidth || !preprocessOpts.targetHeight) {
+    preprocessOpts.targetWidth = image.width;
+    preprocessOpts.targetHeight = image.height;
+  }
+  
+  console.log(`Preprocessing with dimensions: ${preprocessOpts.targetWidth}x${preprocessOpts.targetHeight}, grayscale: ${preprocessOpts.grayscale}`);
+  
+  const preprocessed = preprocessImage(image, preprocessOpts);
+  
+  console.log(`Preprocessed shape: [${preprocessed.shape.join(',')}]`);
+  console.log(`Preprocessed dimensions: ${preprocessed.processedWidth}x${preprocessed.processedHeight}`);
   
   // Run inference
   // Pass the shape metadata along with the data
@@ -239,6 +384,19 @@ export async function processImageWithModel(image, session, options = {}) {
     throw new Error('No output tensor found from model');
   }
   
+  // Log output tensor info for debugging
+  console.log('Output tensor:', outputTensor);
+  if (outputTensor.dims) {
+    console.log('Output tensor dims:', outputTensor.dims);
+  }
+  if (outputTensor.shape) {
+    console.log('Output tensor shape:', outputTensor.shape);
+  }
+  if (outputTensor.data) {
+    console.log('Output tensor data length:', outputTensor.data.length);
+    console.log('Output tensor data type:', outputTensor.data.constructor.name);
+  }
+  
   // Convert tensor to array if needed
   let outputData;
   let outputDims;
@@ -246,15 +404,21 @@ export async function processImageWithModel(image, session, options = {}) {
   if (outputTensor instanceof Float32Array || outputTensor instanceof Uint8Array) {
     outputData = outputTensor;
     outputDims = preprocessed.shape; // Use preprocessing shape as fallback
+    console.log('Output is Float32Array/Uint8Array, using preprocessed shape:', outputDims);
   } else if (outputTensor.data) {
     outputData = outputTensor.data;
     outputDims = outputTensor.dims || outputTensor.shape || preprocessed.shape;
+    console.log('Output tensor dims/shape:', outputDims);
   } else if (Array.isArray(outputTensor)) {
     outputData = new Float32Array(outputTensor);
     outputDims = preprocessed.shape;
+    console.log('Output is Array, using preprocessed shape:', outputDims);
   } else {
     throw new Error('Unsupported output tensor format');
   }
+  
+  console.log('Final output dims:', outputDims);
+  console.log('Final output data length:', outputData.length);
   
   // Postprocess
   const postMetadata = {
@@ -262,8 +426,12 @@ export async function processImageWithModel(image, session, options = {}) {
     processedWidth: preprocessed.processedWidth,
     processedHeight: preprocessed.processedHeight,
     originalWidth: preprocessed.originalWidth,
-    originalHeight: preprocessed.originalHeight
+    originalHeight: preprocessed.originalHeight,
+    originalImage: originalImage || image // Pass original image for LAB color space conversion
   };
+  
+  console.log('Postprocessing metadata:', postMetadata);
+  console.log('Postprocessing options:', postprocessOptions);
   
   return postprocessImage(outputData, postMetadata, postprocessOptions);
 }
@@ -293,6 +461,23 @@ export function resizeImage(image, maxWidth, maxHeight) {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(image, 0, 0, width, height);
   
+  return canvas;
+}
+
+/**
+ * Resize image to exact dimensions (may crop or stretch to fit exactly)
+ * @param {HTMLImageElement|HTMLCanvasElement} image - Source image
+ * @param {number} targetWidth - Exact target width
+ * @param {number} targetHeight - Exact target height
+ * @returns {HTMLCanvasElement} Resized canvas with exact dimensions
+ */
+export function resizeImageExact(image, targetWidth, targetHeight) {
+  const canvas = document.createElement('canvas');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext('2d');
+  // Draw image stretched/shrunk to exact dimensions
+  ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
   return canvas;
 }
 
