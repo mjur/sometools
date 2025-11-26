@@ -115,10 +115,10 @@ async function loadFFmpeg() {
         });
         toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
         
-        // Load FFmpeg - use CDN for core files (they should work with proper headers)
+        // Load FFmpeg - use local core files to avoid CORS issues with Cross-Origin-Embedder-Policy
         await ffmpeg.load({
-          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
-          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm'
+          coreURL: '/js/ffmpeg-core/ffmpeg-core.js',
+          wasmURL: '/js/ffmpeg-core/ffmpeg-core.wasm'
         });
         
         toast('FFmpeg loaded successfully!', 'success');
@@ -149,19 +149,11 @@ async function loadFFmpeg() {
           }
         });
         toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
-        // ESM build - try CDN first, fallback if needed
-        try {
-          await ffmpeg.load({
-          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
-          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm'
-          });
-        } catch (coreError) {
-          console.warn('Failed to load from unpkg, trying jsdelivr:', coreError);
-          await ffmpeg.load({
-            coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
-            wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm'
-          });
-        }
+        // ESM build - use local core files to avoid CORS issues
+        await ffmpeg.load({
+          coreURL: '/js/ffmpeg-core/ffmpeg-core.js',
+          wasmURL: '/js/ffmpeg-core/ffmpeg-core.wasm'
+        });
         toast('FFmpeg loaded successfully!', 'success');
         // Mark that we're using new API
         ffmpeg._useNewAPI = true;
@@ -187,7 +179,7 @@ async function loadFFmpeg() {
             progressPercent.textContent = `${percent}%`;
           }
         },
-        corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js'
+        corePath: '/js/ffmpeg-core/ffmpeg-core.js'
       });
 
       toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
@@ -300,17 +292,26 @@ on(convertBtn, 'click', async () => {
     progressText.textContent = 'Reading video file...';
     
     // Write input file to FFmpeg
-    const inputName = 'input.' + currentFile.name.split('.').pop();
-    const fileData = await fetch(currentFile).then(r => r.arrayBuffer());
+    // Get file extension from filename
+    const fileExt = currentFile.name.split('.').pop() || 'mp4';
+    const inputName = `input.${fileExt}`;
+    
+    // Read file as ArrayBuffer
+    const fileData = await currentFile.arrayBuffer();
+    const uint8Array = new Uint8Array(fileData);
+    
+    console.log('Writing file to FFmpeg:', inputName, 'Size:', uint8Array.length);
     
     // Check which API we're using
     if (ffmpegInstance._useNewAPI || typeof ffmpegInstance.writeFile === 'function') {
       // New API
-      await ffmpegInstance.writeFile(inputName, new Uint8Array(fileData));
+      await ffmpegInstance.writeFile(inputName, uint8Array);
     } else {
-      // Old API
+      // Old API - needs ArrayBuffer, not Uint8Array
       await ffmpegInstance.FS('writeFile', inputName, fileData);
     }
+    
+    console.log('File written successfully');
     
     // Get output format and quality settings
     const outputFormat = outputFormatSelect.value;
