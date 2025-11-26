@@ -3,6 +3,7 @@ import { toast, on, copy, qs } from '/js/ui.js';
 
 // WebLLM will be loaded dynamically
 let CreateMLCEngine = null;
+let webllmApi = null;
 let currentEngine = null;
 let isModelLoading = false;
 
@@ -17,7 +18,9 @@ function checkWebGPUSupport() {
 const modelSelect = qs('#model-select');
 const downloadModelBtn = qs('#download-model');
 const checkModelBtn = qs('#check-model');
+const clearModelBtn = qs('#clear-model');
 const modelStatus = qs('#model-status');
+const modelList = qs('#model-list');
 const descriptionInput = qs('#description');
 const generateBtn = qs('#generate');
 const clearBtn = qs('#clear');
@@ -41,25 +44,24 @@ async function loadWebLLM() {
   try {
     toast('Loading WebLLM library...', 'info');
     
-    // First, try to load from bundled version (if available)
     if (typeof window !== 'undefined' && window.CreateMLCEngine) {
       CreateMLCEngine = window.CreateMLCEngine;
-      console.log('WebLLM CreateMLCEngine loaded from bundled version');
+      webllmApi = window.webllm || webllmApi;
       toast('WebLLM library loaded', 'success');
       return CreateMLCEngine;
     }
-    
-    // Try to load bundled version dynamically
+
+    // Try bundled module explicitly, in case it wasn't imported yet
     try {
-      const bundledModule = await import('/js/tools/bundled/regex-generator-bundle.js');
+      const bundledModule = await import('/js/tools/bundled/webllm-bundle.js');
       CreateMLCEngine = bundledModule.CreateMLCEngine || window.CreateMLCEngine;
+      webllmApi = window.webllm || bundledModule.webllm || webllmApi;
       if (CreateMLCEngine && typeof CreateMLCEngine === 'function') {
-        console.log('WebLLM CreateMLCEngine loaded from bundled module');
         toast('WebLLM library loaded', 'success');
         return CreateMLCEngine;
       }
-    } catch (bundleError) {
-      console.log('Bundled version not available, trying CDN fallbacks...', bundleError);
+    } catch (e) {
+      console.log('Bundled WebLLM not available for regex generator:', e);
     }
     
     // Fallback: Try CDN sources (may not work due to WebLLM's complexity)
@@ -107,49 +109,91 @@ See README.md for build instructions.`);
   }
 }
 
+async function listCachedModels() {
+  if (!modelList) return;
+  
+  // Update webllmApi from window if available
+  if (typeof window !== 'undefined' && window.webllm) {
+    webllmApi = window.webllm;
+  }
+  
+  if (!webllmApi || typeof webllmApi.hasModelInCache !== 'function') {
+    modelList.innerHTML = '<p class="text-sm text-muted" style="margin: 0;">Cache API not available yet. Download a model first.</p>';
+    return;
+  }
+
+  const options = Array.from(modelSelect?.options || []).map(o => o.value);
+  const cached = [];
+
+  for (const id of options) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const ok = await webllmApi.hasModelInCache(id);
+      if (ok) cached.push(id);
+    } catch {
+      // Ignore all errors - database might not be initialized, model doesn't exist, etc.
+      // This prevents NotFoundError from breaking the UI
+    }
+  }
+
+  if (cached.length === 0) {
+    modelList.innerHTML = '<p class="text-sm text-muted" style="margin: 0;">No cached models found.</p>';
+    return;
+  }
+
+  const items = cached.map(key => {
+    const isSelected = key === modelSelect.value;
+    return `<li${isSelected ? ' style="font-weight: 600;"' : ''}>${key}</li>`;
+  }).join('');
+
+  modelList.innerHTML = `
+    <p class="text-sm text-muted" style="margin: 0 0 0.25rem 0;">Cached models:</p>
+    <ul class="text-sm" style="margin: 0; padding-left: 1.25rem;">
+      ${items}
+    </ul>
+  `;
+}
+
 // Check if model is cached
 async function checkModelStatus() {
   const modelName = modelSelect.value;
   try {
     modelStatus.textContent = 'Checking model status...';
     modelStatus.style.color = 'var(--muted)';
+
+    // Update webllmApi from window if available
+    if (typeof window !== 'undefined' && window.webllm) {
+      webllmApi = window.webllm;
+    }
+
+    if (!webllmApi || typeof webllmApi.hasModelInCache !== 'function') {
+      modelStatus.textContent = 'WebLLM cache API not available yet. Make sure the WebLLM bundle is loaded.';
+      modelStatus.style.color = 'var(--error)';
+      await listCachedModels();
+      return false;
+    }
+
+    let cached = false;
+    try {
+      cached = await webllmApi.hasModelInCache(modelName);
+    } catch (e) {
+      // Ignore IndexedDB errors - database might not be initialized
+      if (e.name === 'NotFoundError' || e.message?.includes('object stores')) {
+        cached = false;
+      } else {
+        throw e;
+      }
+    }
     
-    // Check IndexedDB for cached model
-    const dbName = 'webllm';
-    const request = indexedDB.open(dbName);
-    
-    return new Promise((resolve) => {
-      request.onsuccess = (event) => {
-        const db = event.target.result;
-        const transaction = db.transaction(['model'], 'readonly');
-        const store = transaction.objectStore('model');
-        const checkRequest = store.get(modelName);
-        
-        checkRequest.onsuccess = () => {
-          if (checkRequest.result) {
-            modelStatus.textContent = `✓ Model "${modelName}" is cached and ready`;
-            modelStatus.style.color = 'var(--ok)';
-            resolve(true);
-          } else {
-            modelStatus.textContent = `✗ Model "${modelName}" is not cached. Click "Download & Cache Model" to download it.`;
-            modelStatus.style.color = 'var(--error)';
-            resolve(false);
-          }
-        };
-        
-        checkRequest.onerror = () => {
-          modelStatus.textContent = `✗ Model "${modelName}" is not cached. Click "Download & Cache Model" to download it.`;
-          modelStatus.style.color = 'var(--error)';
-          resolve(false);
-        };
-      };
-      
-      request.onerror = () => {
-        modelStatus.textContent = `✗ Model "${modelName}" is not cached. Click "Download & Cache Model" to download it.`;
-        modelStatus.style.color = 'var(--error)';
-        resolve(false);
-      };
-    });
+    if (cached) {
+      modelStatus.textContent = `✓ Model "${modelName}" is cached and ready`;
+      modelStatus.style.color = 'var(--ok)';
+    } else {
+      modelStatus.textContent = `✗ Model "${modelName}" is not cached. Click "Download & Cache Model" to download it.`;
+      modelStatus.style.color = 'var(--error)';
+    }
+    await listCachedModels();
+    return cached;
   } catch (e) {
     modelStatus.textContent = `Error checking model status: ${e.message}`;
     modelStatus.style.color = 'var(--error)';
@@ -235,6 +279,7 @@ async function downloadModel() {
     toast('Model downloaded and cached successfully!', 'success');
     modelStatus.textContent = `✓ Model "${modelName}" is ready to use`;
     modelStatus.style.color = 'var(--ok)';
+    listCachedModels().catch(console.error);
     
   } catch (e) {
     // Mark that an error occurred (in case progress callback is still running)
@@ -351,6 +396,7 @@ async function initializeEngine() {
     toast('Model loaded successfully!', 'success');
     modelStatus.textContent = `✓ Model "${modelName}" is ready`;
     modelStatus.style.color = 'var(--ok)';
+    listCachedModels().catch(console.error);
     
     return engine;
   } catch (e) {
@@ -534,9 +580,38 @@ Matches three digits, a hyphen, two digits, a hyphen, and four digits (like a SS
   }
 }
 
+// Clear selected model
+async function clearSelectedModel() {
+  const modelName = modelSelect.value;
+  try {
+    // Update webllmApi from window if available
+    if (typeof window !== 'undefined' && window.webllm) {
+      webllmApi = window.webllm;
+    }
+    
+    if (!webllmApi || typeof webllmApi.deleteModelAllInfoInCache !== 'function') {
+      toast('WebLLM cache API not available to clear a single model.', 'error');
+      return;
+    }
+
+    await webllmApi.deleteModelAllInfoInCache(modelName);
+    toast(`Cleared cache for model "${modelName}"`, 'success');
+    if (currentEngine) {
+      currentEngine = null;
+    }
+    modelStatus.textContent = `✗ Model "${modelName}" is not cached.`;
+    modelStatus.style.color = 'var(--error)';
+    listCachedModels().catch(console.error);
+  } catch (e) {
+    console.error('Clear selected model error:', e);
+    toast(`Failed to clear model cache: ${e.message}`, 'error');
+  }
+}
+
 // Event listeners
 on(downloadModelBtn, 'click', downloadModel);
 on(checkModelBtn, 'click', checkModelStatus);
+on(clearModelBtn, 'click', clearSelectedModel);
 on(generateBtn, 'click', generateRegex);
 on(clearBtn, 'click', () => {
   descriptionInput.value = '';
@@ -566,7 +641,7 @@ on(testRegexBtn, 'click', () => {
 on(modelSelect, 'change', () => {
   // Reset engine when model changes
   currentEngine = null;
-  modelStatus.textContent = 'Model changed. Click "Check Model Status" to verify cache.';
+  modelStatus.textContent = 'Model changed. Click "Check Model Status" or "Download & Cache Model".';
   modelStatus.style.color = 'var(--muted)';
   
   // Save state
@@ -578,15 +653,20 @@ on(modelSelect, 'change', () => {
   }, storageKey);
 });
 
-// Check WebGPU support on load
+// On load: check WebGPU only (don't check model status automatically)
 if (!checkWebGPUSupport()) {
-  const warningMsg = '⚠️ WebGPU is not available in your browser. WebLLM requires WebGPU to run models. Please use Chrome 113+, Edge 113+, or Safari 18+ with WebGPU enabled.';
-  modelStatus.textContent = warningMsg;
-  modelStatus.style.color = 'var(--error)';
+  const warningMsg = '⚠️ WebGPU is not available in your browser. WebLLM requires WebGPU to run models. Use Chrome 113+, Edge 113+, or Safari 18+ with WebGPU enabled.';
+  if (modelStatus) {
+    modelStatus.textContent = warningMsg;
+    modelStatus.style.color = 'var(--error)';
+  }
   console.warn(warningMsg);
-  console.log('Check WebGPU support at: https://webgpureport.org/');
+} else {
+  // Don't call checkModelStatus on page load - let user click the button
+  // This avoids IndexedDB errors if database isn't initialized yet
+  if (modelStatus) {
+    modelStatus.textContent = 'Click "Check Model Status" to see if a model is cached.';
+    modelStatus.style.color = 'var(--muted)';
+  }
 }
-
-// Check model status on load
-checkModelStatus();
 

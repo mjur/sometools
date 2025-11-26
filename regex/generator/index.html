@@ -161,11 +161,13 @@
             <option value="DeepSeek-R1-Distill-Llama-8B-q4f16_1-MLC">DeepSeek R1 Distill Llama 8B (~4.6GB)</option>
           </optgroup>
         </select>
-        <div class="actions" style="margin-top: 0.5rem;">
+        <div class="actions" style="margin-top: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
           <button id="download-model" class="primary">Download & Cache Model</button>
           <button id="check-model">Check Model Status</button>
+          <button id="clear-model" class="secondary">Clear Selected Model</button>
         </div>
         <div id="model-status" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.875rem; color: var(--muted); white-space: pre-wrap; min-height: 3rem; max-height: 20rem; overflow-y: auto;"></div>
+        <div id="model-list" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.8rem; color: var(--muted); max-height: 10rem; overflow-y: auto;"></div>
         
         <label for="description" style="margin-top: 1.5rem;">Description</label>
         <textarea id="description" placeholder="Describe the pattern you want, e.g., 'Match email addresses' or 'Find all phone numbers in US format' or 'Extract dates in YYYY-MM-DD format'" style="min-height: 120px;"></textarea>
