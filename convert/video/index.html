@@ -90,6 +90,7 @@
     <div class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
       <h3 style="margin-top: 0;">⚠️ Important Notes</h3>
       <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+        <li><strong>Server Requirements:</strong> This tool requires a server with CORS headers configured. Use <code>npm run dev</code> (Vite) which includes the necessary headers, or configure your server with <code>Cross-Origin-Opener-Policy: same-origin</code> and <code>Cross-Origin-Embedder-Policy: require-corp</code>.</li>
         <li><strong>First Load:</strong> FFmpeg.wasm needs to download core files (~30MB) on first use. This is a one-time download.</li>
         <li><strong>Processing Time:</strong> Video conversion is CPU-intensive and may take several minutes depending on video length and your device.</li>
         <li><strong>Browser Support:</strong> Requires a modern browser with WebAssembly support (Chrome, Firefox, Safari, Edge).</li>

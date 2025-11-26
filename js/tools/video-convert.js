@@ -31,12 +31,55 @@ async function loadFFmpeg() {
   try {
     toast('Loading FFmpeg...', 'info');
     
+    // Intercept Worker constructor to redirect CDN worker URLs to local files
+    window.OriginalWorker = window.Worker;
+    const workerInterceptor = function(scriptURL, options) {
+      const originalURL = String(scriptURL);
+      let newURL = originalURL;
+      
+      console.log('Worker constructor called with URL:', originalURL);
+      
+      // Check for any CDN URL with ffmpeg worker files
+      if (originalURL.includes('cdn.jsdelivr.net') && originalURL.includes('ffmpeg')) {
+        const fileName = originalURL.split('/').pop();
+        console.log('Detected CDN ffmpeg URL, filename:', fileName);
+        if (fileName.includes('.ffmpeg.js') || fileName.includes('worker') || fileName === '814.ffmpeg.js') {
+          newURL = `/js/ffmpeg-workers/${fileName}`;
+          console.log('✓ Intercepting Worker: CDN -> Local', originalURL, '->', newURL);
+        }
+      }
+      // Also check for the specific file name pattern anywhere in URL
+      if (originalURL.includes('814.ffmpeg.js')) {
+        newURL = `/js/ffmpeg-workers/814.ffmpeg.js`;
+        console.log('✓ Intercepting Worker: by filename pattern', originalURL, '->', newURL);
+      }
+      
+      // Create Worker with potentially modified URL
+      try {
+        return new window.OriginalWorker(newURL, options);
+      } catch (e) {
+        console.error('Worker creation failed. Original URL:', originalURL, 'New URL:', newURL, 'Error:', e);
+        throw e;
+      }
+    };
+    
+    // Copy Worker properties to maintain compatibility
+    Object.setPrototypeOf(workerInterceptor, window.OriginalWorker);
+    Object.defineProperty(workerInterceptor, 'prototype', {
+      value: window.OriginalWorker.prototype,
+      writable: false
+    });
+    
+    // Replace Worker constructor
+    window.Worker = workerInterceptor;
+    
     // Load FFmpeg from CDN using script tag
-    if (!window.FFmpeg || !window.FFmpeg.createFFmpeg) {
+    if (!window.FFmpegWASM) {
       await new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.min.js';
         script.onload = () => {
+          // Wait a bit for the library to initialize
           setTimeout(resolve, 500);
         };
         script.onerror = () => reject(new Error('Failed to load FFmpeg script'));
@@ -44,28 +87,137 @@ async function loadFFmpeg() {
       });
     }
     
-    // Create FFmpeg instance
-    ffmpeg = window.FFmpeg.createFFmpeg({
-      log: true,
-      progress: (p) => {
-        if (progressBar && progressPercent) {
-          const percent = Math.round(p.ratio * 100);
-          progressBar.value = percent;
-          progressPercent.textContent = `${percent}%`;
-        }
-      },
-      corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js'
-    });
-
-    toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
-    await ffmpeg.load();
+    // Check how FFmpeg is exposed - UMD build uses FFmpegWASM as a Module
+    let createFFmpegFunc = null;
     
-    toast('FFmpeg loaded successfully!', 'success');
-    return ffmpeg;
+    console.log('Checking FFmpegWASM module:', window.FFmpegWASM);
+    console.log('FFmpegWASM keys:', Object.keys(window.FFmpegWASM || {}));
+    
+    if (window.FFmpegWASM) {
+      // It's a Module object, check its exports
+      if (window.FFmpegWASM.createFFmpeg) {
+        createFFmpegFunc = window.FFmpegWASM.createFFmpeg;
+      } else if (window.FFmpegWASM.default && window.FFmpegWASM.default.createFFmpeg) {
+        createFFmpegFunc = window.FFmpegWASM.default.createFFmpeg;
+      } else if (window.FFmpegWASM.default && typeof window.FFmpegWASM.default === 'function') {
+        createFFmpegFunc = window.FFmpegWASM.default;
+      } else if (window.FFmpegWASM.FFmpeg) {
+        // It exports the FFmpeg class - use it directly
+        const { FFmpeg: FFmpegClass } = window.FFmpegWASM;
+        ffmpeg = new FFmpegClass();
+        ffmpeg.on('log', ({ message }) => console.log('FFmpeg:', message));
+        ffmpeg.on('progress', ({ progress }) => {
+          if (progressBar && progressPercent) {
+            const percent = Math.round(progress * 100);
+            progressBar.value = percent;
+            progressPercent.textContent = `${percent}%`;
+          }
+        });
+        toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
+        
+        // Load FFmpeg - use CDN for core files (they should work with proper headers)
+        await ffmpeg.load({
+          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
+          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm'
+        });
+        
+        toast('FFmpeg loaded successfully!', 'success');
+        // Mark that we're using new API
+        ffmpeg._useNewAPI = true;
+        return ffmpeg;
+      }
+    }
+    
+    if (window.FFmpeg && window.FFmpeg.createFFmpeg) {
+      createFFmpegFunc = window.FFmpeg.createFFmpeg;
+    } else if (window.createFFmpeg) {
+      createFFmpegFunc = window.createFFmpeg;
+    }
+    
+    // If createFFmpeg not found, try using ESM import which we know works
+    if (!createFFmpegFunc && !ffmpeg) {
+      console.log('createFFmpeg not found in UMD, trying ESM import...');
+      try {
+        const { FFmpeg: FFmpegClass } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
+        ffmpeg = new FFmpegClass();
+        ffmpeg.on('log', ({ message }) => console.log('FFmpeg:', message));
+        ffmpeg.on('progress', ({ progress }) => {
+          if (progressBar && progressPercent) {
+            const percent = Math.round(progress * 100);
+            progressBar.value = percent;
+            progressPercent.textContent = `${percent}%`;
+          }
+        });
+        toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
+        // ESM build - try CDN first, fallback if needed
+        try {
+          await ffmpeg.load({
+          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
+          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm'
+          });
+        } catch (coreError) {
+          console.warn('Failed to load from unpkg, trying jsdelivr:', coreError);
+          await ffmpeg.load({
+            coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
+            wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm'
+          });
+        }
+        toast('FFmpeg loaded successfully!', 'success');
+        // Mark that we're using new API
+        ffmpeg._useNewAPI = true;
+        return ffmpeg;
+      } catch (esmError) {
+        console.error('ESM import also failed:', esmError);
+        // If ESM also fails due to worker, the UMD build worker issue is the problem
+        throw new Error('FFmpeg requires workers which cannot be loaded from CDN. Please ensure the worker file is accessible at /js/ffmpeg-workers/814.ffmpeg.js');
+      }
+    }
+    
+    // If we found createFFmpeg, use it (old API)
+    if (createFFmpegFunc && !ffmpeg) {
+      console.log('Using createFFmpeg:', createFFmpegFunc);
+      
+      // Create FFmpeg instance
+      ffmpeg = createFFmpegFunc({
+        log: true,
+        progress: (p) => {
+          if (progressBar && progressPercent) {
+            const percent = Math.round(p.ratio * 100);
+            progressBar.value = percent;
+            progressPercent.textContent = `${percent}%`;
+          }
+        },
+        corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js'
+      });
+
+      toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
+      await ffmpeg.load();
+      
+      toast('FFmpeg loaded successfully!', 'success');
+      return ffmpeg;
+    }
   } catch (e) {
-    toast(`Failed to load FFmpeg: ${e.message}`, 'error');
+    const errorMsg = e?.message || String(e);
+    let errorMessage = `Failed to load FFmpeg: ${errorMsg}`;
+    
+    // Provide helpful error message for CORS/Worker issues
+    if (errorMsg && (errorMsg.includes('Worker') || errorMsg.includes('CORS') || errorMsg.includes('SecurityError') || errorMsg.includes('DataClone'))) {
+      errorMessage = 'FFmpeg.wasm cannot load Worker scripts from CDN due to browser security restrictions.\n\n' +
+        'Solutions:\n' +
+        '1. Use `npm run dev` (Vite server) which is configured correctly\n' +
+        '2. Host the FFmpeg worker files locally in your project\n' +
+        '3. Use a server that supports Cross-Origin-Embedder-Policy headers\n\n' +
+        'The worker file needs to be served from the same origin as your page.';
+    }
+    
+    toast(errorMessage, 'error');
     console.error('FFmpeg load error:', e);
     throw e;
+  } finally {
+    // Restore original Worker constructor
+    if (window.OriginalWorker) {
+      window.Worker = window.OriginalWorker;
+    }
   }
 }
 
@@ -149,7 +301,16 @@ on(convertBtn, 'click', async () => {
     
     // Write input file to FFmpeg
     const inputName = 'input.' + currentFile.name.split('.').pop();
-    await ffmpegInstance.FS('writeFile', inputName, await fetch(currentFile).then(r => r.arrayBuffer()));
+    const fileData = await fetch(currentFile).then(r => r.arrayBuffer());
+    
+    // Check which API we're using
+    if (ffmpegInstance._useNewAPI || typeof ffmpegInstance.writeFile === 'function') {
+      // New API
+      await ffmpegInstance.writeFile(inputName, new Uint8Array(fileData));
+    } else {
+      // Old API
+      await ffmpegInstance.FS('writeFile', inputName, fileData);
+    }
     
     // Get output format and quality settings
     const outputFormat = outputFormatSelect.value;
@@ -341,19 +502,41 @@ on(convertBtn, 'click', async () => {
     progressText.textContent = 'Converting video (this may take several minutes)...';
     
     // Run FFmpeg
-    await ffmpegInstance.run(...ffmpegArgs);
+    if (ffmpegInstance._useNewAPI || typeof ffmpegInstance.exec === 'function') {
+      // New API
+      await ffmpegInstance.exec(ffmpegArgs);
+    } else {
+      // Old API
+      await ffmpegInstance.run(...ffmpegArgs);
+    }
     
     progressText.textContent = 'Reading converted file...';
     
     // Read output file
-    const data = ffmpegInstance.FS('readFile', outputName);
+    let data;
+    if (ffmpegInstance._useNewAPI || typeof ffmpegInstance.readFile === 'function') {
+      // New API
+      data = await ffmpegInstance.readFile(outputName);
+      data = data instanceof Uint8Array ? data : new Uint8Array(data);
+    } else {
+      // Old API
+      data = ffmpegInstance.FS('readFile', outputName);
+    }
+    
     const isAudioOutput = audioFormats.includes(outputFormat);
     const mimeType = isAudioOutput ? `audio/${outputFormat === 'ogg' ? 'ogg' : outputFormat}` : `video/${outputFormat}`;
-    convertedBlob = new Blob([data.buffer], { type: mimeType });
+    convertedBlob = new Blob([data.buffer || data], { type: mimeType });
     
     // Clean up
-    ffmpegInstance.FS('unlink', inputName);
-    ffmpegInstance.FS('unlink', outputName);
+    if (ffmpegInstance._useNewAPI || typeof ffmpegInstance.deleteFile === 'function') {
+      // New API
+      await ffmpegInstance.deleteFile(inputName);
+      await ffmpegInstance.deleteFile(outputName);
+    } else {
+      // Old API
+      ffmpegInstance.FS('unlink', inputName);
+      ffmpegInstance.FS('unlink', outputName);
+    }
     
     // Show output
     const outputUrl = URL.createObjectURL(convertedBlob);
