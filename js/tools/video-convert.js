@@ -31,27 +31,21 @@ async function loadFFmpeg() {
   try {
     toast('Loading FFmpeg...', 'info');
     
-    // Try to load FFmpeg from CDN
-    let createFFmpeg;
-    try {
-      // Try ESM import first
-      const module = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
-      createFFmpeg = module.createFFmpeg;
-    } catch (e) {
-      // Fallback: load via script tag
-      if (!window.FFmpeg) {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
-          script.onload = resolve;
-          script.onerror = reject;
-          document.head.appendChild(script);
-        });
-      }
-      createFFmpeg = window.FFmpeg.createFFmpeg;
+    // Load FFmpeg from CDN using script tag
+    if (!window.FFmpeg || !window.FFmpeg.createFFmpeg) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.min.js';
+        script.onload = () => {
+          setTimeout(resolve, 500);
+        };
+        script.onerror = () => reject(new Error('Failed to load FFmpeg script'));
+        document.head.appendChild(script);
+      });
     }
     
-    ffmpeg = createFFmpeg({
+    // Create FFmpeg instance
+    ffmpeg = window.FFmpeg.createFFmpeg({
       log: true,
       progress: (p) => {
         if (progressBar && progressPercent) {
