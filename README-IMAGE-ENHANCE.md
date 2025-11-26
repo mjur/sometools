@@ -38,9 +38,21 @@ The tool supports the following enhancement types:
    - Source: https://github.com/jantic/DeOldify
    - Convert PyTorch model to ONNX
 
-4. **Style Transfer**:
-   - ONNX Model Zoo has pre-converted models:
-   - https://github.com/onnx/models/tree/main/vision/style_transfer/fast_neural_style
+4. **Style Transfer** (Easiest to set up - pre-converted ONNX models available):
+   - ONNX Model Zoo has pre-converted models ready to use:
+   - Download directly from: https://github.com/onnx/models/tree/main/vision/style_transfer/fast_neural_style/model
+   - Direct download links (right-click "Download" on the file):
+     - `mosaic-9.onnx`: https://github.com/onnx/models/raw/main/vision/style_transfer/fast_neural_style/model/mosaic-9.onnx
+     - `rain-princess-9.onnx`: https://github.com/onnx/models/raw/main/vision/style_transfer/fast_neural_style/model/rain-princess-9.onnx
+     - `candy-9.onnx`: https://github.com/onnx/models/raw/main/vision/style_transfer/fast_neural_style/model/candy-9.onnx
+     - `udnie-9.onnx`: https://github.com/onnx/models/raw/main/vision/style_transfer/fast_neural_style/model/udnie-9.onnx
+   - **Setup Steps**:
+     1. Download one of the `.onnx` files above
+     2. Create directory: `mkdir -p models/style-transfer`
+     3. Place the file as: `models/style-transfer/mosaic-9.onnx` (or your chosen style)
+     4. The tool will automatically use it
+   - **Note**: GitHub raw URLs have CORS issues, so models must be hosted locally
+   - Alternative: Search Hugging Face for "fast neural style onnx" models with CDN support
 
 ### Option 2: Host Models
 

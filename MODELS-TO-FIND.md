@@ -4,11 +4,23 @@ This document tracks which models are ready to use and which need to be found/se
 
 ## ✅ Ready to Use
 
+### Colorization (DDColor)
+- **Status**: ✅ Working (locally hosted)
+- **File**: `/models/ddcolor_paper_tiny.onnx`
+- **Model**: DDColor Paper Tiny
+- **Source**: https://github.com/instant-high/DDColor-onnx
+- **Size**: Small variant (faster processing)
+- **Note**: Ready to use - no setup required!
+
 ### Style Transfer
-- **Status**: Working (CDN-hosted)
-- **URL**: https://cdn.jsdelivr.net/gh/onnx/models@main/vision/style_transfer/fast_neural_style/model/mosaic-9.onnx
+- **Status**: ⚠️ CDN URL not working - needs alternative source
+- **Previous URL** (404): https://cdn.jsdelivr.net/gh/onnx/models@main/vision/style_transfer/fast_neural_style/model/mosaic-9.onnx
+- **Alternative Options**:
+  - Download from ONNX Model Zoo and host locally: https://github.com/onnx/models/tree/main/vision/style_transfer/fast_neural_style/model
+  - Search Hugging Face for "fast neural style onnx" models
+  - Use other style transfer models from Hugging Face
 - **Size**: ~20-40MB
-- **Source**: ONNX Model Zoo (jsDelivr CDN)
+- **Source**: ONNX Model Zoo (needs local hosting or alternative CDN)
 
 ## 🔍 Models to Find
 
@@ -46,17 +58,15 @@ This document tracks which models are ready to use and which need to be found/se
 - **Size**: ~50MB
 - **Notes**: Smaller alternative to GFPGAN
 
-### 4. Colorization (DeOldify)
-- **Priority**: Medium
-- **Search**:
-  - https://github.com/jantic/DeOldify/releases
-  - https://huggingface.co/models?search=deoldify
-  - https://huggingface.co/models?search=colorization+onnx
-- **Expected URL Format**:
-  - `https://github.com/jantic/DeOldify/releases/download/v1.0.0/deoldify.onnx`
-  - `https://huggingface.co/{user}/{model}/resolve/main/deoldify.onnx`
-- **Size**: ~50-80MB
-- **Alternative**: Colorful Image Colorization (lighter)
+### 4. Colorization (DeOldify) - ✅ COMPLETED
+- **Status**: ✅ Using DDColor Paper Tiny model
+- **File**: `/models/ddcolor_paper_tiny.onnx`
+- **Model**: DDColor Paper Tiny (smaller, faster variant)
+- **Source**: https://github.com/instant-high/DDColor-onnx
+- **Note**: Model is set up and ready to use!
+- **Alternative models** (if needed):
+  - DeOldify: https://github.com/jantic/DeOldify
+  - Colorful Image Colorization (lighter)
 
 ### 5. Image Enhancement/Denoising (Waifu2x)
 - **Priority**: Low

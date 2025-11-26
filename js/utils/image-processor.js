@@ -71,7 +71,8 @@ export function preprocessImage(image, options = {}) {
     }
   }
   
-  return {
+  // Store shape info on the array itself for tensor creation
+  const result = {
     [inputName]: inputData,
     shape: [1, 3, height, width], // NCHW format
     originalWidth: image.width,
@@ -79,6 +80,15 @@ export function preprocessImage(image, options = {}) {
     processedWidth: width,
     processedHeight: height
   };
+  
+  // Attach shape info to the array for easier access
+  if (inputData && typeof inputData === 'object') {
+    inputData._shape = [1, 3, height, width];
+    inputData._height = height;
+    inputData._width = width;
+  }
+  
+  return result;
 }
 
 /**
@@ -207,8 +217,14 @@ export async function processImageWithModel(image, session, options = {}) {
   });
   
   // Run inference
+  // Pass the shape metadata along with the data
   const inputs = {};
   inputs[inputName] = preprocessed[inputName];
+  
+  // Store shape info for tensor creation
+  if (!preprocessed.shape) {
+    preprocessed.shape = [1, 3, preprocessed.processedHeight, preprocessed.processedWidth];
+  }
   
   const outputs = await runInference(session, inputs);
   
@@ -229,13 +245,13 @@ export async function processImageWithModel(image, session, options = {}) {
   
   if (outputTensor instanceof Float32Array || outputTensor instanceof Uint8Array) {
     outputData = outputTensor;
-    outputDims = metadata.shape; // Use metadata shape
+    outputDims = preprocessed.shape; // Use preprocessing shape as fallback
   } else if (outputTensor.data) {
     outputData = outputTensor.data;
-    outputDims = outputTensor.dims || outputTensor.shape || metadata.shape;
+    outputDims = outputTensor.dims || outputTensor.shape || preprocessed.shape;
   } else if (Array.isArray(outputTensor)) {
     outputData = new Float32Array(outputTensor);
-    outputDims = metadata.shape;
+    outputDims = preprocessed.shape;
   } else {
     throw new Error('Unsupported output tensor format');
   }

@@ -83,34 +83,51 @@ export async function getCachedModel(modelKey) {
 export async function cacheModel(modelKey, modelData, url) {
   try {
     const database = await initDB();
-    const transaction = database.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
     
-    const modelRecord = {
-      key: modelKey,
-      data: modelData,
-      url: url,
-      timestamp: Date.now(),
-      size: modelData.byteLength
-    };
-    
-    // Check cache size and evict if needed
+    // Check cache size and evict if needed (in separate transaction)
     await enforceCacheLimit(database, modelData.byteLength);
     
-    const request = store.put(modelRecord);
+    // Wait a bit to ensure previous transaction is fully complete
+    await new Promise(resolve => setTimeout(resolve, 10));
     
+    // Create new transaction for the put operation
     return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      
+      const modelRecord = {
+        key: modelKey,
+        data: modelData,
+        url: url,
+        timestamp: Date.now(),
+        size: modelData.byteLength
+      };
+      
+      const request = store.put(modelRecord);
+      
       request.onsuccess = () => {
-        resolve();
+        // Wait for transaction to complete before resolving
+        transaction.oncomplete = () => {
+          resolve();
+        };
+        // If transaction already completed, resolve immediately
+        if (transaction.readyState === 'done') {
+          resolve();
+        }
       };
       
       request.onerror = () => {
         reject(new Error('Failed to cache model'));
       };
+      
+      transaction.onerror = () => {
+        reject(new Error('Transaction failed'));
+      };
     });
   } catch (error) {
     console.error('Cache write error:', error);
-    throw error;
+    // Don't throw - caching is optional, continue even if it fails
+    console.warn('Model caching failed, but continuing without cache');
   }
 }
 
@@ -141,23 +158,29 @@ async function updateTimestamp(modelKey) {
  */
 async function enforceCacheLimit(database, newModelSize) {
   try {
-    const transaction = database.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const sizeIndex = store.index('size');
-    const timestampIndex = store.index('timestamp');
-    
-    // Get total cache size
-    const totalSize = await getTotalCacheSize(store);
+    // First, get total cache size in a read-only transaction
+    const readTransaction = database.transaction([STORE_NAME], 'readonly');
+    const readStore = readTransaction.objectStore(STORE_NAME);
+    const totalSize = await getTotalCacheSize(readStore);
     const targetSize = MAX_CACHE_SIZE - newModelSize;
     
     if (totalSize <= targetSize) {
       return; // No eviction needed
     }
     
-    // Get all models sorted by timestamp (oldest first)
-    const getAllRequest = store.getAll();
+    // Wait for read transaction to complete
+    await new Promise((resolve) => {
+      readTransaction.oncomplete = resolve;
+      readTransaction.onerror = resolve; // Continue even if read fails
+    });
     
+    // Now do eviction in a separate write transaction
     return new Promise((resolve, reject) => {
+      const writeTransaction = database.transaction([STORE_NAME], 'readwrite');
+      const writeStore = writeTransaction.objectStore(STORE_NAME);
+      
+      const getAllRequest = writeStore.getAll();
+      
       getAllRequest.onsuccess = () => {
         const models = getAllRequest.result;
         
@@ -178,25 +201,38 @@ async function enforceCacheLimit(database, newModelSize) {
         
         // Delete evicted models
         if (toDelete.length > 0) {
-          const deletePromises = toDelete.map(key => {
-            return new Promise((resolveDelete, rejectDelete) => {
-              const deleteRequest = store.delete(key);
-              deleteRequest.onsuccess = () => resolveDelete();
-              deleteRequest.onerror = () => rejectDelete();
-            });
-          });
+          let deleteCount = 0;
+          const deleteComplete = () => {
+            deleteCount++;
+            if (deleteCount === toDelete.length) {
+              writeTransaction.oncomplete = resolve;
+            }
+          };
           
-          Promise.all(deletePromises).then(() => resolve()).catch(reject);
+          toDelete.forEach(key => {
+            const deleteRequest = writeStore.delete(key);
+            deleteRequest.onsuccess = deleteComplete;
+            deleteRequest.onerror = deleteComplete; // Continue even if one fails
+          });
         } else {
-          resolve();
+          writeTransaction.oncomplete = resolve;
         }
       };
       
-      getAllRequest.onerror = () => reject(new Error('Failed to get cache size'));
+      getAllRequest.onerror = () => {
+        // If we can't get models, just resolve (no eviction)
+        resolve();
+      };
+      
+      writeTransaction.onerror = () => {
+        // If eviction fails, just resolve (continue without eviction)
+        resolve();
+      };
     });
   } catch (error) {
     console.error('Cache limit enforcement error:', error);
-    throw error;
+    // Don't throw - eviction is optional, continue even if it fails
+    return;
   }
 }
 
@@ -246,7 +282,11 @@ export async function downloadModel(url, progressCallback) {
     };
     
     xhr.onerror = () => {
-      reject(new Error('Network error while downloading model'));
+      // Check if it's a CORS error
+      const errorMsg = xhr.status === 0 
+        ? 'CORS error: The model URL does not allow cross-origin requests. Please use a CDN that supports CORS (like jsDelivr) or host the model locally.'
+        : 'Network error while downloading model';
+      reject(new Error(errorMsg));
     };
     
     xhr.send();

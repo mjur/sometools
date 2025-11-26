@@ -4,7 +4,8 @@
 
 | Model Type | Name | Status | URL | Size |
 |------------|------|--------|-----|------|
-| Style Transfer | Fast Neural Style | ✅ Working | CDN (jsDelivr) | ~20-40MB |
+| Colorization | DDColor Paper Tiny | ✅ Ready | `/models/ddcolor_paper_tiny.onnx` | ~Small |
+| Style Transfer | Fast Neural Style | ⚠️ Needs Setup | Local hosting required | ~20-40MB |
 
 ## 🔍 Models to Find
 
@@ -12,7 +13,6 @@
 |------------|----------|-----------------|---------------|
 | Upscaling | High | `realesrgan onnx`, `upscale onnx` | ~67MB |
 | Face Restoration | High | `gfpgan onnx`, `codeformer onnx` | ~50-150MB |
-| Colorization | Medium | `deoldify onnx`, `colorization onnx` | ~50-80MB |
 | Enhancement | Low | `waifu2x onnx`, `denoise onnx` | ~30-50MB |
 
 ## 📋 Quick Actions

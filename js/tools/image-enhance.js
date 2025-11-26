@@ -3,7 +3,7 @@
 
 import { toast, on, qs, downloadFile } from '/js/ui.js';
 import { loadONNXRuntime, createInferenceSession } from '/js/utils/onnx-loader.js';
-import { getOrDownloadModel, getCacheStats, formatBytes } from '/js/utils/model-cache.js';
+import { getOrDownloadModel, getCacheStats, formatBytes, deleteCachedModel } from '/js/utils/model-cache.js';
 import { loadImage, processImageWithModel, resizeImage, canvasToBlob } from '/js/utils/image-processor.js';
 
 // Model configurations
@@ -17,13 +17,15 @@ const MODEL_CONFIGS = {
   upscale: {
     name: 'Real-ESRGAN Upscaling',
     key: 'realesrgan-x4plus-v1',
-    url: '/models/realesrgan/RealESRGAN_x4plus.onnx', // Update with actual URL
-    // Alternative: Convert Real-ESRGAN PyTorch model to ONNX
+    url: '/models/realesrgan/RealESRGAN_x4plus.onnx', // Requires local hosting
+    // To use: Download and convert Real-ESRGAN model, place in /models/realesrgan/
     // Source: https://github.com/xinntao/Real-ESRGAN
+    // Note: Model needs to be converted from PyTorch to ONNX and hosted locally
     inputName: 'input',
     outputName: 'output',
     scaleFactor: 4,
-    description: 'Upscale images by 4x with AI-powered super-resolution'
+    description: 'Upscale images by 4x with AI-powered super-resolution',
+    requiresSetup: true
   },
   enhance: {
     name: 'Image Enhancement',
@@ -33,41 +35,50 @@ const MODEL_CONFIGS = {
     inputName: 'input',
     outputName: 'output',
     scaleFactor: 1,
-    description: 'Enhance image quality, reduce noise, and improve details'
+    description: 'Enhance image quality, reduce noise, and improve details',
+    requiresSetup: true
   },
   restore: {
     name: 'Face Restoration (GFPGAN)',
     key: 'gfpgan-v1',
-    url: '/models/gfpgan/GFPGANv1.3.onnx', // Update with actual URL
-    // Convert GFPGAN PyTorch model to ONNX
+    url: '/models/gfpgan/GFPGANv1.3.onnx', // Requires local hosting
+    // To use: Download and convert GFPGAN model, place in /models/gfpgan/
     // Source: https://github.com/TencentARC/GFPGAN
     inputName: 'input',
     outputName: 'output',
     scaleFactor: 1,
-    description: 'Restore and enhance faces in old or damaged photos'
+    description: 'Restore and enhance faces in old or damaged photos',
+    requiresSetup: true
   },
   colorize: {
     name: 'Image Colorization',
-    key: 'deoldify-v1',
-    url: '/models/deoldify/deoldify.onnx', // Update with actual URL
-    // Convert DeOldify PyTorch model to ONNX
-    // Source: https://github.com/jantic/DeOldify
-    // Alternative: Use Colorful Image Colorization (smaller model)
+    key: 'ddcolor-paper-tiny-v1',
+    url: '/models/ddcolor_paper_tiny.onnx', // DDColor model - ready to use!
+    // Model: DDColor Paper Tiny (smaller, faster variant)
+    // Source: https://github.com/instant-high/DDColor-onnx
     inputName: 'input',
     outputName: 'output',
     scaleFactor: 1,
-    description: 'Add realistic color to black and white photographs'
+    description: 'Add realistic color to black and white photographs',
+    requiresSetup: false // Model is available locally
   },
   style: {
     name: 'Style Transfer',
     key: 'style-transfer-mosaic-v1',
-    url: 'https://github.com/onnx/models/raw/main/vision/style_transfer/fast_neural_style/model/mosaic-9.onnx',
-    // ONNX Model Zoo - this one should work if accessible
-    // Alternative styles available in ONNX Model Zoo
+    // Pre-converted ONNX model from ONNX Model Zoo
+    // Download from: https://github.com/onnx/models/raw/main/vision/style_transfer/fast_neural_style/model/mosaic-9.onnx
+    // Place in: /models/style-transfer/mosaic-9.onnx
+    url: '/models/style-transfer/mosaic-9.onnx',
+    // Other available styles (download and place in same directory):
+    // - rain-princess-9.onnx
+    // - candy-9.onnx  
+    // - udnie-9.onnx
+    // Note: GitHub raw URLs have CORS issues, so models must be hosted locally
     inputName: 'input1',
     outputName: 'add_37',
     scaleFactor: 1,
-    description: 'Apply artistic styles to your images'
+    description: 'Apply artistic styles to your images',
+    requiresSetup: true // Easy setup: Download pre-converted ONNX model and place in /models/style-transfer/
   }
 };
 
@@ -92,6 +103,7 @@ const progressContainer = qs('#progress-container');
 const progressText = qs('#progress-text');
 const progressPercent = qs('#progress-percent');
 const progressBar = qs('#progress-bar');
+const clearModelCacheBtn = qs('#clear-model-cache');
 
 // State
 let currentFile = null;
@@ -136,6 +148,27 @@ on(strengthSlider, 'input', (e) => {
   strengthValue.textContent = Math.round(e.target.value * 100) + '%';
 });
 
+// Clear model cache for the currently selected model
+if (clearModelCacheBtn) {
+  on(clearModelCacheBtn, 'click', async () => {
+    if (!currentModelConfig) {
+      toast('No model selected to clear', 'error');
+      return;
+    }
+
+    try {
+      // Clear cached model file (if present)
+      await deleteCachedModel(currentModelConfig.key);
+      currentSession = null;
+      toast(`Cleared cache for ${currentModelConfig.name}`, 'success');
+      await updateModelStatus();
+    } catch (error) {
+      console.error('Failed to clear model cache:', error);
+      toast(`Failed to clear model cache: ${error.message}`, 'error');
+    }
+  });
+}
+
 // Check model status
 async function updateModelStatus() {
   if (!currentModelConfig) return;
@@ -148,9 +181,18 @@ async function updateModelStatus() {
       modelStatus.innerHTML = `
         <p style="margin: 0; color: var(--ok);">✓ ${currentModelConfig.name} model is cached (${formatBytes(cached.size)})</p>
       `;
-    } else {
+    } else if (currentModelConfig.requiresSetup) {
+      // Model requires local setup
       modelStatus.innerHTML = `
-        <p style="margin: 0; color: var(--muted);">${currentModelConfig.name} model will be downloaded on first use (~${formatBytes(50 * 1024 * 1024)})</p>
+        <p style="margin: 0; color: var(--warning, #f59e0b);">⚠ ${currentModelConfig.name} requires setup</p>
+        <p style="margin: 0.5rem 0 0 0; color: var(--text-subtle); font-size: 0.75rem;">
+          This model needs to be downloaded, converted to ONNX, and placed in <code>/models/</code> directory. See <code>README-IMAGE-ENHANCE.md</code> for instructions.
+        </p>
+      `;
+    } else {
+      // Model available via CDN
+      modelStatus.innerHTML = `
+        <p style="margin: 0; color: var(--muted);">${currentModelConfig.name} will be downloaded from CDN on first use (~20-40MB)</p>
       `;
     }
   } catch (error) {
@@ -275,6 +317,33 @@ async function loadModelSession() {
     // Create session
     currentSession = await createInferenceSession(modelData);
     
+    // Log model input/output names for debugging
+    if (currentSession && currentSession.inputNames) {
+      console.log('Model input names:', currentSession.inputNames);
+      console.log('Model output names:', currentSession.outputNames);
+      console.log('Model inputs:', currentSession.inputs);
+      console.log('Model outputs:', currentSession.outputs);
+      
+      // Auto-detect input/output names if they don't match
+      if (currentModelConfig.inputName && !currentSession.inputNames.includes(currentModelConfig.inputName)) {
+        console.warn(`Input name '${currentModelConfig.inputName}' not found. Available: ${currentSession.inputNames.join(', ')}`);
+        // Use first available input name
+        if (currentSession.inputNames.length > 0) {
+          currentModelConfig.inputName = currentSession.inputNames[0];
+          console.log(`Using input name: ${currentModelConfig.inputName}`);
+        }
+      }
+      
+      if (currentModelConfig.outputName && !currentSession.outputNames.includes(currentModelConfig.outputName)) {
+        console.warn(`Output name '${currentModelConfig.outputName}' not found. Available: ${currentSession.outputNames.join(', ')}`);
+        // Use first available output name
+        if (currentSession.outputNames.length > 0) {
+          currentModelConfig.outputName = currentSession.outputNames[0];
+          console.log(`Using output name: ${currentModelConfig.outputName}`);
+        }
+      }
+    }
+    
     progressContainer.style.display = 'none';
     toast('Model loaded successfully', 'success');
     
@@ -381,7 +450,63 @@ async function enhanceImage() {
     let userFriendlyMessage = '';
     
     // Provide helpful error messages
-    if (errorMessage.includes('404') || errorMessage.includes('Failed to download')) {
+    if (errorMessage.includes('CORS') || errorMessage.includes('cross-origin')) {
+      userFriendlyMessage = `
+        <div style="text-align: center; padding: 2rem;">
+          <p style="color: var(--error); margin-bottom: 1rem; font-weight: 500;">CORS Error</p>
+          <p class="text-sm text-muted" style="margin-bottom: 1rem;">
+            The model URL does not allow cross-origin requests. This usually happens with GitHub raw URLs.
+          </p>
+          <details style="text-align: left; margin-top: 1rem; padding: 1rem; background: var(--bg-elev); border-radius: 6px;">
+            <summary style="cursor: pointer; color: var(--accent); margin-bottom: 0.5rem;">How to fix</summary>
+            <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
+              <p><strong>1.</strong> Hard refresh your browser (Ctrl+Shift+R or Cmd+Shift+R) to load the updated code</p>
+              <p><strong>2.</strong> Clear the browser cache for this site</p>
+              <p><strong>3.</strong> The code should now use jsDelivr CDN which supports CORS</p>
+              <p style="margin-top: 0.5rem;"><strong>If the error persists:</strong> The model URL may need to be updated. Check the browser console for the actual URL being used.</p>
+            </div>
+          </details>
+        </div>
+      `;
+    } else if (errorMessage.includes('404') || errorMessage.includes('Failed to download') || errorMessage.includes('not found')) {
+      // Check if model requires setup
+      const requiresSetup = currentModelConfig?.requiresSetup;
+      userFriendlyMessage = `
+        <div style="text-align: center; padding: 2rem;">
+          <p style="color: var(--error); margin-bottom: 1rem; font-weight: 500;">${requiresSetup ? 'Model Setup Required' : 'Model Not Available'}</p>
+          <p class="text-sm text-muted" style="margin-bottom: 1rem;">
+            ${requiresSetup 
+              ? `The ${currentModelConfig.name} model file is not found. This model needs to be set up locally.`
+              : `The ${currentModelConfig.name} model file is not available at the configured URL.`
+            }
+          </p>
+          ${requiresSetup ? `
+          <details style="text-align: left; margin-top: 1rem; padding: 1rem; background: var(--bg-elev); border-radius: 6px;">
+            <summary style="cursor: pointer; color: var(--accent); margin-bottom: 0.5rem;">How to set up this model</summary>
+            <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
+              <p><strong>Step 1:</strong> Download the PyTorch model from the source repository</p>
+              <p><strong>Step 2:</strong> Convert the model to ONNX format (see README-IMAGE-ENHANCE.md)</p>
+              <p><strong>Step 3:</strong> Place the .onnx file in the <code>/models/</code> directory</p>
+              <p><strong>Step 4:</strong> Ensure the file path matches: <code style="font-size: 0.7rem; word-break: break-all;">${currentModelConfig.url}</code></p>
+              <p style="margin-top: 0.5rem;">See <code>README-IMAGE-ENHANCE.md</code> for detailed conversion instructions.</p>
+            </div>
+          </details>
+          ` : `
+          <details style="text-align: left; margin-top: 1rem; padding: 1rem; background: var(--bg-elev); border-radius: 6px;">
+            <summary style="cursor: pointer; color: var(--accent); margin-bottom: 0.5rem;">Troubleshooting</summary>
+            <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
+              <p><strong>Option 1:</strong> Host models in <code>/models/</code> directory</p>
+              <p><strong>Option 2:</strong> Update model URLs in <code>js/tools/image-enhance.js</code></p>
+              <p><strong>Option 3:</strong> Use publicly available ONNX models from Hugging Face or ONNX Model Zoo</p>
+              <p style="margin-top: 0.5rem;">See <code>README-IMAGE-ENHANCE.md</code> for detailed instructions.</p>
+            </div>
+          </details>
+          `}
+          <p class="text-sm text-muted" style="margin-top: 1rem; font-size: 0.75rem;">
+            Expected URL: <code style="font-size: 0.7rem; word-break: break-all;">${currentModelConfig.url}</code>
+          </p>
+        </div>
+      `;
       userFriendlyMessage = `
         <div style="text-align: center; padding: 2rem;">
           <p style="color: var(--error); margin-bottom: 1rem; font-weight: 500;">Model Not Available</p>
@@ -402,12 +527,40 @@ async function enhanceImage() {
           </p>
         </div>
       `;
-    } else if (errorMessage.includes('tensor') || errorMessage.includes('shape')) {
+    } else if (errorMessage.includes('IR_VERSION')) {
+      userFriendlyMessage = `
+        <div style="text-align: center; padding: 2rem;">
+          <p style="color: var(--error); margin-bottom: 1rem; font-weight: 500;">ONNX Model Version Error</p>
+          <p class="text-sm text-muted" style="margin-bottom: 1rem;">
+            The model file uses an older ONNX format that is not supported. The model needs to be converted to ONNX IR version 3 or higher.
+          </p>
+          <details style="text-align: left; margin-top: 1rem; padding: 1rem; background: var(--bg-elev); border-radius: 6px;">
+            <summary style="cursor: pointer; color: var(--accent); margin-bottom: 0.5rem;">How to fix</summary>
+            <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
+              <p><strong>Option 1:</strong> Re-export the model with a newer ONNX version (IR_VERSION >= 3)</p>
+              <p><strong>Option 2:</strong> Use a different model file that's already in the correct format</p>
+              <p><strong>Option 3:</strong> Update the model conversion script to use a newer opset version</p>
+              <p style="margin-top: 0.5rem;">Check the model source repository for updated ONNX export instructions.</p>
+            </div>
+          </details>
+          <p class="text-sm text-muted" style="margin-top: 1rem; font-family: monospace; font-size: 0.75rem;">${error.message}</p>
+        </div>
+      `;
+    } else if (errorMessage.includes('tensor') || errorMessage.includes('shape') || errorMessage.includes('size')) {
       userFriendlyMessage = `
         <div style="text-align: center; padding: 2rem;">
           <p style="color: var(--error); margin-bottom: 1rem;">Model Processing Error</p>
           <p class="text-sm text-muted">The model input/output format doesn't match. This may require model-specific preprocessing adjustments.</p>
-          <p class="text-sm text-muted" style="margin-top: 0.5rem; font-family: monospace; font-size: 0.75rem;">${error.message}</p>
+          <details style="text-align: left; margin-top: 1rem; padding: 1rem; background: var(--bg-elev); border-radius: 6px;">
+            <summary style="cursor: pointer; color: var(--accent); margin-bottom: 0.5rem;">Troubleshooting</summary>
+            <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
+              <p>• Check the browser console for model input/output names</p>
+              <p>• Verify the model expects the correct input format (NCHW vs NHWC)</p>
+              <p>• Check if the model needs specific input dimensions</p>
+              <p>• The model might need different preprocessing (normalization, mean/std values)</p>
+            </div>
+          </details>
+          <p class="text-sm text-muted" style="margin-top: 1rem; font-family: monospace; font-size: 0.75rem;">${error.message}</p>
         </div>
       `;
     } else if (errorMessage.includes('WebGL') || errorMessage.includes('GPU')) {
@@ -494,6 +647,21 @@ on(document, 'keydown', (e) => {
 (async () => {
   // Set initial model
   currentModelConfig = MODEL_CONFIGS[modelSelect.value];
+  
+  // Check for and clear old cached models with GitHub URLs (CORS issues)
+  try {
+    const stats = await getCacheStats();
+    for (const model of stats.models) {
+      // If model URL contains github.com/onnx/models/raw, it's the old URL with CORS issues
+      if (model.url && model.url.includes('github.com/onnx/models/raw')) {
+        console.log(`Clearing old cached model with CORS issue: ${model.key}`);
+        await deleteCachedModel(model.key);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to check/clear old models:', error);
+  }
+  
   await updateModelStatus();
   
   // Try to initialize ONNX (non-blocking)

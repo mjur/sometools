@@ -112,13 +112,27 @@ export async function createInferenceSession(modelData, options = {}) {
     return session;
   } catch (error) {
     console.error('Failed to create ONNX session:', error);
+    
+    // Check for ONNX version compatibility issues
+    if (error.message && error.message.includes('IR_VERSION')) {
+      throw new Error(`ONNX model version not supported. The model needs to be converted to ONNX IR version 3 or higher. Error: ${error.message}`);
+    }
+    
     // Try with WASM only as fallback
     if (sessionOptions.executionProviders.includes('webgl')) {
       console.log('Retrying with WASM only...');
-      return await ort.InferenceSession.create(modelData, {
-        ...sessionOptions,
-        executionProviders: ['wasm']
-      });
+      try {
+        return await ort.InferenceSession.create(modelData, {
+          ...sessionOptions,
+          executionProviders: ['wasm']
+        });
+      } catch (wasmError) {
+        // If WASM also fails with version error, throw the original error
+        if (wasmError.message && wasmError.message.includes('IR_VERSION')) {
+          throw new Error(`ONNX model version not supported. The model needs to be converted to ONNX IR version 3 or higher. Error: ${wasmError.message}`);
+        }
+        throw wasmError;
+      }
     }
     throw error;
   }
@@ -136,14 +150,92 @@ export async function runInference(session, inputs) {
   }
   
   try {
+    // Get model input metadata - try different ways to access it
+    let inputMetadata = [];
+    if (session.inputs && Array.isArray(session.inputs)) {
+      inputMetadata = session.inputs.map(inp => ({
+        name: inp.name,
+        shape: inp.shape,
+        type: inp.type
+      }));
+    } else if (session.inputNames) {
+      // Fallback: create metadata from input names only
+      inputMetadata = session.inputNames.map(name => ({
+        name,
+        shape: null // Will calculate from data
+      }));
+    }
+    
     // Convert inputs to ONNX tensors if needed
     const onnxInputs = {};
     for (const [key, value] of Object.entries(inputs)) {
       if (value instanceof ort.Tensor) {
         onnxInputs[key] = value;
       } else {
-        // Assume it's a typed array or array
-        onnxInputs[key] = new ort.Tensor('float32', value, getShape(value));
+        // Get expected shape from metadata
+        const metadata = inputMetadata.find(m => m.name === key);
+        let shape;
+        
+        // Calculate shape from data first (most reliable)
+        // Check if shape is attached to the data
+        let calculatedShape = value._shape || getShape(value);
+        const actualLength = value.length || (value.byteLength ? value.byteLength / 4 : 0);
+        
+        // If we have height/width attached, use them
+        if (value._height && value._width && !value._shape) {
+          calculatedShape = [1, 3, value._height, value._width]; // NCHW format
+        }
+        
+        if (metadata && metadata.shape && Array.isArray(metadata.shape)) {
+          // Use model's expected shape, but handle dynamic dimensions
+          shape = metadata.shape.map((dim, idx) => {
+            if (typeof dim === 'string' || dim < 0 || dim === 'dynamic' || dim === null) {
+              // Dynamic dimension - use calculated shape
+              return calculatedShape[idx] || 1;
+            }
+            return dim;
+          });
+          
+          // Verify data length matches expected shape
+          const expectedLength = shape.reduce((a, b) => a * b, 1);
+          
+          if (actualLength !== expectedLength && actualLength > 0) {
+            console.warn(`Tensor shape mismatch for ${key}. Expected: [${shape.join(',')}] (length: ${expectedLength}), Actual length: ${actualLength}. Using calculated shape.`);
+            // If mismatch, use calculated shape (from preprocessing)
+            shape = calculatedShape;
+          }
+        } else {
+          // No metadata available, use calculated shape
+          shape = calculatedShape;
+        }
+        
+        // Final validation - ensure shape matches data
+        const finalLength = shape.reduce((a, b) => a * b, 1);
+        if (actualLength > 0 && finalLength !== actualLength) {
+          // Try to infer correct shape from data length
+          // Common patterns: [1, 3, H, W] for NCHW or [1, H, W, 3] for NHWC
+          console.warn(`Shape [${shape.join(',')}] doesn't match data length ${actualLength}. Attempting to infer correct shape...`);
+          
+          // Try NCHW format: [1, 3, H, W] where H*W = actualLength/3
+          const pixels = actualLength / 3;
+          const h = Math.sqrt(pixels);
+          if (Number.isInteger(h)) {
+            shape = [1, 3, h, h];
+            console.log(`Inferred NCHW shape: [${shape.join(',')}]`);
+          } else {
+            // Use calculated shape as fallback
+            shape = calculatedShape;
+            console.log(`Using calculated shape: [${shape.join(',')}]`);
+          }
+        }
+        
+        try {
+          onnxInputs[key] = new ort.Tensor('float32', value, shape);
+        } catch (tensorError) {
+          console.error(`Failed to create tensor with shape [${shape.join(',')}]. Data length: ${actualLength}`, tensorError);
+          // Last resort: try to create with calculated shape
+          onnxInputs[key] = new ort.Tensor('float32', value, calculatedShape);
+        }
       }
     }
     
