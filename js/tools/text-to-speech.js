@@ -17,8 +17,10 @@ const TTS_MODEL_CONFIGS = {
     name: 'Kokoro Base TTS',
     description: 'High-quality TTS with multiple speakers and accents',
     requiresSetup: false,
-    inputName: 'text',
-    outputName: 'audio'
+    inputNames: ['tokens', 'style', 'speed'], // Kokoro expects these inputs
+    outputName: 'audio',
+    defaultStyle: 0, // Default speaker/style ID
+    defaultSpeed: 1.0
   },
   ljspeech: {
     key: 'tts-ljspeech-v1',
@@ -26,7 +28,7 @@ const TTS_MODEL_CONFIGS = {
     name: 'LJSpeech VITS TTS',
     description: 'English TTS trained on LJSpeech dataset',
     requiresSetup: false,
-    inputName: 'text',
+    inputNames: ['text'], // May need to check actual input names
     outputName: 'audio'
   },
   vctk: {
@@ -35,7 +37,7 @@ const TTS_MODEL_CONFIGS = {
     name: 'VCTK VITS TTS',
     description: 'Multiple English speakers with various accents',
     requiresSetup: false,
-    inputName: 'text',
+    inputNames: ['text'], // May need to check actual input names
     outputName: 'audio'
   }
 };
@@ -218,22 +220,57 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Postprocess audio from model output
   function postprocessAudio(audioTensor, sampleRate = 22050) {
-    // Get audio data from tensor
-    const audioData = audioTensor.data || audioTensor;
+    console.log('Postprocessing audio tensor:', {
+      isTensor: audioTensor instanceof ort.Tensor,
+      type: audioTensor.type,
+      dims: audioTensor.dims,
+      size: audioTensor.size
+    });
     
-    // Convert to Float32Array if needed
+    // Get audio data from ONNX tensor
     let audioArray;
-    if (audioData instanceof Float32Array) {
-      audioArray = audioData;
-    } else if (audioData instanceof Array) {
-      audioArray = new Float32Array(audioData);
+    if (audioTensor instanceof ort.Tensor) {
+      // ONNX Runtime tensor - access .data property
+      const tensorData = audioTensor.data;
+      console.log('Tensor data type:', tensorData.constructor.name, 'length:', tensorData.length);
+      
+      if (tensorData instanceof Float32Array) {
+        audioArray = tensorData;
+      } else if (tensorData instanceof Float64Array) {
+        // Convert Float64 to Float32
+        audioArray = new Float32Array(tensorData);
+      } else if (tensorData instanceof Int16Array || tensorData instanceof Int32Array) {
+        // Convert integer audio to float (-1 to 1 range)
+        audioArray = new Float32Array(tensorData.length);
+        const maxInt = tensorData instanceof Int16Array ? 32767 : 2147483647;
+        for (let i = 0; i < tensorData.length; i++) {
+          audioArray[i] = tensorData[i] / maxInt;
+        }
+      } else {
+        // Fallback: convert to Float32Array
+        audioArray = new Float32Array(tensorData);
+      }
     } else {
-      // Try to extract from tensor structure
-      audioArray = new Float32Array(audioData.length || audioData.size || 0);
-      for (let i = 0; i < audioArray.length; i++) {
-        audioArray[i] = audioData[i] || 0;
+      // Fallback for non-tensor data
+      const audioData = audioTensor.data || audioTensor;
+      if (audioData instanceof Float32Array) {
+        audioArray = audioData;
+      } else if (audioData instanceof Array) {
+        audioArray = new Float32Array(audioData);
+      } else {
+        audioArray = new Float32Array(audioData.length || audioData.size || 0);
+        for (let i = 0; i < audioArray.length; i++) {
+          audioArray[i] = audioData[i] || 0;
+        }
       }
     }
+    
+    console.log('Extracted audio array:', {
+      length: audioArray.length,
+      min: Math.min(...audioArray),
+      max: Math.max(...audioArray),
+      sampleRate
+    });
     
     // Normalize audio (ensure values are in [-1, 1] range)
     let max = 0;
@@ -243,6 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     if (max > 1.0) {
+      console.log(`Normalizing audio: max value was ${max}`);
       for (let i = 0; i < audioArray.length; i++) {
         audioArray[i] /= max;
       }
@@ -253,12 +291,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Generate speech using AI model
   async function generateSpeechWithAI(text, rate, pitch, volume) {
-    if (!ttsSession) {
-      await loadTTSModel();
-    }
+    // Always try to load the model first
+    await loadTTSModel();
     
     if (!ttsSession) {
-      throw new Error('TTS model not available');
+      throw new Error('TTS model not available. Please check console for errors.');
+    }
+    
+    // Inspect model input specifications to get correct types
+    console.log('Inspecting model input specifications...');
+    console.log('ttsSession.inputs:', ttsSession.inputs);
+    console.log('ttsSession.inputNames:', ttsSession.inputNames);
+    
+    // Try to get input metadata from session
+    let inputMetadata = null;
+    try {
+      // Try different ways to access input metadata
+      if (ttsSession.inputMetadata) {
+        inputMetadata = ttsSession.inputMetadata;
+      } else if (ttsSession.inputs && Array.isArray(ttsSession.inputs)) {
+        inputMetadata = ttsSession.inputs;
+      } else if (ttsSession.inputNames) {
+        // Try to get metadata by calling a method or accessing properties
+        inputMetadata = ttsSession.inputNames.map(name => ({ name }));
+      }
+      
+      if (inputMetadata) {
+        console.log('Input metadata:', inputMetadata);
+        if (Array.isArray(inputMetadata)) {
+          inputMetadata.forEach((inp, idx) => {
+            console.log(`  Input ${idx}:`, inp);
+            if (inp.name) console.log(`    name: ${inp.name}`);
+            if (inp.type) console.log(`    type: ${inp.type}`);
+            if (inp.shape) console.log(`    shape: ${JSON.stringify(inp.shape)}`);
+          });
+        }
+      }
+    } catch (e) {
+      console.log('Could not access input metadata:', e);
     }
     
     // Preprocess text
@@ -274,28 +344,143 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Text tokenization (character or phoneme IDs)
     // 2. Speaker ID (for multi-speaker models)
     
-    // Simple character-based encoding (may need adjustment per model)
-    const textChars = processedText.split('');
-    const textArray = new Int32Array(textChars.map(c => c.charCodeAt(0)));
-    
-    // Create input tensor - shape depends on model
-    // Common shapes: [1, seq_len] or [batch, seq_len]
-    const textTensor = new ort.Tensor('int64', textArray, [1, textArray.length]);
-    
-    // Prepare inputs - input name from config
+    // Prepare inputs based on model requirements
     const inputs = {};
-    inputs[currentModelConfig.inputName || 'text'] = textTensor;
     
-    // For multi-speaker models, you might need speaker ID
-    // inputs['speaker_id'] = new ort.Tensor('int64', new Int32Array([0]), [1]);
+    // Kokoro model requires: tokens, style, speed
+    if (currentModelConfig.inputNames && currentModelConfig.inputNames.includes('tokens')) {
+      // Get expected types from model if available
+      // Based on latest error: "Actual: (tensor(float)) , expected: (tensor(int64))"
+      // Since speed must be float32, and tokens should be int64, style should also be int64
+      let tokensType = 'int64'; // Token IDs are integers
+      let styleType = 'int64'; // Style ID is an integer
+      
+      // Try to get types from input metadata
+      if (inputMetadata && Array.isArray(inputMetadata)) {
+        const tokensInput = inputMetadata.find(inp => inp.name === 'tokens');
+        const styleInput = inputMetadata.find(inp => inp.name === 'style');
+        
+        if (tokensInput && tokensInput.type) {
+          tokensType = tokensInput.type;
+          console.log(`Tokens input type from model metadata: ${tokensType}`);
+        }
+        if (styleInput && styleInput.type) {
+          styleType = styleInput.type;
+          console.log(`Style input type from model metadata: ${styleType}`);
+        }
+      } else if (ttsSession.inputs && Array.isArray(ttsSession.inputs)) {
+        const tokensInput = ttsSession.inputs.find(inp => inp.name === 'tokens');
+        const styleInput = ttsSession.inputs.find(inp => inp.name === 'style');
+        
+        if (tokensInput && tokensInput.type) {
+          tokensType = tokensInput.type;
+          console.log(`Tokens input type from model: ${tokensType}`);
+        }
+        if (styleInput && styleInput.type) {
+          styleType = styleInput.type;
+          console.log(`Style input type from model: ${styleType}`);
+        }
+      }
+      
+      // Simple character-based encoding for tokens
+      const textChars = processedText.split('');
+      
+      // Create tokens tensor with correct type
+      let tokensTensor;
+      if (tokensType.includes('float') || tokensType === 'float32') {
+        // Normalize character codes to 0-1 range (common for embeddings)
+        const maxCharCode = 127; // ASCII range
+        const textArray = new Float32Array(textChars.map(c => c.charCodeAt(0) / maxCharCode));
+        tokensTensor = new ort.Tensor('float32', textArray, [1, textArray.length]);
+        console.log('Created tokens as float32 (normalized 0-1)');
+      } else {
+        const textArray = new BigInt64Array(textChars.map(c => BigInt(c.charCodeAt(0))));
+        tokensTensor = new ort.Tensor('int64', textArray, [1, textArray.length]);
+        console.log('Created tokens as int64');
+      }
+      inputs['tokens'] = tokensTensor;
+      
+      // Add style (speaker/style embedding) - shape should be [1, 256] based on model metadata
+      // Style is a 256-dimensional embedding vector, not just an ID
+      const styleId = currentModelConfig.defaultStyle || 0;
+      let styleTensor;
+      
+      // Get style shape from metadata (should be [1, 256])
+      let styleShape = [1, 256]; // Default from model metadata
+      if (inputMetadata && Array.isArray(inputMetadata)) {
+        const styleInput = inputMetadata.find(inp => inp.name === 'style');
+        if (styleInput && styleInput.shape) {
+          styleShape = styleInput.shape;
+          console.log(`Style shape from model: ${JSON.stringify(styleShape)}`);
+        }
+      }
+      
+      if (styleType.includes('float') || styleType === 'float32') {
+        // Create a 256-dimensional style embedding vector
+        // For now, use zeros (could be improved with actual style embeddings)
+        const styleSize = styleShape[1] || 256;
+        const styleArray = new Float32Array(styleSize).fill(0);
+        // Optionally set first element to styleId for variation
+        if (styleSize > 0) {
+          styleArray[0] = styleId;
+        }
+        styleTensor = new ort.Tensor('float32', styleArray, styleShape);
+        console.log(`Created style as float32 with shape [${styleShape.join(',')}]`);
+      } else {
+        // If somehow int64, create as int64 array
+        const styleSize = styleShape[1] || 256;
+        const styleArray = new BigInt64Array(styleSize).fill(BigInt(styleId));
+        styleTensor = new ort.Tensor('int64', styleArray, styleShape);
+        console.log(`Created style as int64 with shape [${styleShape.join(',')}]`);
+      }
+      inputs['style'] = styleTensor;
+      
+      // Add speed (use rate parameter, convert to appropriate range)
+      // Kokoro speed might expect a specific range, defaulting to 1.0
+      const speedValue = Math.max(0.5, Math.min(2.0, rate)); // Clamp between 0.5 and 2.0
+      const speedTensor = new ort.Tensor('float32', new Float32Array([speedValue]), [1]);
+      inputs['speed'] = speedTensor;
+      
+      console.log('Prepared Kokoro inputs:', {
+        tokens: tokensTensor.dims,
+        style: styleId,
+        speed: speedValue
+      });
+    } else {
+      // For other models, use simple text input
+      const textChars = processedText.split('');
+      const textArray = new BigInt64Array(textChars.map(c => BigInt(c.charCodeAt(0))));
+      const textTensor = new ort.Tensor('int64', textArray, [1, textArray.length]);
+      const inputName = currentModelConfig.inputNames?.[0] || 'text';
+      inputs[inputName] = textTensor;
+    }
     
     // Run inference
+    console.log('Running inference with inputs:', Object.keys(inputs));
+    for (const [key, tensor] of Object.entries(inputs)) {
+      console.log(`  ${key}: shape ${tensor.dims}, type ${tensor.type}`);
+    }
+    
     const outputs = await runInference(ttsSession, inputs);
+    
+    console.log('Inference completed. Output keys:', Object.keys(outputs));
     
     // Get audio output - output name from config
     const audioOutput = outputs[currentModelConfig.outputName || 'audio'] || 
                        outputs.output || 
                        outputs[Object.keys(outputs)[0]];
+    
+    if (!audioOutput) {
+      console.error('No audio output found. Available outputs:', Object.keys(outputs));
+      throw new Error('Model did not return audio output');
+    }
+    
+    console.log('Audio output found:', {
+      type: typeof audioOutput,
+      isTensor: audioOutput instanceof ort.Tensor,
+      dims: audioOutput.dims,
+      size: audioOutput.size
+    });
     
     // Postprocess audio
     const { audioArray, sampleRate } = postprocessAudio(audioOutput);
@@ -409,16 +594,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Try to generate downloadable audio using AI model
       try {
+        status.textContent = 'Generating audio with AI model...';
+        status.className = 'status-message info';
         const blob = await generateSpeechWithAI(text, rate, pitch, volume);
-        audioBlob = blob;
-        const audioUrl = URL.createObjectURL(audioBlob);
-        audioPlayer.src = audioUrl;
-        audioContainer.style.display = 'block';
-        downloadBtn.disabled = false;
-        status.textContent = 'Audio generated successfully with AI!';
-        status.className = 'status-message success';
+        if (blob) {
+          audioBlob = blob;
+          const audioUrl = URL.createObjectURL(audioBlob);
+          audioPlayer.src = audioUrl;
+          audioContainer.style.display = 'block';
+          downloadBtn.disabled = false;
+          status.textContent = 'Audio generated successfully with AI!';
+          status.className = 'status-message success';
+        } else {
+          throw new Error('AI model returned no audio');
+        }
       } catch (aiError) {
-        console.warn('AI TTS failed, using fallback:', aiError);
+        console.error('AI TTS failed, using fallback:', aiError);
+        status.textContent = `AI model failed: ${aiError.message}. Using basic synthesis...`;
+        status.className = 'status-message error';
         // Fallback to basic synthesis
         await generateDownloadableAudio(text, rate, pitch, volume);
       }
