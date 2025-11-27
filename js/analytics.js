@@ -19,7 +19,6 @@ if (GA_MEASUREMENT_ID && GA_MEASUREMENT_ID !== 'G-XXXXXXXXXX') {
   }
   gtag('js', new Date());
   gtag('config', GA_MEASUREMENT_ID, {
-    // Privacy-friendly settings
     anonymize_ip: true,
     allow_google_signals: false,
     allow_ad_personalization_signals: false

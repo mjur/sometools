@@ -1,7 +1,7 @@
 {
   "name": "DevTools - Client-Side Developer Tools",
   "short_name": "DevTools",
-  "description": "Fast, privacy-first developer tools that run entirely in your browser",
+  "description": "Fast developer tools that run entirely in your browser",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

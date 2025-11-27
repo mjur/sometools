@@ -1,10 +1,10 @@
 # DevTools - Framework-Free Client-Side Developer Tools
 
-A collection of fast, privacy-first developer tools that run entirely in your browser. No data leaves your device.
+A collection of fast developer tools that run entirely in your browser.
 
 ## Features
 
-- ✅ 100% client-side processing (privacy-first)
+- ✅ 100% client-side processing
 - ✅ SEO-optimized with per-tool URLs and metadata
 - ✅ No JavaScript frameworks - pure vanilla JS, HTML, CSS
 - ✅ Consistent design system with dark/light mode
@@ -144,10 +144,10 @@ All tools are optimized for performance with:
 - Deferred non-critical scripts
 - Web Workers for heavy operations (future enhancement)
 
-## Privacy
+## Data Processing
 
 - All processing happens locally in your browser
-- No data is sent to any server
+- All processing happens locally
 - No analytics by default
 - No cookies required
 - Optional LocalStorage for tool state persistence

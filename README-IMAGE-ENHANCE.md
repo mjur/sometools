@@ -169,5 +169,5 @@ For better performance, consider:
 - Models are cached in IndexedDB after first download
 - Cache limit is 500MB (configurable in `model-cache.js`)
 - Models use LRU eviction when cache is full
-- Processing happens entirely client-side - no data leaves your device
+- Processing happens entirely client-side
 
