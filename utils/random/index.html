@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Random Number Generator | Client-Side | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate random numbers with customizable range and count. All processing happens locally in your browser.">
+  <link rel="canonical" href="https://example.com/utils/random">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Random Number Generator">
+  <meta property="og:description" content="Generate random numbers with customizable range and count.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Random Number Generator",
+        "item": "https://example.com/utils/random"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <main id="main">
+    <h1>Random Number Generator</h1>
+    <p>Generate random numbers with customizable range and count. All processing happens locally in your browser.</p>
+    
+    <div class="tool-container">
+      <div class="input-section">
+        <div class="option-group">
+          <label for="count">Number of Random Numbers</label>
+          <input type="number" id="count" min="1" max="10000" value="1" aria-label="Number of random numbers to generate">
+        </div>
+        
+        <div class="option-group">
+          <label for="min">Minimum Value</label>
+          <input type="number" id="min" value="1" aria-label="Minimum value">
+        </div>
+        
+        <div class="option-group">
+          <label for="max">Maximum Value</label>
+          <input type="number" id="max" value="100" aria-label="Maximum value">
+        </div>
+        
+        <div class="option-group">
+          <label>
+            <input type="checkbox" id="allow-duplicates" checked>
+            Allow duplicates
+          </label>
+        </div>
+        
+        <div class="option-group">
+          <label>
+            <input type="checkbox" id="sort-numbers">
+            Sort numbers
+          </label>
+        </div>
+        
+        <button id="generate-btn" class="primary-btn">Generate Random Numbers</button>
+        <button id="clear-btn" class="secondary-btn">Clear</button>
+      </div>
+      
+      <div class="output-section">
+        <div class="output-header">
+          <h2>Generated Numbers</h2>
+          <div class="output-actions">
+            <button id="copy-all-btn" class="primary-btn" style="display: none;">Copy All Numbers</button>
+            <button id="copy-btn" class="icon-btn" title="Copy to clipboard" aria-label="Copy to clipboard" style="display: none;">📋</button>
+          </div>
+        </div>
+        <div id="output" class="output-area" role="region" aria-live="polite" aria-label="Generated random numbers">
+          <p class="placeholder">Click "Generate Random Numbers" to generate numbers</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/random.js"></script>
+</body>
+</html>
+
