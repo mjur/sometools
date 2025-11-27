@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text to Speech - DevTools</title>
+  <meta name="description" content="Convert text to speech with various voices. Generate and download audio files directly in your browser.">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="icon" href="/favicon.ico">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Search tools..." aria-label="Search tools">
+    </div>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+
+  <main id="main">
+    <div class="tool-container">
+      <div class="tool-header">
+        <h1>Text to Speech</h1>
+        <p>Convert your text into natural-sounding speech. Choose from various voices and download the audio file.</p>
+      </div>
+
+      <div class="tool-content">
+        <div class="input-section">
+          <label for="text-input">Enter text to convert:</label>
+          <textarea 
+            id="text-input" 
+            rows="10" 
+            placeholder="Type or paste your text here..."
+            aria-label="Text input for speech synthesis"
+          ></textarea>
+          
+          <div class="controls">
+            <div class="control-group">
+              <label for="voice-select">Voice:</label>
+              <select id="voice-select" aria-label="Select voice">
+                <option value="">Loading voices...</option>
+              </select>
+            </div>
+            
+            <div class="control-group">
+              <label for="rate-slider">Speed: <span id="rate-value">1.0</span></label>
+              <input 
+                type="range" 
+                id="rate-slider" 
+                min="0.5" 
+                max="2" 
+                step="0.1" 
+                value="1"
+                aria-label="Speech rate"
+              >
+            </div>
+            
+            <div class="control-group">
+              <label for="pitch-slider">Pitch: <span id="pitch-value">1.0</span></label>
+              <input 
+                type="range" 
+                id="pitch-slider" 
+                min="0" 
+                max="2" 
+                step="0.1" 
+                value="1"
+                aria-label="Speech pitch"
+              >
+            </div>
+            
+            <div class="control-group">
+              <label for="volume-slider">Volume: <span id="volume-value">1.0</span></label>
+              <input 
+                type="range" 
+                id="volume-slider" 
+                min="0" 
+                max="1" 
+                step="0.1" 
+                value="1"
+                aria-label="Speech volume"
+              >
+            </div>
+          </div>
+          
+          <div class="button-group">
+            <button id="generate-btn" class="primary-btn">Generate & Play</button>
+            <button id="download-btn" class="secondary-btn" disabled>Download Audio</button>
+            <button id="clear-btn" class="secondary-btn">Clear</button>
+          </div>
+        </div>
+
+        <div class="output-section">
+          <div id="status" class="status-message" aria-live="polite"></div>
+          <div id="audio-container" style="display: none;">
+            <audio id="audio-player" controls></audio>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/text-to-speech.js"></script>
+</body>
+</html>
+
