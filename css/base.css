@@ -749,6 +749,54 @@ label {
   color: var(--text);
   display: block;
   transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  cursor: pointer;
+}
+
+.tool-card[draggable="true"] {
+  cursor: grab;
+}
+
+.tool-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.tool-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.tool-card.drag-over {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+
+.drag-handle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 0.25rem;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.tool-card:hover .drag-handle {
+  opacity: 0.5;
+}
+
+.tool-card:hover .drag-handle:hover {
+  opacity: 1;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
 }
 
 .tool-card:hover {

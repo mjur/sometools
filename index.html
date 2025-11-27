@@ -46,7 +46,7 @@
     <h1>Developer Tools</h1>
     <p>Fast tools that run entirely in your browser.</p>
     
-    <div class="tool-grid" id="tool-grid">
+    <div class="tool-grid" id="tool-grid" data-sortable="true">
       <a href="/ai/chat" class="tool-card" data-category="ai" data-name="webllm chatbot local ai chat">
         <h2>WebLLM Chatbot</h2>
         <p>Chat with local AI models in your browser using WebLLM, with model download and cache controls</p>
@@ -193,6 +193,10 @@
   <script src="https://js.stripe.com/v3/"></script>
   <script type="module">
     import { on, toggleTheme, qs } from '/js/ui.js';
+    import { initToolCardSorting } from '/js/tool-sort.js';
+    
+    // Initialize drag and drop for tool cards
+    initToolCardSorting();
     
     // Theme toggle
     const themeToggle = qs('#theme-toggle');
