@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>List Shuffler | Client-Side | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Shuffle lists of items with customizable delimiters. All processing happens locally in your browser.">
+  <link rel="canonical" href="https://example.com/utils/shuffler">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="List Shuffler">
+  <meta property="og:description" content="Shuffle lists of items with customizable delimiters.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "List Shuffler",
+        "item": "https://example.com/utils/shuffler"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <main id="main">
+    <h1>List Shuffler</h1>
+    <p>Shuffle lists of items with customizable delimiters. All processing happens locally in your browser.</p>
+    
+    <div class="tool-container">
+      <div class="input-section">
+        <div class="option-group">
+          <label for="delimiter">Delimiter</label>
+          <select id="delimiter" aria-label="Delimiter type">
+            <option value="newline" selected>New Line (default)</option>
+            <option value="comma">Comma (,)</option>
+            <option value="semicolon">Semicolon (;)</option>
+            <option value="pipe">Pipe (|)</option>
+            <option value="tab">Tab</option>
+            <option value="space">Space</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        
+        <div class="option-group" id="custom-delimiter-group" style="display: none;">
+          <label for="custom-delimiter">Custom Delimiter</label>
+          <input type="text" id="custom-delimiter" placeholder="Enter custom delimiter" aria-label="Custom delimiter">
+        </div>
+        
+        <div class="option-group">
+          <label for="input">Items to Shuffle</label>
+          <textarea id="input" rows="10" placeholder="Enter items to shuffle, one per line or separated by your chosen delimiter..." aria-label="Items to shuffle"></textarea>
+        </div>
+        
+        <button id="shuffle-btn" class="primary-btn">Shuffle Items</button>
+        <button id="clear-btn" class="secondary-btn">Clear</button>
+      </div>
+      
+      <div class="output-section">
+        <div class="output-header">
+          <h2>Shuffled Items</h2>
+          <button id="copy-btn" class="icon-btn" title="Copy to clipboard" aria-label="Copy to clipboard" style="display: none;">📋</button>
+        </div>
+        <div id="output" class="output-area" role="region" aria-live="polite" aria-label="Shuffled items">
+          <p class="placeholder">Enter items and click "Shuffle Items" to shuffle them</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/shuffler.js"></script>
+</body>
+</html>
+
