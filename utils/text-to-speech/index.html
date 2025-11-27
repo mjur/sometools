@@ -4,10 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Text to Speech - DevTools</title>
-  <meta name="description" content="Convert text to speech with various voices. Generate and download audio files directly in your browser.">
+  <meta name="description" content="Convert text to speech with AI-powered natural voices. Generate and download audio files directly in your browser.">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/tool.css">
   <link rel="icon" href="/favicon.ico">
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.min.js"></script>
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to main content</a>
@@ -26,8 +27,9 @@
   <main id="main">
     <div class="tool-container">
       <div class="tool-header">
-        <h1>Text to Speech</h1>
-        <p>Convert your text into natural-sounding speech. Choose from various voices and download the audio file.</p>
+        <h1>Text to Speech (AI-Powered)</h1>
+        <p>Convert your text into natural-sounding speech using AI models. Choose from various voices and download the audio file.</p>
+        <p class="info-note">💡 AI model will be used for natural-sounding audio. Falls back to basic synthesis if model is not available.</p>
       </div>
 
       <div class="tool-content">
@@ -42,7 +44,16 @@
           
           <div class="controls">
             <div class="control-group">
-              <label for="voice-select">Voice:</label>
+              <label for="model-select">AI Model:</label>
+              <select id="model-select" aria-label="Select AI TTS model">
+                <option value="kokoro">Kokoro Base TTS (Recommended)</option>
+                <option value="ljspeech">LJSpeech VITS TTS</option>
+                <option value="vctk">VCTK VITS TTS</option>
+              </select>
+            </div>
+            
+            <div class="control-group">
+              <label for="voice-select">Voice (Preview):</label>
               <select id="voice-select" aria-label="Select voice">
                 <option value="">Loading voices...</option>
               </select>
