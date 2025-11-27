@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Notes | Client-Side | DevTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Create and manage notes saved locally in your browser. Download individual notes or all notes as a ZIP file.">
+  <link rel="canonical" href="https://example.com/utils/notes">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Notes">
+  <meta property="og:description" content="Create and manage notes saved locally in your browser.">
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Notes",
+        "item": "https://example.com/utils/notes"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>DevTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <main id="main">
+    <h1>Notes</h1>
+    <p>Create and manage notes saved locally in your browser. Download individual notes or all notes as a ZIP file.</p>
+    
+    <div class="tool-container notes-layout">
+      <div class="notes-sidebar">
+        <div class="sidebar-header">
+          <h2>Saved Notes</h2>
+          <span id="notes-count" class="notes-count">0 notes</span>
+        </div>
+        <div class="sidebar-actions">
+          <button id="download-all-btn" class="secondary-btn">Download All as ZIP</button>
+        </div>
+        <div id="notes-list" class="notes-list" role="region" aria-live="polite" aria-label="Saved notes">
+          <p class="placeholder">No notes saved yet. Create your first note!</p>
+        </div>
+      </div>
+      
+      <div class="input-section">
+        <div class="option-group">
+          <textarea id="note-content" rows="20" placeholder="Enter your note content here..." aria-label="Note content"></textarea>
+        </div>
+        
+        <div class="button-group">
+          <button id="save-btn" class="primary-btn">Save Note</button>
+          <button id="new-btn" class="secondary-btn">New Note</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/notes.js"></script>
+</body>
+</html>
+
