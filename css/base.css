@@ -105,7 +105,8 @@ header a:hover {
 
 .search-box {
   position: relative;
-  max-width: 400px;
+  max-width: 600px;
+  width: 100%;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -771,7 +772,8 @@ label {
 /* Search box */
 .search-box {
   position: relative;
-  max-width: 400px;
+  max-width: 600px;
+  width: 100%;
 }
 
 .search-box input {
