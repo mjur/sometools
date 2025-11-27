@@ -74,11 +74,10 @@ header {
   background-color: var(--bg-elev);
   border-bottom: 1px solid var(--border);
   padding: 1rem 2rem;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
-  flex-wrap: wrap;
 }
 
 header h1 {
@@ -94,6 +93,204 @@ header a {
 
 header a:hover {
   color: var(--accent);
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-self: center;
+  flex-wrap: nowrap;
+}
+
+.search-box {
+  position: relative;
+  max-width: 400px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.donate-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+  height: fit-content;
+  align-self: center;
+}
+
+.donate-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.donate-btn:active {
+  transform: translateY(0);
+}
+
+/* Donation Modal */
+.donate-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s;
+}
+
+.donate-modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s;
+  position: relative;
+}
+
+.donate-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text);
+  cursor: pointer;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.donate-modal-close:hover {
+  background: var(--bg-elev);
+}
+
+.donate-modal h2 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text);
+}
+
+.donate-modal > p {
+  margin: 0 0 1.5rem 0;
+  color: var(--muted);
+}
+
+.donation-amounts {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.donation-amount-btn {
+  padding: 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.donation-amount-btn:hover {
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
+.donation-amount-btn.selected {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.custom-amount {
+  margin-bottom: 1.5rem;
+}
+
+.custom-amount label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.custom-amount input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.custom-amount input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+}
+
+#proceed-donate-btn {
+  width: 100%;
+  padding: 0.875rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.donation-note {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .donation-amounts {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .donate-modal {
+    padding: 1.5rem;
+  }
 }
 
 /* Navigation */
@@ -573,14 +770,15 @@ label {
 
 /* Search box */
 .search-box {
-  flex: 1;
-  max-width: 400px;
   position: relative;
+  max-width: 400px;
 }
 
 .search-box input {
   width: 100%;
   padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .search-box::after {
