@@ -2,7 +2,6 @@
 import { toast, on, qs } from '/js/ui.js';
 
 const noteContentInput = qs('#note-content');
-const saveBtn = qs('#save-btn');
 const newBtn = qs('#new-btn');
 const downloadAllBtn = qs('#download-all-btn');
 const notesList = qs('#notes-list');
@@ -58,12 +57,12 @@ function generateTitle(content) {
   return trimmed.substring(0, TITLE_LENGTH) + '...';
 }
 
-// Save current note
-function saveNote() {
+// Save current note (autosave)
+function saveNote(showToast = false) {
   const content = noteContentInput.value.trim();
   
+  // Don't save empty notes
   if (!content) {
-    toast('Please enter some content', 'error');
     return;
   }
   
@@ -77,7 +76,9 @@ function saveNote() {
     notes[noteId].title = title;
     notes[noteId].content = content;
     notes[noteId].updated = now;
-    toast('Note updated', 'success');
+    if (showToast) {
+      toast('Note updated', 'success');
+    }
   } else {
     // Create new note
     notes[noteId] = {
@@ -87,21 +88,36 @@ function saveNote() {
       created: now,
       updated: now
     };
-    toast('Note saved', 'success');
+    currentNoteId = noteId; // Set current note ID for future updates
+    if (showToast) {
+      toast('Note saved', 'success');
+    }
   }
   
   if (saveNotes(notes)) {
-    currentNoteId = null;
-    noteContentInput.value = '';
     displayNotes();
   }
 }
 
+// Debounce function for autosave
+let autosaveTimeout = null;
+function debouncedAutosave() {
+  clearTimeout(autosaveTimeout);
+  autosaveTimeout = setTimeout(() => {
+    saveNote(false);
+  }, 1000); // Autosave after 1 second of inactivity
+}
+
 // Create new note
 function newNote() {
+  // Save current note before creating new one
+  if (noteContentInput.value.trim()) {
+    saveNote(false);
+  }
   currentNoteId = null;
   noteContentInput.value = '';
   noteContentInput.focus();
+  displayNotes(); // Refresh to clear active state
 }
 
 // Load note for editing
@@ -252,8 +268,10 @@ async function downloadAllNotes() {
 function displayNotes() {
   const notes = loadNotes();
   const noteIds = Object.keys(notes).sort((a, b) => {
-    // Sort by updated date, most recent first
-    return (notes[b].updated || notes[b].created) - (notes[a].updated || notes[a].created);
+    // Sort by updated date, most recent first (newest first)
+    const timeA = notes[a].updated || notes[a].created || 0;
+    const timeB = notes[b].updated || notes[b].created || 0;
+    return timeB - timeA;
   });
   
   notesCount.textContent = `${noteIds.length} note${noteIds.length !== 1 ? 's' : ''}`;
@@ -266,20 +284,16 @@ function displayNotes() {
   let html = '';
   noteIds.forEach(noteId => {
     const note = notes[noteId];
-    const displayDate = formatDate(note.updated || note.created);
-    const preview = note.content.substring(0, 80) + (note.content.length > 80 ? '...' : '');
     const isActive = currentNoteId === noteId;
     
     html += `<div class="note-item ${isActive ? 'active' : ''}" data-note-id="${noteId}">`;
-    html += `<div class="note-header">`;
+    html += `<div class="note-header-inline">`;
     html += `<h3 class="note-title">${escapeHtml(note.title)}</h3>`;
-    html += `<span class="note-date">${displayDate}</span>`;
+    html += `<div class="note-actions-inline">`;
+    html += `<button class="note-btn edit-btn icon-only" data-action="edit" data-note-id="${noteId}" aria-label="Edit note" title="Edit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>`;
+    html += `<button class="note-btn download-btn icon-only" data-action="download" data-note-id="${noteId}" aria-label="Download note" title="Download"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>`;
+    html += `<button class="note-btn delete-btn icon-only" data-action="delete" data-note-id="${noteId}" aria-label="Delete note" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>`;
     html += `</div>`;
-    html += `<p class="note-preview">${escapeHtml(preview)}</p>`;
-    html += `<div class="note-actions">`;
-    html += `<button class="note-btn edit-btn" data-action="edit" data-note-id="${noteId}" aria-label="Edit note">✏️ Edit</button>`;
-    html += `<button class="note-btn download-btn icon-only" data-action="download" data-note-id="${noteId}" aria-label="Download note" title="Download">⬇️</button>`;
-    html += `<button class="note-btn delete-btn icon-only" data-action="delete" data-note-id="${noteId}" aria-label="Delete note" title="Delete">🗑️</button>`;
     html += `</div>`;
     html += `</div>`;
   });
@@ -323,16 +337,16 @@ function escapeHtml(text) {
 }
 
 // Event listeners
-on(saveBtn, 'click', saveNote);
 on(newBtn, 'click', newNote);
 on(downloadAllBtn, 'click', downloadAllNotes);
 
-// Allow Ctrl+S / Cmd+S to save
-on(document, 'keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-    e.preventDefault();
-    saveNote();
-  }
+// Autosave on input
+on(noteContentInput, 'input', debouncedAutosave);
+
+// Save on blur (when user leaves the textarea)
+on(noteContentInput, 'blur', () => {
+  clearTimeout(autosaveTimeout);
+  saveNote(false);
 });
 
 // Initial display
@@ -406,11 +420,11 @@ style.textContent = `
     border-width: 2px;
   }
   
-  .note-header {
+  .note-header-inline {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.5rem;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   .note-title {
@@ -420,28 +434,15 @@ style.textContent = `
     color: var(--text);
     flex: 1;
     line-height: 1.4;
-  }
-  
-  .note-date {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
-    margin-left: 0.5rem;
   }
   
-  .note-preview {
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    margin: 0.5rem 0;
-    line-height: 1.4;
-  }
-  
-  .note-actions {
+  .note-actions-inline {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--border);
+    gap: 0.25rem;
+    flex-shrink: 0;
   }
   
   .note-btn {
@@ -452,14 +453,31 @@ style.textContent = `
     cursor: pointer;
     font-size: 0.8rem;
     transition: background 0.2s;
-    flex: 1;
   }
   
   .note-btn.icon-only {
-    flex: 0;
-    padding: 0.35rem;
-    min-width: 2rem;
-    font-size: 1rem;
+    padding: 0.25rem;
+    min-width: 1.75rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .note-btn.icon-only svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+  
+  .note-btn.icon-only:hover svg {
+    color: var(--text);
+  }
+  
+  .note-btn.delete-btn.icon-only:hover svg {
+    color: var(--error);
   }
   
   .note-btn:hover {
