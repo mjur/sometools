@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load voices for default model
     if (voiceSelectKokoro) {
       voiceSelectKokoro.innerHTML = '<option value="">Loading voices...</option>';
+      voiceSelectKokoro.style.display = 'block';
     }
     // Load the model and voices on page load
     loadTTSModel().then(() => {
@@ -226,6 +227,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           
           // Update the voice selector with available voices
           if (voiceSelectKokoro) {
+            // Show the dropdown when voices are available
+            voiceSelectKokoro.style.display = 'block';
             if (availableVoices.length > 0) {
               voiceSelectKokoro.innerHTML = '';
               

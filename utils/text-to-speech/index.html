@@ -8,6 +8,56 @@
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/tool.css">
   <link rel="icon" href="/favicon.ico">
+  <style>
+    .inline-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    
+    .inline-controls select {
+      min-width: 200px;
+      flex: 0 0 auto;
+    }
+    
+    .inline-controls .button-group {
+      display: flex;
+      gap: 0.5rem;
+      flex: 0 0 auto;
+    }
+    
+    .inline-controls #audio-container {
+      flex: 1 1 auto;
+      min-width: 200px;
+    }
+    
+    .inline-controls #audio-player {
+      width: 100%;
+    }
+    
+    @media (max-width: 768px) {
+      .inline-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .inline-controls select,
+      .inline-controls .button-group,
+      .inline-controls #audio-container {
+        width: 100%;
+      }
+      
+      .inline-controls .button-group {
+        justify-content: stretch;
+      }
+      
+      .inline-controls .button-group button {
+        flex: 1;
+      }
+    }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.min.js"></script>
   <!-- kokoro-js will be loaded dynamically -->
 </head>
@@ -43,19 +93,24 @@
             aria-label="Text input for speech synthesis"
           ></textarea>
           
-          <div class="controls">
-            <div class="control-group" id="voice-select-group" style="display: none;">
-              <label for="voice-select-kokoro">Voice:</label>
-              <select id="voice-select-kokoro" aria-label="Select Kokoro voice">
-                <option value="">Loading voices...</option>
-              </select>
-            </div>
+          <div class="control-group" id="voice-select-group" style="display: none; margin-top: 1rem;">
+            <label for="voice-select-kokoro">Voice:</label>
           </div>
           
-          <div class="button-group">
-            <button id="generate-btn" class="primary-btn">Generate & Play</button>
-            <button id="download-btn" class="secondary-btn" disabled>Download Audio</button>
-            <button id="clear-btn" class="secondary-btn">Clear</button>
+          <div class="inline-controls">
+            <select id="voice-select-kokoro" aria-label="Select Kokoro voice" style="display: none;">
+              <option value="">Loading voices...</option>
+            </select>
+            
+            <div class="button-group">
+              <button id="generate-btn" class="primary-btn">Generate & Play</button>
+              <button id="download-btn" class="secondary-btn" disabled>Download Audio</button>
+              <button id="clear-btn" class="secondary-btn">Clear</button>
+            </div>
+            
+            <div id="audio-container" style="display: none;">
+              <audio id="audio-player" controls></audio>
+            </div>
           </div>
         </div>
 
@@ -69,9 +124,6 @@
             <div style="width: 100%; height: 8px; background-color: var(--border); border-radius: 4px; overflow: hidden;">
               <div id="progress-bar" style="width: 0%; height: 100%; background-color: var(--accent); transition: width 0.3s;"></div>
             </div>
-          </div>
-          <div id="audio-container" style="display: none;">
-            <audio id="audio-player" controls></audio>
           </div>
         </div>
       </div>
