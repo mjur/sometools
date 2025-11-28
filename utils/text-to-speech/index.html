@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/css/tool.css">
   <link rel="icon" href="/favicon.ico">
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.min.js"></script>
+  <!-- kokoro-js will be loaded dynamically -->
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to main content</a>
@@ -29,7 +30,7 @@
       <div class="tool-header">
         <h1>Text to Speech (AI-Powered)</h1>
         <p>Convert your text into natural-sounding speech using AI models. Choose from various voices and download the audio file.</p>
-        <p class="info-note">💡 AI model will be used for natural-sounding audio. Falls back to basic synthesis if model is not available.</p>
+        <p class="info-note">⚠️ Note: These TTS models require proper phoneme tokenization (G2P conversion) which is not fully available in the browser. Output quality may be limited without the original tokenizers. For best results, these models should be used with their proper preprocessing pipelines.</p>
       </div>
 
       <div class="tool-content">
@@ -46,15 +47,16 @@
             <div class="control-group">
               <label for="model-select">AI Model:</label>
               <select id="model-select" aria-label="Select AI TTS model">
-                <option value="kokoro">Kokoro Base TTS (Recommended)</option>
+                <option value="kokoroWebGPU">Kokoro WebGPU TTS (Recommended)</option>
+                <option value="kokoro">Kokoro Base TTS (ONNX)</option>
                 <option value="ljspeech">LJSpeech VITS TTS</option>
                 <option value="vctk">VCTK VITS TTS</option>
               </select>
             </div>
             
-            <div class="control-group">
-              <label for="voice-select">Voice (Preview):</label>
-              <select id="voice-select" aria-label="Select voice">
+            <div class="control-group" id="voice-select-group" style="display: none;">
+              <label for="voice-select-kokoro">Voice:</label>
+              <select id="voice-select-kokoro" aria-label="Select Kokoro voice">
                 <option value="">Loading voices...</option>
               </select>
             </div>

@@ -2,25 +2,43 @@
 import { qs, on } from '/js/ui.js';
 import { loadONNXRuntime, createInferenceSession, runInference } from '/js/utils/onnx-loader.js';
 import { getOrDownloadModel } from '/js/utils/model-cache.js';
+import { textToTokens, textToPhonemes } from '/js/utils/phoneme-tokenizer.js';
 
-let voices = [];
+// Try to load kokoro-js for Kokoro WebGPU model
+let kokoroJS = null;
+let kokoroModel = null;
+
 let audioBlob = null;
 let ort = null;
 let ttsSession = null;
 
 // TTS Model configurations
 // Using Hugging Face CDN for direct model access
+// Note: These models require proper tokenization which may not be fully available
+// Output quality may vary without the original tokenizers
 const TTS_MODEL_CONFIGS = {
   kokoro: {
     key: 'tts-kokoro-v1',
     url: 'https://huggingface.co/NeuML/kokoro-base-onnx/resolve/main/model.onnx',
-    name: 'Kokoro Base TTS',
+    name: 'Kokoro Base TTS (ONNX)',
     description: 'High-quality TTS with multiple speakers and accents',
     requiresSetup: false,
     inputNames: ['tokens', 'style', 'speed'], // Kokoro expects these inputs
     outputName: 'audio',
     defaultStyle: 0, // Default speaker/style ID
-    defaultSpeed: 1.0
+    defaultSpeed: 1.0,
+    enabled: true,
+    type: 'onnx'
+  },
+  kokoroWebGPU: {
+    key: 'tts-kokoro-webgpu',
+    modelId: 'onnx-community/Kokoro-82M-v1.0-ONNX',
+    name: 'Kokoro WebGPU TTS',
+    description: 'Kokoro TTS optimized for WebGPU with better performance and quality',
+    requiresSetup: false,
+    enabled: true,
+    type: 'transformers',
+    voices: ['af_heart', 'af_sky', 'af_bella', 'am_adam', 'am_michael', 'am_sky', 'ar_sky', 'cn_xiaoxiao', 'cn_yunxi', 'de_katja', 'es_elvira', 'fr_denise', 'hi_madhur', 'it_elsa', 'ja_aoi', 'ja_akari', 'ko_injong', 'pl_agnieszka', 'pt_raquel', 'ru_svetlana', 'tr_emel', 'uk_ukrainian_tts', 'vi_banmai', 'zh_fengge', 'zh_xiaoyi']
   },
   ljspeech: {
     key: 'tts-ljspeech-v1',
@@ -28,8 +46,9 @@ const TTS_MODEL_CONFIGS = {
     name: 'LJSpeech VITS TTS',
     description: 'English TTS trained on LJSpeech dataset',
     requiresSetup: false,
-    inputNames: ['text'], // May need to check actual input names
-    outputName: 'audio'
+    inputNames: ['text'],
+    outputName: 'audio',
+    enabled: true
   },
   vctk: {
     key: 'tts-vctk-v1',
@@ -37,18 +56,19 @@ const TTS_MODEL_CONFIGS = {
     name: 'VCTK VITS TTS',
     description: 'Multiple English speakers with various accents',
     requiresSetup: false,
-    inputNames: ['text'], // May need to check actual input names
-    outputName: 'audio'
+    inputNames: ['text', 'sids'], // text and speaker IDs
+    outputName: 'audio',
+    defaultSpeakerId: 0, // Default speaker (0-based index)
+    enabled: true
   }
 };
 
 // Default model
-let currentModelConfig = TTS_MODEL_CONFIGS.kokoro;
+let currentModelConfig = TTS_MODEL_CONFIGS.kokoroWebGPU;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   const textInput = qs('#text-input');
-  const voiceSelect = qs('#voice-select');
   const rateSlider = qs('#rate-slider');
   const pitchSlider = qs('#pitch-slider');
   const volumeSlider = qs('#volume-slider');
@@ -61,6 +81,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const status = qs('#status');
   const audioContainer = qs('#audio-container');
   const audioPlayer = qs('#audio-player');
+  
+  // Get voice selector elements for Kokoro WebGPU
+  const voiceSelectKokoro = qs('#voice-select-kokoro');
+  const voiceSelectGroup = qs('#voice-select-group');
 
   // Initialize ONNX Runtime
   async function initONNX() {
@@ -81,8 +105,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (modelSelect) {
     on(modelSelect, 'change', (e) => {
       const selectedKey = e.target.value;
-      currentModelConfig = TTS_MODEL_CONFIGS[selectedKey];
-      ttsSession = null; // Reset session to load new model
+      const config = TTS_MODEL_CONFIGS[selectedKey];
+      if (!config) {
+        status.textContent = 'Invalid model selection';
+        status.className = 'status-message error';
+        return;
+      }
+      currentModelConfig = config;
+      ttsSession = null; // Reset ONNX session
+      kokoroModel = null; // Reset kokoro-js model
+      
+      // Show/hide voice selector for Kokoro WebGPU
+      if (voiceSelectGroup) {
+        if (config.type === 'transformers') {
+          voiceSelectGroup.style.display = 'block';
+          // Voices will be populated when model loads
+          if (voiceSelectKokoro) {
+            voiceSelectKokoro.innerHTML = '<option value="">Loading voices...</option>';
+          }
+          // Load the model and voices immediately
+          loadTTSModel().then(() => {
+            // Voices will be populated in loadTTSModel
+          }).catch(err => {
+            console.error('Failed to load model:', err);
+            if (voiceSelectKokoro) {
+              voiceSelectKokoro.innerHTML = '<option value="">Failed to load voices</option>';
+            }
+          });
+        } else {
+          voiceSelectGroup.style.display = 'none';
+        }
+      }
+      
       status.textContent = `Switched to ${currentModelConfig.name}`;
       status.className = 'status-message info';
       setTimeout(() => {
@@ -92,10 +146,230 @@ document.addEventListener('DOMContentLoaded', async () => {
       }, 2000);
     });
   }
+  
+  // Initialize voice selector visibility based on default model
+  if (voiceSelectGroup) {
+    if (currentModelConfig.type === 'transformers') {
+      voiceSelectGroup.style.display = 'block';
+      // Load voices for default model
+      if (voiceSelectKokoro) {
+        voiceSelectKokoro.innerHTML = '<option value="">Loading voices...</option>';
+      }
+      // Load the model and voices on page load
+      loadTTSModel().then(() => {
+        // Voices will be populated in loadTTSModel
+      }).catch(err => {
+        console.error('Failed to load default model:', err);
+        if (voiceSelectKokoro) {
+          voiceSelectKokoro.innerHTML = '<option value="">Failed to load voices</option>';
+        }
+      });
+    } else {
+      voiceSelectGroup.style.display = 'none';
+    }
+  }
+
+  // Load kokoro-js library
+  async function loadKokoroJS() {
+    if (kokoroJS) return kokoroJS;
+    
+    try {
+      // Try ES module import from various CDNs
+      const cdnUrls = [
+        'https://esm.sh/kokoro-js@latest',
+        'https://cdn.jsdelivr.net/npm/kokoro-js@latest/+esm',
+        'https://unpkg.com/kokoro-js@latest?module'
+      ];
+      
+      for (const url of cdnUrls) {
+        try {
+          const module = await import(url);
+          // kokoro-js exports KokoroTTS
+          if (module.KokoroTTS) {
+            kokoroJS = module.KokoroTTS;
+            return kokoroJS;
+          } else if (module.default) {
+            kokoroJS = module.default;
+            return kokoroJS;
+          } else {
+            kokoroJS = module;
+            return kokoroJS;
+          }
+        } catch (err) {
+          console.warn(`Failed to load kokoro-js from ${url}:`, err);
+          continue;
+        }
+      }
+      
+      throw new Error('Failed to load kokoro-js from all CDN sources. The library may not be available as an ES module.');
+    } catch (error) {
+      console.error('Failed to load kokoro-js:', error);
+      throw new Error(`kokoro-js library not available: ${error.message}. Please ensure you have internet connectivity.`);
+    }
+  }
 
   // Load TTS model
   async function loadTTSModel() {
-    if (ttsSession) return ttsSession;
+    // Handle kokoro-js models (Kokoro WebGPU)
+    if (currentModelConfig.type === 'transformers') {
+      if (kokoroModel) return kokoroModel;
+      
+      try {
+        status.textContent = `Loading ${currentModelConfig.name}...`;
+        status.className = 'status-message info';
+        
+        const KokoroTTS = await loadKokoroJS();
+        
+        // Load Kokoro TTS model using kokoro-js
+        // Model ID from Hugging Face
+        kokoroModel = await KokoroTTS.from_pretrained(currentModelConfig.modelId, {
+          dtype: 'q8', // Quantized for faster loading
+          device: 'webgpu' // Use WebGPU if available, falls back to WASM
+        });
+        
+        // Get available voices from the model
+        let availableVoices = [];
+        let voiceMetadata = {}; // Store voice metadata for display names
+        try {
+          if (kokoroModel.list_voices && typeof kokoroModel.list_voices === 'function') {
+            const voicesResult = await kokoroModel.list_voices();
+            console.log('Voices result from model:', voicesResult);
+            
+            // Handle different return formats
+            if (Array.isArray(voicesResult)) {
+              availableVoices = voicesResult;
+            } else if (voicesResult && typeof voicesResult === 'object') {
+              // If it's an object, the keys are voice IDs (e.g., 'af_heart', 'af_alloy')
+              // and values are objects with metadata (name, language, gender, etc.)
+              if (voicesResult.voices) {
+                // If there's a nested voices property
+                if (Array.isArray(voicesResult.voices)) {
+                  availableVoices = voicesResult.voices;
+                } else {
+                  availableVoices = Object.keys(voicesResult.voices);
+                  voiceMetadata = voicesResult.voices;
+                }
+              } else {
+                // The object itself contains voice IDs as keys
+                availableVoices = Object.keys(voicesResult);
+                voiceMetadata = voicesResult;
+              }
+            }
+            
+            console.log('Available voices extracted:', availableVoices);
+            console.log('Voice metadata:', voiceMetadata);
+          } else if (kokoroModel.voices) {
+            availableVoices = Array.isArray(kokoroModel.voices) ? kokoroModel.voices : Object.keys(kokoroModel.voices);
+            if (!Array.isArray(kokoroModel.voices)) {
+              voiceMetadata = kokoroModel.voices;
+            }
+          }
+          
+          // Update the voice selector with available voices
+          if (voiceSelectKokoro) {
+            if (availableVoices.length > 0) {
+              voiceSelectKokoro.innerHTML = '';
+              
+              // Group voices by language/gender for better organization
+              const groupedVoices = {};
+              availableVoices.forEach(voiceId => {
+                // voiceId is the key (e.g., 'af_heart')
+                const voiceInfo = voiceMetadata[voiceId] || {};
+                const displayName = voiceInfo.name || voiceId.substring(3).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                const prefix = voiceId.substring(0, 2); // e.g., 'af', 'am', 'bf', 'bm'
+                const lang = prefix[0] === 'a' ? 'American' : prefix[0] === 'b' ? 'British' : 
+                            prefix[0] === 'c' ? 'Chinese' : prefix[0] === 'd' ? 'German' :
+                            prefix[0] === 'e' ? 'Spanish' : prefix[0] === 'f' ? 'French' :
+                            prefix[0] === 'h' ? 'Hindi' : prefix[0] === 'i' ? 'Italian' :
+                            prefix[0] === 'j' ? 'Japanese' : prefix[0] === 'k' ? 'Korean' :
+                            prefix[0] === 'p' ? (prefix[1] === 't' ? 'Portuguese' : 'Polish') :
+                            prefix[0] === 'r' ? 'Russian' : prefix[0] === 't' ? 'Turkish' :
+                            prefix[0] === 'u' ? 'Ukrainian' : prefix[0] === 'v' ? 'Vietnamese' :
+                            prefix[0] === 'z' ? 'Chinese' : 'Other';
+                const gender = prefix[1] === 'f' ? 'Female' : prefix[1] === 'm' ? 'Male' : 'Other';
+                const groupKey = `${lang} ${gender}`;
+                
+                if (!groupedVoices[groupKey]) {
+                  groupedVoices[groupKey] = [];
+                }
+                groupedVoices[groupKey].push({ id: voiceId, name: displayName });
+              });
+              
+              // Create optgroups for better organization
+              const sortedGroups = Object.keys(groupedVoices).sort();
+              sortedGroups.forEach(groupName => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = groupName;
+                
+                groupedVoices[groupName].forEach(voice => {
+                  const option = document.createElement('option');
+                  option.value = voice.id; // Use voice ID (e.g., 'af_heart')
+                  option.textContent = voice.name; // Use display name (e.g., 'Heart')
+                  optgroup.appendChild(option);
+                });
+                
+                voiceSelectKokoro.appendChild(optgroup);
+              });
+              
+              // Set default voice
+              voiceSelectKokoro.value = availableVoices[0] || 'af_heart';
+              console.log('Voice selector populated with', availableVoices.length, 'voices');
+            } else {
+              console.warn('No voices found from model, using fallback list');
+              // Use fallback voices from config
+              if (currentModelConfig.voices && currentModelConfig.voices.length > 0) {
+                voiceSelectKokoro.innerHTML = '';
+                currentModelConfig.voices.forEach(voice => {
+                  const option = document.createElement('option');
+                  option.value = voice;
+                  option.textContent = voice.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                  voiceSelectKokoro.appendChild(option);
+                });
+                voiceSelectKokoro.value = currentModelConfig.voices[0] || 'af_heart';
+                console.log('Using fallback voices from config:', currentModelConfig.voices.length, 'voices');
+              } else {
+                voiceSelectKokoro.innerHTML = '<option value="">No voices available</option>';
+                console.error('No fallback voices available in config');
+              }
+            }
+          } else {
+            console.warn('Voice selector element not found');
+          }
+        } catch (voiceError) {
+          console.warn('Failed to get voices from model, using default list:', voiceError);
+          // Fallback to hardcoded voices if list_voices fails
+          if (voiceSelectKokoro && currentModelConfig.voices) {
+            voiceSelectKokoro.innerHTML = '';
+            currentModelConfig.voices.forEach(voice => {
+              const option = document.createElement('option');
+              option.value = voice;
+              option.textContent = voice.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              voiceSelectKokoro.appendChild(option);
+            });
+            voiceSelectKokoro.value = currentModelConfig.voices[0] || 'af_heart';
+          }
+        }
+        
+        status.textContent = `${currentModelConfig.name} loaded successfully!`;
+        status.className = 'status-message success';
+        setTimeout(() => {
+          if (status.textContent.includes('loaded successfully')) {
+            status.textContent = '';
+          }
+        }, 2000);
+        
+        return kokoroModel;
+      } catch (error) {
+        console.error('Failed to load kokoro-js model:', error);
+        status.textContent = `${currentModelConfig.name} failed to load: ${error.message}`;
+        status.className = 'status-message error';
+        return null;
+      }
+    }
+    
+    // Handle ONNX models (existing code)
+    if (ttsSession && currentModelConfig.type === 'onnx') return ttsSession;
     
     try {
       await initONNX();
@@ -134,58 +408,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Load available voices
-  function loadVoices() {
-    voices = speechSynthesis.getVoices();
-    
-    // Clear existing options
-    voiceSelect.innerHTML = '';
-    
-    if (voices.length === 0) {
-      voiceSelect.innerHTML = '<option value="">No voices available</option>';
-      return;
-    }
-    
-    // Group voices by language
-    const voicesByLang = {};
-    voices.forEach(voice => {
-      const lang = voice.lang || 'Unknown';
-      if (!voicesByLang[lang]) {
-        voicesByLang[lang] = [];
-      }
-      voicesByLang[lang].push(voice);
-    });
-    
-    // Sort languages
-    const sortedLangs = Object.keys(voicesByLang).sort();
-    
-    // Create option groups
-    sortedLangs.forEach(lang => {
-      const optgroup = document.createElement('optgroup');
-      optgroup.label = lang;
-      
-      voicesByLang[lang].forEach(voice => {
-        const option = document.createElement('option');
-        option.value = voice.name;
-        option.textContent = `${voice.name}${voice.default ? ' (default)' : ''}`;
-        optgroup.appendChild(option);
-      });
-      
-      voiceSelect.appendChild(optgroup);
-    });
-    
-    // Select default voice if available
-    const defaultVoice = voices.find(v => v.default);
-    if (defaultVoice) {
-      voiceSelect.value = defaultVoice.name;
-    }
-  }
-
-  // Load voices when they become available
-  if (speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = loadVoices;
-  }
-  loadVoices();
 
   // Update slider value displays
   on(rateSlider, 'input', (e) => {
@@ -201,21 +423,280 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Preprocess text for TTS model
-  function preprocessText(text) {
-    // Convert text to phonemes or token IDs
-    // This depends on the specific TTS model
-    // For now, we'll use a simple character-based approach
-    // In production, you'd use a proper text processor
+  function preprocessText(text, modelConfig = null) {
+    // Normalize text for TTS models
+    // Most TTS models expect lowercase, normalized text
     
     // Remove extra whitespace
     text = text.trim().replace(/\s+/g, ' ');
     
-    // Convert to lowercase (some models expect this)
-    // text = text.toLowerCase();
+    // Convert to lowercase (most TTS models expect this)
+    text = text.toLowerCase();
     
-    // Convert to character codes or use a tokenizer
-    // For a real TTS model, you'd need proper text preprocessing
+    // Normalize punctuation and special characters
+    // Replace common punctuation with spaces or remove
+    text = text.replace(/[^\w\s']/g, ' ');
+    
+    // Normalize multiple spaces
+    text = text.replace(/\s+/g, ' ');
+    
+    // Remove leading/trailing spaces
+    text = text.trim();
+    
     return text;
+  }
+
+  // Create a character-to-token mapping for VITS models
+  // VITS models typically use a character vocabulary
+  function createCharacterVocab() {
+    // Common character vocabulary for English TTS models
+    // Based on typical VITS model vocabularies
+    const vocab = {};
+    let tokenId = 0;
+    
+    // Space (usually token 0)
+    vocab[' '] = tokenId++;
+    
+    // Lowercase letters a-z
+    for (let i = 0; i < 26; i++) {
+      vocab[String.fromCharCode(97 + i)] = tokenId++;
+    }
+    
+    // Numbers 0-9
+    for (let i = 0; i < 10; i++) {
+      vocab[i.toString()] = tokenId++;
+    }
+    
+    // Common punctuation (if needed)
+    const punctuation = ["'", '-', '.', ',', '!', '?', ';', ':'];
+    punctuation.forEach(p => {
+      if (tokenId < 100) { // Limit vocab size
+        vocab[p] = tokenId++;
+      }
+    });
+    
+    return vocab;
+  }
+
+  // Create optimized character vocabulary for VITS models
+  // Based on common character vocabularies used in TTS models
+  // Order matters - most common characters first
+  function createVITSCharacterVocab() {
+    const vocab = {};
+    let id = 0;
+    
+    // Most common: space and lowercase letters (most TTS models prioritize these)
+    vocab[' '] = id++;
+    
+    // Lowercase letters a-z (most common in text)
+    for (let i = 0; i < 26; i++) {
+      vocab[String.fromCharCode(97 + i)] = id++;
+    }
+    
+    // Numbers 0-9 (before uppercase to keep range smaller)
+    for (let i = 0; i < 10; i++) {
+      vocab[i.toString()] = id++;
+    }
+    
+    // Common punctuation (ordered by frequency)
+    const punctuation = ['.', ',', "'", '-', '!', '?', ';', ':', '"'];
+    punctuation.forEach(p => {
+      vocab[p] = id++;
+    });
+    
+    // Uppercase letters A-Z (less common, map after lowercase)
+    for (let i = 0; i < 26; i++) {
+      vocab[String.fromCharCode(65 + i)] = id++;
+    }
+    
+    // Less common punctuation
+    const rarePunctuation = ['(', ')', '[', ']', '{', '}'];
+    rarePunctuation.forEach(p => {
+      vocab[p] = id++;
+    });
+    
+    return vocab;
+  }
+  
+  // Advanced text preprocessing for TTS
+  function preprocessTextForTTS(text) {
+    // Step 1: Expand common abbreviations
+    const abbreviations = {
+      "mr.": "mister",
+      "mrs.": "missus",
+      "dr.": "doctor",
+      "prof.": "professor",
+      "vs.": "versus",
+      "etc.": "etcetera",
+      "e.g.": "for example",
+      "i.e.": "that is",
+      "a.m.": "am",
+      "p.m.": "pm",
+      "st.": "street",
+      "ave.": "avenue",
+      "blvd.": "boulevard",
+      "rd.": "road",
+      "inc.": "incorporated",
+      "ltd.": "limited",
+      "&": "and",
+      "@": "at",
+      "#": "number",
+      "$": "dollars",
+      "%": "percent"
+    };
+    
+    let processed = text.toLowerCase();
+    
+    // Replace abbreviations
+    for (const [abbr, expansion] of Object.entries(abbreviations)) {
+      const regex = new RegExp(`\\b${abbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      processed = processed.replace(regex, expansion);
+    }
+    
+    // Step 2: Expand numbers to words (simple cases)
+    processed = processed.replace(/\b(\d+)\b/g, (match, num) => {
+      const n = parseInt(num);
+      if (n < 20) {
+        const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 
+                       'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 
+                       'seventeen', 'eighteen', 'nineteen'];
+        return words[n] || num;
+      }
+      return num; // Keep larger numbers as digits for now
+    });
+    
+    // Step 3: Remove or replace special characters
+    processed = processed
+      .replace(/[^\w\s.,!?;:'-]/g, ' ') // Remove special chars, keep basic punctuation
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+    
+    // Step 4: Handle contractions
+    const contractions = {
+      "n't": " not",
+      "'re": " are",
+      "'ve": " have",
+      "'ll": " will",
+      "'d": " would",
+      "'m": " am",
+      "'s": " is"
+    };
+    
+    for (const [contraction, expansion] of Object.entries(contractions)) {
+      processed = processed.replace(new RegExp(contraction, 'g'), expansion);
+    }
+    
+    // Step 5: Final cleanup
+    processed = processed
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    return processed;
+  }
+
+  // Encode text to token IDs for a specific model
+  function encodeTextToTokens(text, modelConfig) {
+    // Advanced preprocessing
+    const preprocessed = preprocessTextForTTS(text);
+    console.log('Preprocessed text:', preprocessed.substring(0, 100));
+    
+    const textChars = preprocessed.split('');
+    
+    // For Kokoro model - use direct character codes with optimized mapping
+    if (modelConfig.inputNames && modelConfig.inputNames.includes('tokens')) {
+      console.log('Using optimized character codes for Kokoro model');
+      
+      // Create a compact character-to-token mapping for Kokoro
+      const kokoroVocab = {};
+      let tokenId = 0;
+      
+      // Space
+      kokoroVocab[' '] = tokenId++;
+      
+      // Lowercase a-z
+      for (let i = 0; i < 26; i++) {
+        kokoroVocab[String.fromCharCode(97 + i)] = tokenId++;
+      }
+      
+      // Numbers 0-9
+      for (let i = 0; i < 10; i++) {
+        kokoroVocab[i.toString()] = tokenId++;
+      }
+      
+      // Common punctuation
+      ['.', ',', "'", '-', '!', '?'].forEach(p => {
+        kokoroVocab[p] = tokenId++;
+      });
+      
+      // Map characters using vocabulary, fallback to ASCII
+      return textChars.map(c => {
+        if (kokoroVocab.hasOwnProperty(c)) {
+          return kokoroVocab[c];
+        } else {
+          const charCode = c.charCodeAt(0);
+          // Map to reasonable range (0-127 for ASCII)
+          if (charCode >= 32 && charCode <= 126) {
+            return charCode;
+          } else {
+            return 32; // Space for unknown
+          }
+        }
+      });
+    }
+    
+    // For VITS models (LJSpeech/VCTK) - use optimized character vocabulary
+    console.log('Using optimized character vocabulary for VITS model');
+    const vocab = createVITSCharacterVocab();
+    const MIN_TOKEN = -77;
+    const MAX_TOKEN = 76;
+    const TOKEN_RANGE = MAX_TOKEN - MIN_TOKEN + 1; // 154
+    
+    // Calculate vocabulary size
+    const vocabSize = Object.keys(vocab).length;
+    console.log('Vocabulary size:', vocabSize, 'Token range:', TOKEN_RANGE);
+    
+    const tokens = textChars.map(c => {
+      // Use vocabulary if available
+      if (vocab.hasOwnProperty(c)) {
+        const vocabId = vocab[c];
+        // Map vocabulary ID to model's token range
+        // Use a more intelligent mapping that preserves distinctions
+        // Map vocab IDs (0-~100) to model range (-77 to 76)
+        if (vocabSize <= TOKEN_RANGE) {
+          // If vocab fits in range, use direct mapping
+          return MIN_TOKEN + vocabId;
+        } else {
+          // If vocab is larger, use modulo but try to preserve order
+          const mapped = vocabId % TOKEN_RANGE;
+          return MIN_TOKEN + mapped;
+        }
+      } else {
+        // Unknown character - try to map intelligently
+        const charCode = c.charCodeAt(0);
+        
+        // If it's a letter, map to corresponding letter in vocab
+        if (charCode >= 97 && charCode <= 122) {
+          // Lowercase letter - should be in vocab
+          return MIN_TOKEN + (charCode - 97 + 1); // +1 for space
+        } else if (charCode >= 65 && charCode <= 90) {
+          // Uppercase - map to lowercase equivalent
+          return MIN_TOKEN + (charCode - 65 + 1);
+        } else if (charCode >= 48 && charCode <= 57) {
+          // Number
+          return MIN_TOKEN + (charCode - 48 + 27); // After 26 letters
+        } else if (charCode === 32) {
+          // Space
+          return MIN_TOKEN;
+        } else {
+          // Other - map to space
+          return MIN_TOKEN;
+        }
+      }
+    });
+    
+    console.log('Character tokens (first 30):', tokens.slice(0, 30).join(', '));
+    console.log('Token range:', Math.min(...tokens), 'to', Math.max(...tokens));
+    return tokens;
   }
 
   // Postprocess audio from model output
@@ -292,10 +773,134 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Generate speech using AI model
   async function generateSpeechWithAI(text, rate, pitch, volume) {
     // Always try to load the model first
-    await loadTTSModel();
+    const model = await loadTTSModel();
     
+    if (!model) {
+      throw new Error('TTS model not available. Please check console for errors.');
+    }
+    
+    // Handle kokoro-js models (Kokoro WebGPU)
+    if (currentModelConfig.type === 'transformers' && kokoroModel) {
+      try {
+        status.textContent = 'Generating speech with Kokoro WebGPU...';
+        status.className = 'status-message info';
+        
+        // Get selected voice
+        // Re-query element to ensure we have the latest reference
+        const voiceSelect = qs('#voice-select-kokoro');
+        const selectedVoice = voiceSelect ? voiceSelect.value : (currentModelConfig.voices?.[0] || 'af_heart');
+        
+        // Generate audio using kokoro-js
+        const audio = await kokoroModel.generate(text, {
+          voice: selectedVoice
+        });
+        
+        // kokoro-js returns an audio object with structure: {audio: Float32Array, sampling_rate: number}
+        // Based on the console logs, we know it has:
+        // - audio.audio: Float32Array
+        // - audio.sampling_rate: number
+        // - Methods: toWav(), toBlob(), save()
+        
+        let audioArray;
+        let sampleRate = 24000; // Kokoro typically uses 24kHz
+        
+        // Extract audio data - the structure is {audio: Float32Array, sampling_rate: number}
+        if (audio.audio && audio.audio instanceof Float32Array) {
+          audioArray = audio.audio;
+          sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
+        } else if (audio.data && audio.data instanceof Float32Array) {
+          audioArray = audio.data;
+          sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
+        } else if (audio instanceof AudioBuffer) {
+          audioArray = audio.getChannelData(0);
+          sampleRate = audio.sampleRate;
+        } else {
+          // Fallback: try to use toBlob() method and decode
+          try {
+            if (audio.toBlob && typeof audio.toBlob === 'function') {
+              const blob = await audio.toBlob();
+              const arrayBuffer = await blob.arrayBuffer();
+              const ctx = new (window.AudioContext || window.webkitAudioContext)();
+              const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+              audioArray = audioBuffer.getChannelData(0);
+              sampleRate = audioBuffer.sampleRate;
+            } else {
+              throw new Error('Audio object does not have expected structure');
+            }
+          } catch (error) {
+            console.error('Failed to extract audio data:', error);
+            throw new Error(`Unable to extract audio data: ${error.message}`);
+          }
+        }
+        
+        // Create AudioContext and process audio
+        const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+        const buffer = ctx.createBuffer(1, audioArray.length, sampleRate);
+        const channelData = buffer.getChannelData(0);
+        
+        // Copy and apply volume
+        for (let i = 0; i < audioArray.length; i++) {
+          channelData[i] = audioArray[i] * volume;
+        }
+        
+        // Apply rate using playbackRate
+        const destination = ctx.createMediaStreamDestination();
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.playbackRate.value = rate;
+        
+        source.connect(destination);
+        source.connect(ctx.destination);
+        
+        // Record for download
+        const mediaRecorder = new MediaRecorder(destination.stream, {
+          mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg'
+        });
+        
+        const audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+        
+        return new Promise((resolve) => {
+          mediaRecorder.onstop = () => {
+            audioBlob = new Blob(audioChunks, { 
+              type: mediaRecorder.mimeType || 'audio/webm' 
+            });
+            resolve(audioBlob);
+          };
+          
+          mediaRecorder.start();
+          source.start(0);
+          
+          source.onended = () => {
+            setTimeout(() => {
+              if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+              }
+            }, 500);
+          };
+        });
+      } catch (error) {
+        console.error('Kokoro WebGPU generation error:', error);
+        throw new Error(`Kokoro WebGPU failed: ${error.message}`);
+      }
+    }
+    
+    // Handle ONNX models (existing code)
     if (!ttsSession) {
       throw new Error('TTS model not available. Please check console for errors.');
+    }
+    
+    // Limit text length to prevent model errors
+    // Most TTS models have practical limits (e.g., 512-1024 tokens)
+    const MAX_TEXT_LENGTH = 500; // Conservative limit
+    if (text.length > MAX_TEXT_LENGTH) {
+      console.warn(`Text length ${text.length} exceeds limit ${MAX_TEXT_LENGTH}, truncating...`);
+      text = text.substring(0, MAX_TEXT_LENGTH);
     }
     
     // Inspect model input specifications to get correct types
@@ -332,7 +937,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // Preprocess text
-    const processedText = preprocessText(text);
+    const processedText = preprocessText(text, currentModelConfig);
     
     // Prepare input tensor
     // TTS models typically expect:
@@ -447,12 +1052,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         speed: speedValue
       });
     } else {
-      // For other models, use simple text input
-      const textChars = processedText.split('');
-      const textArray = new BigInt64Array(textChars.map(c => BigInt(c.charCodeAt(0))));
-      const textTensor = new ort.Tensor('int64', textArray, [1, textArray.length]);
+      // For other models (LJSpeech, VCTK), encode text to token IDs
+      const tokenIds = encodeTextToTokens(processedText, currentModelConfig);
+      console.log('Encoded text to tokens:', {
+        text: processedText.substring(0, 20) + (processedText.length > 20 ? '...' : ''),
+        tokenCount: tokenIds.length,
+        tokenRange: `[${Math.min(...tokenIds)}, ${Math.max(...tokenIds)}]`,
+        sampleTokens: tokenIds.slice(0, 10)
+      });
+      
+      const textArray = new BigInt64Array(tokenIds.map(id => BigInt(id)));
+      
+      // Check if model expects 1D or 2D input
+      let textShape;
+      if (inputMetadata && Array.isArray(inputMetadata)) {
+        const textInput = inputMetadata.find(inp => inp.name === 'text' || inp.name === currentModelConfig.inputNames?.[0]);
+        if (textInput && textInput.shape) {
+          // Check if shape indicates 1D (e.g., ["text_length"]) or 2D (e.g., [1, "text_length"])
+          const shape = textInput.shape;
+          if (shape.length === 1 || (shape.length === 2 && shape[0] === 1)) {
+            // Model expects 1D: [text_length]
+            textShape = [textArray.length];
+          } else {
+            // Model expects 2D: [1, text_length]
+            textShape = [1, textArray.length];
+          }
+          console.log(`Text input shape from model: ${JSON.stringify(shape)}, using: ${JSON.stringify(textShape)}`);
+        } else {
+          // Default to 1D for text inputs (most common)
+          textShape = [textArray.length];
+        }
+      } else {
+        // Default to 1D for text inputs (most common)
+        textShape = [textArray.length];
+      }
+      
+      const textTensor = new ort.Tensor('int64', textArray, textShape);
       const inputName = currentModelConfig.inputNames?.[0] || 'text';
       inputs[inputName] = textTensor;
+      console.log(`Created text tensor with shape [${textShape.join(',')}]`);
+      
+      // Check if model requires speaker IDs (sids)
+      if (currentModelConfig.inputNames && currentModelConfig.inputNames.includes('sids')) {
+        const speakerId = currentModelConfig.defaultSpeakerId || 0;
+        const sidsTensor = new ort.Tensor('int64', new BigInt64Array([BigInt(speakerId)]), [1]);
+        inputs['sids'] = sidsTensor;
+        console.log(`Created speaker ID tensor: ${speakerId}`);
+      }
     }
     
     // Run inference
@@ -555,7 +1201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Generate speech (with AI model if available, otherwise fallback)
+  // Generate speech using AI model
   async function generateSpeech() {
     const text = textInput.value.trim();
     
@@ -565,55 +1211,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (voices.length === 0) {
-      status.textContent = 'No voices available. Please wait for voices to load.';
-      status.className = 'status-message error';
-      return;
-    }
-
     try {
-      status.textContent = 'Generating audio...';
+      status.textContent = 'Generating audio with AI model...';
       status.className = 'status-message info';
       generateBtn.disabled = true;
       downloadBtn.disabled = true;
 
-      // Get selected voice and settings
-      const selectedVoiceName = voiceSelect.value;
-      const selectedVoice = voices.find(v => v.name === selectedVoiceName) || voices[0];
+      // Get settings
       const rate = parseFloat(rateSlider.value);
       const pitch = parseFloat(pitchSlider.value);
       const volume = parseFloat(volumeSlider.value);
 
-      // Play using Web Speech API (so user can hear it with the selected voice)
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.voice = selectedVoice;
-      utterance.rate = rate;
-      utterance.pitch = pitch;
-      utterance.volume = volume;
-      speechSynthesis.speak(utterance);
-
-      // Try to generate downloadable audio using AI model
-      try {
-        status.textContent = 'Generating audio with AI model...';
-        status.className = 'status-message info';
-        const blob = await generateSpeechWithAI(text, rate, pitch, volume);
-        if (blob) {
-          audioBlob = blob;
-          const audioUrl = URL.createObjectURL(audioBlob);
-          audioPlayer.src = audioUrl;
-          audioContainer.style.display = 'block';
-          downloadBtn.disabled = false;
-          status.textContent = 'Audio generated successfully with AI!';
-          status.className = 'status-message success';
-        } else {
-          throw new Error('AI model returned no audio');
-        }
-      } catch (aiError) {
-        console.error('AI TTS failed, using fallback:', aiError);
-        status.textContent = `AI model failed: ${aiError.message}. Using basic synthesis...`;
-        status.className = 'status-message error';
-        // Fallback to basic synthesis
-        await generateDownloadableAudio(text, rate, pitch, volume);
+      // Generate audio using AI model
+      const blob = await generateSpeechWithAI(text, rate, pitch, volume);
+      if (blob) {
+        audioBlob = blob;
+        const audioUrl = URL.createObjectURL(audioBlob);
+        audioPlayer.src = audioUrl;
+        audioContainer.style.display = 'block';
+        downloadBtn.disabled = false;
+        status.textContent = 'Audio generated successfully!';
+        status.className = 'status-message success';
+      } else {
+        throw new Error('AI model returned no audio');
       }
       
       generateBtn.disabled = false;
@@ -627,98 +1247,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Fallback: Generate downloadable audio using Web Audio API (basic synthesis)
-  async function generateDownloadableAudio(text, rate, pitch, volume) {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const sampleRate = ctx.sampleRate;
-    
-    const estimatedDuration = (text.length * 0.1) / rate;
-    const bufferLength = Math.ceil(estimatedDuration * sampleRate);
-    const buffer = ctx.createBuffer(1, bufferLength, sampleRate);
-    const data = buffer.getChannelData(0);
-    
-    let position = 0;
-    const baseFreq = 180;
-    
-    for (let i = 0; i < text.length && position < data.length; i++) {
-      const char = text[i];
-      
-      if (char === ' ' || char === '\n' || char === '\t') {
-        position += Math.floor(sampleRate * 0.08 / rate);
-        continue;
-      }
-      
-      const charCode = char.charCodeAt(0);
-      const freq = baseFreq + (charCode % 250) * pitch;
-      const charDuration = Math.floor(sampleRate * 0.1 / rate);
-      
-      for (let j = 0; j < charDuration && position < data.length; j++) {
-        const t = j / sampleRate;
-        let envelope = 1.0;
-        if (j < charDuration * 0.15) {
-          envelope = j / (charDuration * 0.15);
-        } else if (j > charDuration * 0.85) {
-          envelope = (charDuration - j) / (charDuration * 0.15);
-        }
-        
-        let sample = 0;
-        sample += Math.sin(2 * Math.PI * freq * t) * 0.5;
-        sample += Math.sin(2 * Math.PI * freq * 2 * t) * 0.25;
-        sample += Math.sin(2 * Math.PI * freq * 3 * t) * 0.15;
-        sample += Math.sin(2 * Math.PI * freq * 4 * t) * 0.1;
-        
-        data[position] = sample * envelope * volume * 0.25;
-        position++;
-      }
-    }
-    
-    const actualBuffer = ctx.createBuffer(1, position, sampleRate);
-    const actualData = actualBuffer.getChannelData(0);
-    for (let i = 0; i < position; i++) {
-      actualData[i] = data[i];
-    }
-    
-    const destination = ctx.createMediaStreamDestination();
-    const source = ctx.createBufferSource();
-    source.buffer = actualBuffer;
-    source.playbackRate.value = 1.0;
-    source.connect(destination);
-    
-    const mediaRecorder = new MediaRecorder(destination.stream, {
-      mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg'
-    });
-    
-    const audioChunks = [];
-    
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunks.push(event.data);
-      }
-    };
-    
-    mediaRecorder.onstop = () => {
-      audioBlob = new Blob(audioChunks, { 
-        type: mediaRecorder.mimeType || 'audio/webm' 
-      });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      audioPlayer.src = audioUrl;
-      audioContainer.style.display = 'block';
-      downloadBtn.disabled = false;
-      status.textContent = 'Audio generated successfully!';
-      status.className = 'status-message success';
-    };
-    
-    mediaRecorder.start();
-    source.start(0);
-    
-    source.onended = () => {
-      setTimeout(() => {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-          mediaRecorder.stop();
-        }
-      }, 500);
-    };
-  }
 
   // Download audio file
   function downloadAudio() {
@@ -750,7 +1278,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     downloadBtn.disabled = true;
     status.textContent = '';
     status.className = 'status-message';
-    speechSynthesis.cancel();
   }
 
   // Event listeners
