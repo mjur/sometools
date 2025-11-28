@@ -1060,10 +1060,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Kokoro-js handles text preprocessing internally, so pass text directly
         // No need for complex tokenization or preprocessing
+        
+        // Kokoro has a limit of ~30 seconds of audio per generation
+        // Estimate: ~80-100 characters per second of speech (very conservative estimate)
+        // So ~1500-2000 characters per generation is a safe limit
+        // For longer texts, we'll need to chunk and concatenate
+        const MAX_CHARS_PER_GENERATION = 1500; // Conservative limit to stay well under 30 seconds
+        
         console.log('Generating speech with Kokoro:', {
           text: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
           voice: selectedVoice,
-          textLength: text.length
+          textLength: text.length,
+          willChunk: text.length > MAX_CHARS_PER_GENERATION
         });
         
         // Validate voice is available before generating
@@ -1088,65 +1096,186 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Generate audio using kokoro-js
-        // Pass text directly - kokoro-js handles all preprocessing
-        updateProgress('Generating speech...', 30);
-        
-        // Simulate progress during generation (since kokoro-js doesn't provide progress callbacks)
-        const progressInterval = setInterval(() => {
-          const currentPercent = parseFloat(progressBar ? progressBar.style.width : '30') || 30;
-          if (currentPercent < 90) {
-            updateProgress('Generating speech...', currentPercent + 5);
-          }
-        }, 200);
-        
-        const audio = await kokoroModel.generate(text, {
-          voice: selectedVoice
-        });
-        
-        clearInterval(progressInterval);
-        updateProgress('Processing audio...', 90);
-        
-        // kokoro-js returns an audio object with structure: {audio: Float32Array, sampling_rate: number}
-        // Based on the console logs and kokoro-js documentation:
-        // - audio.audio: Float32Array
-        // - audio.sampling_rate: number
-        // - Methods: toWav(), toBlob(), save()
-        
+        // For long texts, split into chunks and concatenate the audio
         let audioArray;
         let sampleRate = 24000; // Kokoro typically uses 24kHz
         
-        // Extract audio data - prefer using toBlob() as per kokoro-js documentation
-        try {
-          if (audio.toBlob && typeof audio.toBlob === 'function') {
-            // Use toBlob() method as recommended by kokoro-js
-            const blob = await audio.toBlob();
-            const arrayBuffer = await blob.arrayBuffer();
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-            audioArray = audioBuffer.getChannelData(0);
-            sampleRate = audioBuffer.sampleRate;
-            console.log('Extracted audio using toBlob():', { length: audioArray.length, sampleRate });
-          } else if (audio.audio && audio.audio instanceof Float32Array) {
-            // Direct Float32Array access
-            audioArray = audio.audio;
-            sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
-            console.log('Extracted audio from audio.audio property:', { length: audioArray.length, sampleRate });
-          } else if (audio.data && audio.data instanceof Float32Array) {
-            // Alternative data property
-            audioArray = audio.data;
-            sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
-            console.log('Extracted audio from audio.data property:', { length: audioArray.length, sampleRate });
-          } else if (audio instanceof AudioBuffer) {
-            // Direct AudioBuffer
-            audioArray = audio.getChannelData(0);
-            sampleRate = audio.sampleRate;
-            console.log('Extracted audio from AudioBuffer:', { length: audioArray.length, sampleRate });
-          } else {
-            throw new Error('Audio object does not have expected structure');
+        if (text.length > MAX_CHARS_PER_GENERATION) {
+          // Split text into chunks ONLY at sentence boundaries
+          // Never break sentences - if a sentence is too long, it will be its own chunk
+          const chunks = [];
+          let currentChunk = '';
+          
+          // Split by sentence endings (. ! ?) but keep the punctuation
+          const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+          
+          // Use 90% of max to leave buffer room
+          const safeMaxLength = Math.floor(MAX_CHARS_PER_GENERATION * 0.9);
+          
+          for (const sentence of sentences) {
+            const potentialLength = (currentChunk + sentence).length;
+            
+            if (potentialLength <= safeMaxLength) {
+              // Add sentence to current chunk
+              currentChunk += sentence;
+            } else {
+              // Push current chunk if it exists
+              if (currentChunk.trim()) {
+                chunks.push(currentChunk.trim());
+              }
+              
+              // Start new chunk with this sentence
+              // Even if sentence is longer than max, we keep it as one chunk
+              // (only breaking on sentence boundaries)
+              if (sentence.length > safeMaxLength) {
+                console.warn(`Sentence is ${sentence.length} characters (exceeds safe limit of ${safeMaxLength}), but keeping as single chunk per requirement`);
+              }
+              currentChunk = sentence;
+            }
           }
-        } catch (error) {
-          console.error('Failed to extract audio data:', error);
-          throw new Error(`Unable to extract audio data: ${error.message}`);
+          
+          // Push any remaining chunk
+          if (currentChunk.trim()) {
+            chunks.push(currentChunk.trim());
+          }
+          
+          console.log(`Splitting text into ${chunks.length} chunks for generation`);
+          console.log('Chunk lengths:', chunks.map((c, idx) => `Chunk ${idx + 1}: ${c.length} chars`));
+          
+          // Generate audio for each chunk
+          const audioChunks = [];
+          for (let i = 0; i < chunks.length; i++) {
+            console.log(`\n=== Processing chunk ${i + 1}/${chunks.length} ===`);
+            const chunk = chunks[i].trim();
+            if (!chunk) {
+              console.log(`Skipping empty chunk ${i + 1}`);
+              continue;
+            }
+            console.log(`Chunk ${i + 1} length: ${chunk.length} characters`);
+            
+            updateProgress(`Generating speech (${i + 1}/${chunks.length})...`, 30 + (i / chunks.length) * 50);
+            
+            // Simulate progress during generation
+            const progressInterval = setInterval(() => {
+              const basePercent = 30 + (i / chunks.length) * 50;
+              const currentPercent = parseFloat(progressBar ? progressBar.style.width : basePercent.toString()) || basePercent;
+              if (currentPercent < basePercent + 45) {
+                updateProgress(`Generating speech (${i + 1}/${chunks.length})...`, currentPercent + 2);
+              }
+            }, 200);
+            
+            let audio;
+            try {
+              audio = await kokoroModel.generate(chunk, {
+                voice: selectedVoice
+              });
+            } catch (error) {
+              clearInterval(progressInterval);
+              console.error(`Failed to generate audio for chunk ${i + 1}/${chunks.length}:`, error);
+              console.warn(`Skipping chunk ${i + 1} due to error, continuing with remaining chunks...`);
+              continue;
+            }
+            
+            clearInterval(progressInterval);
+            
+            // Extract audio data from this chunk
+            let chunkAudioArray;
+            try {
+              if (audio.toBlob && typeof audio.toBlob === 'function') {
+                const blob = await audio.toBlob();
+                const arrayBuffer = await blob.arrayBuffer();
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+                chunkAudioArray = audioBuffer.getChannelData(0);
+                sampleRate = audioBuffer.sampleRate;
+              } else if (audio.audio && audio.audio instanceof Float32Array) {
+                chunkAudioArray = audio.audio;
+                sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
+              } else if (audio.data && audio.data instanceof Float32Array) {
+                chunkAudioArray = audio.data;
+                sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
+              } else if (audio instanceof AudioBuffer) {
+                chunkAudioArray = audio.getChannelData(0);
+                sampleRate = audio.sampleRate;
+              } else {
+                throw new Error('Audio object does not have expected structure');
+              }
+            } catch (error) {
+              console.error(`Failed to extract audio data from chunk ${i + 1}/${chunks.length}:`, error);
+              // Continue with next chunk instead of throwing - log the error but don't stop
+              console.warn(`Skipping chunk ${i + 1} due to error, continuing with remaining chunks...`);
+              continue;
+            }
+            
+            // Add a small silence between chunks (0.2 seconds)
+            const silenceLength = Math.floor(sampleRate * 0.2);
+            const silence = new Float32Array(silenceLength).fill(0);
+            audioChunks.push(chunkAudioArray, silence);
+            console.log(`✓ Successfully processed chunk ${i + 1}/${chunks.length}, audio length: ${chunkAudioArray.length} samples`);
+          }
+          
+          console.log(`\n=== Completed processing all ${chunks.length} chunks ===`);
+          console.log(`Successfully generated ${audioChunks.length / 2} audio chunks (each has audio + silence)`);
+          
+          // Concatenate all audio chunks
+          if (audioChunks.length === 0) {
+            throw new Error('No audio chunks were successfully generated. Please check the console for errors.');
+          }
+          
+          const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+          audioArray = new Float32Array(totalLength);
+          let offset = 0;
+          for (const chunk of audioChunks) {
+            audioArray.set(chunk, offset);
+            offset += chunk.length;
+          }
+          
+          const successfulChunks = audioChunks.length / 2; // Each chunk has audio + silence
+          console.log(`✓ Concatenated ${successfulChunks} audio chunks (out of ${chunks.length} total text chunks), total length: ${audioArray.length} samples`);
+        } else {
+          // Single generation for shorter texts
+          updateProgress('Generating speech...', 30);
+          
+          // Simulate progress during generation (since kokoro-js doesn't provide progress callbacks)
+          const progressInterval = setInterval(() => {
+            const currentPercent = parseFloat(progressBar ? progressBar.style.width : '30') || 30;
+            if (currentPercent < 90) {
+              updateProgress('Generating speech...', currentPercent + 5);
+            }
+          }, 200);
+          
+          const audio = await kokoroModel.generate(text, {
+            voice: selectedVoice
+          });
+          
+          clearInterval(progressInterval);
+          updateProgress('Processing audio...', 90);
+          
+          // Extract audio data
+          try {
+            if (audio.toBlob && typeof audio.toBlob === 'function') {
+              const blob = await audio.toBlob();
+              const arrayBuffer = await blob.arrayBuffer();
+              const ctx = new (window.AudioContext || window.webkitAudioContext)();
+              const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+              audioArray = audioBuffer.getChannelData(0);
+              sampleRate = audioBuffer.sampleRate;
+            } else if (audio.audio && audio.audio instanceof Float32Array) {
+              audioArray = audio.audio;
+              sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
+            } else if (audio.data && audio.data instanceof Float32Array) {
+              audioArray = audio.data;
+              sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
+            } else if (audio instanceof AudioBuffer) {
+              audioArray = audio.getChannelData(0);
+              sampleRate = audio.sampleRate;
+            } else {
+              throw new Error('Audio object does not have expected structure');
+            }
+          } catch (error) {
+            console.error('Failed to extract audio data:', error);
+            throw new Error(`Unable to extract audio data: ${error.message}`);
+          }
         }
         
         updateProgress('Finalizing audio...', 95);
