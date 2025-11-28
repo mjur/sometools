@@ -12,69 +12,21 @@ let audioBlob = null;
 let ort = null;
 let ttsSession = null;
 
-// TTS Model configurations
-// Using Hugging Face CDN for direct model access
-// Note: These models require proper tokenization which may not be fully available
-// Output quality may vary without the original tokenizers
-const TTS_MODEL_CONFIGS = {
-  kokoro: {
-    key: 'tts-kokoro-v1',
-    url: 'https://huggingface.co/NeuML/kokoro-base-onnx/resolve/main/model.onnx',
-    name: 'Kokoro Base TTS (ONNX)',
-    description: 'High-quality TTS with multiple speakers and accents',
-    requiresSetup: false,
-    inputNames: ['tokens', 'style', 'speed'], // Kokoro expects these inputs
-    outputName: 'audio',
-    defaultStyle: 0, // Default speaker/style ID
-    defaultSpeed: 1.0,
-    enabled: true,
-    type: 'onnx'
-  },
-  kokoroWebGPU: {
-    key: 'tts-kokoro-webgpu',
-    modelId: 'onnx-community/Kokoro-82M-v1.0-ONNX',
-    name: 'Kokoro WebGPU TTS',
-    description: 'Kokoro TTS optimized for WebGPU with better performance and quality',
-    requiresSetup: false,
-    enabled: true,
-    type: 'transformers',
-    voices: ['af_heart', 'af_sky', 'af_bella', 'am_adam', 'am_michael', 'am_sky', 'ar_sky', 'cn_xiaoxiao', 'cn_yunxi', 'de_katja', 'es_elvira', 'fr_denise', 'hi_madhur', 'it_elsa', 'ja_aoi', 'ja_akari', 'ko_injong', 'pl_agnieszka', 'pt_raquel', 'ru_svetlana', 'tr_emel', 'uk_ukrainian_tts', 'vi_banmai', 'zh_fengge', 'zh_xiaoyi']
-  },
-  ljspeech: {
-    key: 'tts-ljspeech-v1',
-    url: 'https://huggingface.co/NeuML/ljspeech-vits-onnx/resolve/main/model.onnx',
-    name: 'LJSpeech VITS TTS',
-    description: 'English TTS trained on LJSpeech dataset',
-    requiresSetup: false,
-    inputNames: ['text'],
-    outputName: 'audio',
-    enabled: true
-  },
-  vctk: {
-    key: 'tts-vctk-v1',
-    url: 'https://huggingface.co/NeuML/vctk-vits-onnx/resolve/main/model.onnx',
-    name: 'VCTK VITS TTS',
-    description: 'Multiple English speakers with various accents',
-    requiresSetup: false,
-    inputNames: ['text', 'sids'], // text and speaker IDs
-    outputName: 'audio',
-    defaultSpeakerId: 0, // Default speaker (0-based index)
-    enabled: true
-  }
+// TTS Model configuration
+const TTS_MODEL_CONFIG = {
+  key: 'tts-kokoro-webgpu',
+  modelId: 'onnx-community/Kokoro-82M-v1.0-ONNX',
+  name: 'Kokoro WebGPU TTS',
+  description: 'Kokoro TTS optimized for WebGPU with better performance and quality',
+  requiresSetup: false,
+  enabled: true,
+  type: 'transformers',
+  voices: ['af_heart', 'af_sky', 'af_bella', 'am_adam', 'am_michael', 'am_sky', 'ar_sky', 'cn_xiaoxiao', 'cn_yunxi', 'de_katja', 'es_elvira', 'fr_denise', 'hi_madhur', 'it_elsa', 'ja_aoi', 'ja_akari', 'ko_injong', 'pl_agnieszka', 'pt_raquel', 'ru_svetlana', 'tr_emel', 'uk_ukrainian_tts', 'vi_banmai', 'zh_fengge', 'zh_xiaoyi']
 };
-
-// Default model
-let currentModelConfig = TTS_MODEL_CONFIGS.kokoroWebGPU;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   const textInput = qs('#text-input');
-  const rateSlider = qs('#rate-slider');
-  const pitchSlider = qs('#pitch-slider');
-  const volumeSlider = qs('#volume-slider');
-  const rateValue = qs('#rate-value');
-  const pitchValue = qs('#pitch-value');
-  const volumeValue = qs('#volume-value');
   const generateBtn = qs('#generate-btn');
   const downloadBtn = qs('#download-btn');
   const clearBtn = qs('#clear-btn');
@@ -98,75 +50,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Get model selector (created in HTML)
-  const modelSelect = qs('#model-select');
-  
-  // Update current model when selection changes
-  if (modelSelect) {
-    on(modelSelect, 'change', (e) => {
-      const selectedKey = e.target.value;
-      const config = TTS_MODEL_CONFIGS[selectedKey];
-      if (!config) {
-        status.textContent = 'Invalid model selection';
-        status.className = 'status-message error';
-        return;
-      }
-      currentModelConfig = config;
-      ttsSession = null; // Reset ONNX session
-      kokoroModel = null; // Reset kokoro-js model
-      
-      // Show/hide voice selector for Kokoro WebGPU
-      if (voiceSelectGroup) {
-        if (config.type === 'transformers') {
-          voiceSelectGroup.style.display = 'block';
-          // Voices will be populated when model loads
-          if (voiceSelectKokoro) {
-            voiceSelectKokoro.innerHTML = '<option value="">Loading voices...</option>';
-          }
-          // Load the model and voices immediately
-          loadTTSModel().then(() => {
-            // Voices will be populated in loadTTSModel
-          }).catch(err => {
-            console.error('Failed to load model:', err);
-            if (voiceSelectKokoro) {
-              voiceSelectKokoro.innerHTML = '<option value="">Failed to load voices</option>';
-            }
-          });
-        } else {
-          voiceSelectGroup.style.display = 'none';
-        }
-      }
-      
-      status.textContent = `Switched to ${currentModelConfig.name}`;
-      status.className = 'status-message info';
-      setTimeout(() => {
-        if (status.textContent.includes('Switched to')) {
-          status.textContent = '';
-        }
-      }, 2000);
-    });
-  }
-  
-  // Initialize voice selector visibility based on default model
+  // Initialize voice selector - always show for Kokoro WebGPU
   if (voiceSelectGroup) {
-    if (currentModelConfig.type === 'transformers') {
-      voiceSelectGroup.style.display = 'block';
-      // Load voices for default model
-      if (voiceSelectKokoro) {
-        voiceSelectKokoro.innerHTML = '<option value="">Loading voices...</option>';
-      }
-      // Load the model and voices on page load
-      loadTTSModel().then(() => {
-        // Voices will be populated in loadTTSModel
-      }).catch(err => {
-        console.error('Failed to load default model:', err);
-        if (voiceSelectKokoro) {
-          voiceSelectKokoro.innerHTML = '<option value="">Failed to load voices</option>';
-        }
-      });
-    } else {
-      voiceSelectGroup.style.display = 'none';
+    voiceSelectGroup.style.display = 'block';
+    // Load voices for default model
+    if (voiceSelectKokoro) {
+      voiceSelectKokoro.innerHTML = '<option value="">Loading voices...</option>';
     }
+    // Load the model and voices on page load
+    loadTTSModel().then(() => {
+      // Voices will be populated in loadTTSModel
+    }).catch(err => {
+      console.error('Failed to load default model:', err);
+      if (voiceSelectKokoro) {
+        voiceSelectKokoro.innerHTML = '<option value="">Failed to load voices</option>';
+      }
+    });
   }
 
   // Load kokoro-js library
@@ -211,11 +110,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load TTS model
   async function loadTTSModel() {
     // Handle kokoro-js models (Kokoro WebGPU)
-    if (currentModelConfig.type === 'transformers') {
+    if (TTS_MODEL_CONFIG.type === 'transformers') {
       if (kokoroModel) return kokoroModel;
       
       try {
-        status.textContent = `Loading ${currentModelConfig.name}...`;
+        status.textContent = `Loading ${TTS_MODEL_CONFIG.name}...`;
         status.className = 'status-message info';
         
         const KokoroTTS = await loadKokoroJS();
@@ -238,7 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Use fp32 for WebGPU, q8 for WASM (as per kokoro-js recommendations)
         const dtype = device === 'webgpu' ? 'fp32' : 'q8';
         
-        kokoroModel = await KokoroTTS.from_pretrained(currentModelConfig.modelId, {
+        kokoroModel = await KokoroTTS.from_pretrained(TTS_MODEL_CONFIG.modelId, {
           dtype: dtype,
           device: device
         });
@@ -336,16 +235,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
               console.warn('No voices found from model, using fallback list');
               // Use fallback voices from config
-              if (currentModelConfig.voices && currentModelConfig.voices.length > 0) {
+              if (TTS_MODEL_CONFIG.voices && TTS_MODEL_CONFIG.voices.length > 0) {
                 voiceSelectKokoro.innerHTML = '';
-                currentModelConfig.voices.forEach(voice => {
+                TTS_MODEL_CONFIG.voices.forEach(voice => {
                   const option = document.createElement('option');
                   option.value = voice;
                   option.textContent = voice.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                   voiceSelectKokoro.appendChild(option);
                 });
-                voiceSelectKokoro.value = currentModelConfig.voices[0] || 'af_heart';
-                console.log('Using fallback voices from config:', currentModelConfig.voices.length, 'voices');
+                voiceSelectKokoro.value = TTS_MODEL_CONFIG.voices[0] || 'af_heart';
+                console.log('Using fallback voices from config:', TTS_MODEL_CONFIG.voices.length, 'voices');
               } else {
                 voiceSelectKokoro.innerHTML = '<option value="">No voices available</option>';
                 console.error('No fallback voices available in config');
@@ -357,50 +256,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (voiceError) {
           console.warn('Failed to get voices from model, using default list:', voiceError);
           // Fallback to hardcoded voices if list_voices fails
-          if (voiceSelectKokoro && currentModelConfig.voices) {
+          if (voiceSelectKokoro && TTS_MODEL_CONFIG.voices) {
             voiceSelectKokoro.innerHTML = '';
-            currentModelConfig.voices.forEach(voice => {
+            TTS_MODEL_CONFIG.voices.forEach(voice => {
               const option = document.createElement('option');
               option.value = voice;
               option.textContent = voice.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
               voiceSelectKokoro.appendChild(option);
             });
-            voiceSelectKokoro.value = currentModelConfig.voices[0] || 'af_heart';
+            voiceSelectKokoro.value = TTS_MODEL_CONFIG.voices[0] || 'af_heart';
           }
         }
         
-        status.textContent = `${currentModelConfig.name} loaded successfully!`;
+        status.textContent = `${TTS_MODEL_CONFIG.name} loaded successfully!`;
         status.className = 'status-message success';
         setTimeout(() => {
           if (status.textContent.includes('loaded successfully')) {
             status.textContent = '';
           }
         }, 2000);
-        
+
         return kokoroModel;
       } catch (error) {
         console.error('Failed to load kokoro-js model:', error);
-        status.textContent = `${currentModelConfig.name} failed to load: ${error.message}`;
+        status.textContent = `${TTS_MODEL_CONFIG.name} failed to load: ${error.message}`;
         status.className = 'status-message error';
         return null;
       }
     }
-    
-    // Handle ONNX models (existing code)
-    if (ttsSession && currentModelConfig.type === 'onnx') return ttsSession;
+
+    // No ONNX models - only Kokoro WebGPU is supported
+    return null;
     
     try {
       await initONNX();
       
-      status.textContent = `Loading ${currentModelConfig.name}...`;
+      status.textContent = `Loading ${TTS_MODEL_CONFIG.name}...`;
       status.className = 'status-message info';
       
       // Download or get cached model from Hugging Face CDN
       const modelData = await getOrDownloadModel(
-        currentModelConfig.key,
-        currentModelConfig.url,
+        TTS_MODEL_CONFIG.key,
+        TTS_MODEL_CONFIG.url,
         (progress) => {
-          status.textContent = `Downloading ${currentModelConfig.name}: ${Math.round(progress)}%`;
+          status.textContent = `Downloading ${TTS_MODEL_CONFIG.name}: ${Math.round(progress)}%`;
         }
       );
       
@@ -409,7 +308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         executionProviders: ['wasm'] // Use WASM for compatibility
       });
       
-      status.textContent = `${currentModelConfig.name} loaded successfully!`;
+      status.textContent = `${TTS_MODEL_CONFIG.name} loaded successfully!`;
       status.className = 'status-message success';
       setTimeout(() => {
         if (status.textContent.includes('loaded successfully')) {
@@ -420,7 +319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return ttsSession;
     } catch (error) {
       console.error('Failed to load TTS model:', error);
-      status.textContent = `${currentModelConfig.name} not available. Using basic synthesis.`;
+      status.textContent = `${TTS_MODEL_CONFIG.name} not available. Using basic synthesis.`;
       status.className = 'status-message error';
       return null;
     }
@@ -428,17 +327,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
   // Update slider value displays
-  on(rateSlider, 'input', (e) => {
-    rateValue.textContent = parseFloat(e.target.value).toFixed(1);
-  });
-
-  on(pitchSlider, 'input', (e) => {
-    pitchValue.textContent = parseFloat(e.target.value).toFixed(1);
-  });
-
-  on(volumeSlider, 'input', (e) => {
-    volumeValue.textContent = parseFloat(e.target.value).toFixed(1);
-  });
 
   // Preprocess text for TTS model
   function preprocessText(text, modelConfig = null) {
@@ -788,8 +676,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     return { audioArray, sampleRate };
   }
 
+  // Convert AudioBuffer to WAV blob
+  function audioBufferToWav(buffer) {
+    const length = buffer.length;
+    const numberOfChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const arrayBuffer = new ArrayBuffer(44 + length * numberOfChannels * 2);
+    const view = new DataView(arrayBuffer);
+    
+    // WAV header
+    const writeString = (offset, string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+    
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + length * numberOfChannels * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numberOfChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+    view.setUint16(32, numberOfChannels * 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, length * numberOfChannels * 2, true);
+    
+    // Convert float samples to 16-bit PCM
+    let offset = 44;
+    for (let i = 0; i < length; i++) {
+      for (let channel = 0; channel < numberOfChannels; channel++) {
+        const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        offset += 2;
+      }
+    }
+    
+    return new Blob([arrayBuffer], { type: 'audio/wav' });
+  }
+
   // Generate speech using AI model
-  async function generateSpeechWithAI(text, rate, pitch, volume) {
+  async function generateSpeechWithAI(text) {
     // Always try to load the model first
     const model = await loadTTSModel();
     
@@ -798,7 +728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // Handle kokoro-js models (Kokoro WebGPU)
-    if (currentModelConfig.type === 'transformers' && kokoroModel) {
+    if (TTS_MODEL_CONFIG.type === 'transformers' && kokoroModel) {
       try {
         status.textContent = 'Generating speech with Kokoro WebGPU...';
         status.className = 'status-message info';
@@ -806,7 +736,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Get selected voice
         // Re-query element to ensure we have the latest reference
         const voiceSelect = qs('#voice-select-kokoro');
-        const selectedVoice = voiceSelect ? voiceSelect.value : (currentModelConfig.voices?.[0] || 'af_heart');
+        const selectedVoice = voiceSelect ? voiceSelect.value : (TTS_MODEL_CONFIG.voices?.[0] || 'af_heart');
         
         // Kokoro-js handles text preprocessing internally, so pass text directly
         // No need for complex tokenization or preprocessing
@@ -819,8 +749,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Generate audio using kokoro-js
         // Pass text directly - kokoro-js handles all preprocessing
         const audio = await kokoroModel.generate(text, {
-          voice: selectedVoice,
-          speed: Math.max(0.5, Math.min(2.0, rate)) // Apply speed if supported
+          voice: selectedVoice
         });
         
         // kokoro-js returns an audio object with structure: {audio: Float32Array, sampling_rate: number}
@@ -866,26 +795,26 @@ document.addEventListener('DOMContentLoaded', async () => {
           throw new Error(`Unable to extract audio data: ${error.message}`);
         }
         
-        // Create AudioContext and process audio
+        // Create AudioContext and play audio while recording
         const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
         const buffer = ctx.createBuffer(1, audioArray.length, sampleRate);
         const channelData = buffer.getChannelData(0);
         
-        // Copy and apply volume
+        // Copy audio data
         for (let i = 0; i < audioArray.length; i++) {
-          channelData[i] = audioArray[i] * volume;
+          channelData[i] = audioArray[i];
         }
         
-        // Apply rate using playbackRate
+        // Create MediaStreamDestination to capture audio
         const destination = ctx.createMediaStreamDestination();
         const source = ctx.createBufferSource();
         source.buffer = buffer;
-        source.playbackRate.value = rate;
         
+        // Connect to both destination (for recording) and speakers (for playback)
         source.connect(destination);
         source.connect(ctx.destination);
         
-        // Record for download
+        // Record the stream
         const mediaRecorder = new MediaRecorder(destination.stream, {
           mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg'
         });
@@ -900,8 +829,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         return new Promise((resolve) => {
           mediaRecorder.onstop = () => {
-            audioBlob = new Blob(audioChunks, { 
-              type: mediaRecorder.mimeType || 'audio/webm' 
+            const audioBlob = new Blob(audioChunks, {
+              type: mediaRecorder.mimeType || 'audio/webm'
             });
             resolve(audioBlob);
           };
@@ -986,7 +915,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputs = {};
     
     // Kokoro model requires: tokens, style, speed
-    if (currentModelConfig.inputNames && currentModelConfig.inputNames.includes('tokens')) {
+    if (TTS_MODEL_CONFIG.inputNames && TTS_MODEL_CONFIG.inputNames.includes('tokens')) {
       // Get expected types from model if available
       // Based on latest error: "Actual: (tensor(float)) , expected: (tensor(int64))"
       // Since speed must be float32, and tokens should be int64, style should also be int64
@@ -1040,7 +969,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       // Add style (speaker/style embedding) - shape should be [1, 256] based on model metadata
       // Style is a 256-dimensional embedding vector, not just an ID
-      const styleId = currentModelConfig.defaultStyle || 0;
+      const styleId = TTS_MODEL_CONFIG.defaultStyle || 0;
       let styleTensor;
       
       // Get style shape from metadata (should be [1, 256])
@@ -1099,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Check if model expects 1D or 2D input
       let textShape;
       if (inputMetadata && Array.isArray(inputMetadata)) {
-        const textInput = inputMetadata.find(inp => inp.name === 'text' || inp.name === currentModelConfig.inputNames?.[0]);
+        const textInput = inputMetadata.find(inp => inp.name === 'text' || inp.name === TTS_MODEL_CONFIG.inputNames?.[0]);
         if (textInput && textInput.shape) {
           // Check if shape indicates 1D (e.g., ["text_length"]) or 2D (e.g., [1, "text_length"])
           const shape = textInput.shape;
@@ -1121,13 +1050,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       const textTensor = new ort.Tensor('int64', textArray, textShape);
-      const inputName = currentModelConfig.inputNames?.[0] || 'text';
+      const inputName = TTS_MODEL_CONFIG.inputNames?.[0] || 'text';
       inputs[inputName] = textTensor;
       console.log(`Created text tensor with shape [${textShape.join(',')}]`);
       
       // Check if model requires speaker IDs (sids)
-      if (currentModelConfig.inputNames && currentModelConfig.inputNames.includes('sids')) {
-        const speakerId = currentModelConfig.defaultSpeakerId || 0;
+      if (TTS_MODEL_CONFIG.inputNames && TTS_MODEL_CONFIG.inputNames.includes('sids')) {
+        const speakerId = TTS_MODEL_CONFIG.defaultSpeakerId || 0;
         const sidsTensor = new ort.Tensor('int64', new BigInt64Array([BigInt(speakerId)]), [1]);
         inputs['sids'] = sidsTensor;
         console.log(`Created speaker ID tensor: ${speakerId}`);
@@ -1145,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Inference completed. Output keys:', Object.keys(outputs));
     
     // Get audio output - output name from config
-    const audioOutput = outputs[currentModelConfig.outputName || 'audio'] || 
+    const audioOutput = outputs[TTS_MODEL_CONFIG.outputName || 'audio'] || 
                        outputs.output || 
                        outputs[Object.keys(outputs)[0]];
     
@@ -1250,21 +1179,54 @@ document.addEventListener('DOMContentLoaded', async () => {
       generateBtn.disabled = true;
       downloadBtn.disabled = true;
 
-      // Get settings
-      const rate = parseFloat(rateSlider.value);
-      const pitch = parseFloat(pitchSlider.value);
-      const volume = parseFloat(volumeSlider.value);
-
       // Generate audio using AI model
-      const blob = await generateSpeechWithAI(text, rate, pitch, volume);
+      const blob = await generateSpeechWithAI(text);
       if (blob) {
+        console.log('Received audio blob:', {
+          size: blob.size,
+          type: blob.type
+        });
         audioBlob = blob;
         const audioUrl = URL.createObjectURL(audioBlob);
+        console.log('Created audio URL:', audioUrl);
         audioPlayer.src = audioUrl;
         audioContainer.style.display = 'block';
         downloadBtn.disabled = false;
-        status.textContent = 'Audio generated successfully!';
-        status.className = 'status-message success';
+        
+        // Wait for audio to load, then play
+        audioPlayer.onloadeddata = async () => {
+          try {
+            await audioPlayer.play();
+            status.textContent = 'Audio generated and playing!';
+            status.className = 'status-message success';
+          } catch (playError) {
+            console.warn('Auto-play prevented:', playError);
+            status.textContent = 'Audio generated! Click play to listen.';
+            status.className = 'status-message success';
+          }
+        };
+        
+        audioPlayer.onerror = (e) => {
+          console.error('Audio playback error:', e);
+          status.textContent = 'Audio generated but playback failed. Try downloading the file.';
+          status.className = 'status-message error';
+        };
+        
+        // If already loaded, try to play immediately
+        if (audioPlayer.readyState >= 2) {
+          try {
+            await audioPlayer.play();
+            status.textContent = 'Audio generated and playing!';
+            status.className = 'status-message success';
+          } catch (playError) {
+            console.warn('Auto-play prevented:', playError);
+            status.textContent = 'Audio generated! Click play to listen.';
+            status.className = 'status-message success';
+          }
+        } else {
+          status.textContent = 'Loading audio...';
+          status.className = 'status-message info';
+        }
       } else {
         throw new Error('AI model returned no audio');
       }
