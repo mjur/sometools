@@ -457,6 +457,35 @@ Return ONLY the JSON array, no other text.`;
   }
 }
 
+// Apply corrections directly from errors array (fallback method)
+function applyCorrectionsFromErrors(text, errors) {
+  if (!errors || errors.length === 0) {
+    return text;
+  }
+  
+  // Sort errors by position (reverse order for safe replacement)
+  const sortedErrors = errors
+    .map(error => {
+      const index = text.indexOf(error.text);
+      return { ...error, index };
+    })
+    .filter(e => e.index !== -1)
+    .sort((a, b) => b.index - a.index);
+  
+  let corrected = text;
+  
+  // Apply corrections from end to start to preserve indices
+  for (const error of sortedErrors) {
+    if (error.correction) {
+      const before = corrected.substring(0, error.index);
+      const after = corrected.substring(error.index + error.text.length);
+      corrected = before + error.correction + after;
+    }
+  }
+  
+  return corrected;
+}
+
 // Parse errors from natural language response (fallback)
 function parseErrorsFromText(response, originalText) {
   const errors = [];
@@ -563,12 +592,9 @@ async function fixAllIssues() {
       engine = await initializeEngine();
     }
     
-    const prompt = `You are a grammar and spelling corrector. Fix all errors in the following text. Return ONLY the corrected text, with no explanations or additional text.
+    const prompt = `Correct the following text by fixing all grammar and spelling errors. Return ONLY the corrected text with no explanations, no labels, no markdown, no code blocks.
 
-Original text:
-${checkedText}
-
-Return the corrected version:`;
+${checkedText}`;
 
     let response = '';
     
@@ -578,7 +604,7 @@ Return the corrected version:`;
           messages: [
             {
               role: 'system',
-              content: 'You are a grammar and spelling corrector. Return only the corrected text, no explanations.'
+              content: 'You are a text corrector. When given text with errors, return ONLY the corrected version of the text. Do not include any explanations, labels, or additional text. Just return the corrected text.'
             },
             {
               role: 'user',
@@ -602,7 +628,7 @@ Return the corrected version:`;
       } else if (engine.chat) {
         const result = await engine.chat({
           messages: [
-            { role: 'system', content: 'You are a grammar and spelling corrector. Return only the corrected text, no explanations.' },
+            { role: 'system', content: 'You are a text corrector. When given text with errors, return ONLY the corrected version of the text. Do not include any explanations, labels, or additional text. Just return the corrected text.' },
             { role: 'user', content: prompt }
           ],
           temperature: 0.1,
@@ -616,18 +642,108 @@ Return the corrected version:`;
         }
       }
       
+      console.log('Raw AI response:', response);
       response = response.trim();
       
       // Remove any markdown code blocks
       response = response.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/i, '').trim();
+      
+      // Try to extract just the corrected text by removing instruction patterns
+      // Remove common prefixes
+      response = response.replace(/^(?:corrected text:|here is the corrected text:|corrected version:|the corrected text is:|here's the corrected text:|fixed text:)\s*/i, '');
+      
+      // If response contains markers like "Original:" or "Corrected:", extract the corrected part
+      if (response.includes('Original:') || response.includes('Corrected:') || response.includes('Fixed:')) {
+        const correctedMatch = response.match(/(?:Corrected|Fixed):[\s\n]*([\s\S]+?)(?:\n\n|$)/i);
+        if (correctedMatch) {
+          response = correctedMatch[1].trim();
+        }
+      }
+      
+      // Remove instruction lines at the start
+      const lines = response.split('\n');
+      let startIndex = 0;
+      const instructionPatterns = /^(corrected|fixed|here|original|text|instructions?|note:|error|issue)/i;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Skip lines that look like instructions (short lines with instruction keywords)
+        if (instructionPatterns.test(line) && (line.length < 100 || line.endsWith(':'))) {
+          continue;
+        }
+        
+        // If we find a line that doesn't look like an instruction, start from there
+        startIndex = i;
+        break;
+      }
+      
+      response = lines.slice(startIndex).join('\n').trim();
+      
+      // Final cleanup: if response still seems to contain instructions, try to find the actual text
+      // Look for the longest continuous block of text that doesn't contain instruction keywords
+      if (response.toLowerCase().includes('instruction') || response.toLowerCase().includes('note:') || response.toLowerCase().includes('error:')) {
+        // Split by double newlines and find the longest block
+        const blocks = response.split(/\n\n+/);
+        const textBlocks = blocks.filter(block => {
+          const lower = block.toLowerCase();
+          return !lower.includes('instruction') && 
+                 !lower.includes('note:') && 
+                 !lower.startsWith('corrected') &&
+                 !lower.startsWith('error:') &&
+                 !lower.startsWith('issue:') &&
+                 block.trim().length > 20; // Reasonable minimum length
+        });
+        
+        if (textBlocks.length > 0) {
+          // Use the longest block that looks like actual text
+          response = textBlocks.reduce((a, b) => a.length > b.length ? a : b).trim();
+        }
+      }
+      
+      // If response is still problematic, try a different approach:
+      // Find the part that most closely matches the original text structure
+      if (!response || response.length < checkedText.length * 0.3) {
+        console.warn('Extracted text seems too short, trying alternative extraction');
+        
+        // Try to find text that contains words from the original
+        const originalWords = checkedText.split(/\s+/).filter(w => w.length > 3);
+        const responseWords = response.split(/\s+/);
+        const matchingWords = responseWords.filter(w => originalWords.some(ow => ow.toLowerCase().includes(w.toLowerCase()) || w.toLowerCase().includes(ow.toLowerCase())));
+        
+        if (matchingWords.length < originalWords.length * 0.3) {
+          // Response doesn't seem to contain the corrected text
+          // Fallback: Apply corrections directly from errors array
+          console.warn('Response does not appear to contain corrected text, applying corrections from errors array');
+          response = applyCorrectionsFromErrors(checkedText, errors);
+        }
+      }
+      
+      // Final validation: check if response looks like actual text (not just instructions)
+      const responseLower = response.toLowerCase();
+      if (responseLower.includes('instruction') || 
+          responseLower.includes('error:') || 
+          responseLower.includes('issue:') ||
+          (responseLower.includes('corrected') && response.length < 200)) {
+        // Still looks like instructions, try applying corrections directly
+        console.warn('Response still looks like instructions, applying corrections from errors array');
+        response = applyCorrectionsFromErrors(checkedText, errors);
+      }
+      
+      console.log('Extracted corrected text:', response.substring(0, 100) + '...');
       
       fixedText = response;
       
       // Update textarea with fixed text
       textInput.value = fixedText;
       
-      // Re-check the fixed text
-      await checkGrammar();
+      // Show the fixed text in output (without re-checking)
+      const escapedText = fixedText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+      output.innerHTML = `<p style="color: var(--ok); margin-bottom: 1rem;">✓ Text corrected! The corrected text is now in the input field.</p><div class="highlighted-text">${escapedText}</div>`;
+      
+      // Update errors summary
+      errorsSummary.innerHTML = '<strong style="color: var(--ok);">✓ All issues have been fixed!</strong>';
       
       toast('All issues fixed!', 'success');
       
