@@ -1163,9 +1163,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const source = ctx.createBufferSource();
         source.buffer = buffer;
         
-        // Connect to both destination (for recording) and speakers (for playback)
+        // Connect only to destination (for recording) - don't play during recording
+        // Audio will be played through the audio player element after recording
         source.connect(destination);
-        source.connect(ctx.destination);
         
         // Record the stream
         const mediaRecorder = new MediaRecorder(destination.stream, {
