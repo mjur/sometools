@@ -1062,10 +1062,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // No need for complex tokenization or preprocessing
         
         // Kokoro has a limit of ~30 seconds of audio per generation
-        // Estimate: ~80-100 characters per second of speech (very conservative estimate)
-        // So ~1500-2000 characters per generation is a safe limit
+        // Estimate: ~40-50 characters per second of speech (very conservative estimate)
+        // So ~600-800 characters per generation is a safe limit
         // For longer texts, we'll need to chunk and concatenate
-        const MAX_CHARS_PER_GENERATION = 1500; // Conservative limit to stay well under 30 seconds
+        const MAX_CHARS_PER_GENERATION = 600; // Very conservative limit to stay well under 30 seconds
         
         console.log('Generating speech with Kokoro:', {
           text: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
@@ -1109,8 +1109,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           // Split by sentence endings (. ! ?) but keep the punctuation
           const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
           
-          // Use 90% of max to leave buffer room
-          const safeMaxLength = Math.floor(MAX_CHARS_PER_GENERATION * 0.9);
+          // Use 85% of max to leave more buffer room for safety
+          const safeMaxLength = Math.floor(MAX_CHARS_PER_GENERATION * 0.85);
           
           for (const sentence of sentences) {
             const potentialLength = (currentChunk + sentence).length;
@@ -1142,8 +1142,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           console.log(`Splitting text into ${chunks.length} chunks for generation`);
           console.log('Chunk lengths:', chunks.map((c, idx) => `Chunk ${idx + 1}: ${c.length} chars`));
           
-          // Generate audio for each chunk
-          const audioChunks = [];
+          // Generate audio for each chunk IN ORDER
+          // Store chunks with their index to maintain order
+          const audioChunksWithIndex = [];
+          
           for (let i = 0; i < chunks.length; i++) {
             console.log(`\n=== Processing chunk ${i + 1}/${chunks.length} ===`);
             const chunk = chunks[i].trim();
@@ -1202,16 +1204,31 @@ document.addEventListener('DOMContentLoaded', async () => {
               }
             } catch (error) {
               console.error(`Failed to extract audio data from chunk ${i + 1}/${chunks.length}:`, error);
-              // Continue with next chunk instead of throwing - log the error but don't stop
               console.warn(`Skipping chunk ${i + 1} due to error, continuing with remaining chunks...`);
               continue;
             }
             
-            // Add a small silence between chunks (0.2 seconds)
-            const silenceLength = Math.floor(sampleRate * 0.2);
-            const silence = new Float32Array(silenceLength).fill(0);
-            audioChunks.push(chunkAudioArray, silence);
-            console.log(`✓ Successfully processed chunk ${i + 1}/${chunks.length}, audio length: ${chunkAudioArray.length} samples`);
+            // Store with index to maintain order
+            audioChunksWithIndex.push({
+              index: i,
+              audio: chunkAudioArray
+            });
+            console.log(`✓ Successfully processed chunk ${i + 1}/${chunks.length} (index ${i}), audio length: ${chunkAudioArray.length} samples`);
+          }
+          
+          // Sort by index to ensure correct order (should already be in order, but just to be safe)
+          audioChunksWithIndex.sort((a, b) => a.index - b.index);
+          
+          // Build final audio chunks array with silences
+          const audioChunks = [];
+          const silenceLength = Math.floor(sampleRate * 0.2);
+          for (let i = 0; i < audioChunksWithIndex.length; i++) {
+            audioChunks.push(audioChunksWithIndex[i].audio);
+            // Add silence between chunks (except after the last one)
+            if (i < audioChunksWithIndex.length - 1) {
+              const silence = new Float32Array(silenceLength).fill(0);
+              audioChunks.push(silence);
+            }
           }
           
           console.log(`\n=== Completed processing all ${chunks.length} chunks ===`);
