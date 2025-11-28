@@ -1,4 +1,4 @@
-# DevTools - Framework-Free Client-Side Developer Tools
+# BunchOfTools - Framework-Free Client-Side Developer Tools
 
 A collection of fast developer tools that run entirely in your browser.
 
