@@ -195,6 +195,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const displayName = voiceInfo.name || voiceId.substring(3).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                 
                 const prefix = voiceId.substring(0, 2); // e.g., 'af', 'am', 'bf', 'bm'
+                
+                // Language mapping from prefix
+                const langMap = {
+                  'a': 'English (US)',
+                  'b': 'English (UK)',
+                  'c': 'Chinese',
+                  'd': 'German',
+                  'e': 'Spanish',
+                  'f': 'French',
+                  'h': 'Hindi',
+                  'i': 'Italian',
+                  'j': 'Japanese',
+                  'k': 'Korean',
+                  'p': prefix[1] === 't' ? 'Portuguese' : 'Polish',
+                  'r': 'Russian',
+                  't': 'Turkish',
+                  'u': 'Ukrainian',
+                  'v': 'Vietnamese',
+                  'z': 'Chinese',
+                  'ar': 'Arabic'
+                };
+                const detectedLang = langMap[prefix[0]] || 'Other';
+                const detectedGender = prefix[1] === 'f' ? 'Female' : prefix[1] === 'm' ? 'Male' : 'Other';
+                
                 const lang = prefix[0] === 'a' ? 'American' : prefix[0] === 'b' ? 'British' : 
                             prefix[0] === 'c' ? 'Chinese' : prefix[0] === 'd' ? 'German' :
                             prefix[0] === 'e' ? 'Spanish' : prefix[0] === 'f' ? 'French' :
@@ -207,10 +231,71 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const gender = prefix[1] === 'f' ? 'Female' : prefix[1] === 'm' ? 'Male' : 'Other';
                 const groupKey = `${lang} ${gender}`;
                 
+                // Build detailed info string with prominent language and gender
+                let infoParts = [];
+                
+                // Always add language (from metadata or prefix)
+                if (voiceInfo.language) {
+                  const langCodeMap = {
+                    'en-us': 'English (US)',
+                    'en-gb': 'English (UK)',
+                    'zh': 'Chinese',
+                    'ja': 'Japanese',
+                    'ko': 'Korean',
+                    'es': 'Spanish',
+                    'fr': 'French',
+                    'de': 'German',
+                    'it': 'Italian',
+                    'pt': 'Portuguese',
+                    'ru': 'Russian',
+                    'hi': 'Hindi',
+                    'tr': 'Turkish',
+                    'uk': 'Ukrainian',
+                    'vi': 'Vietnamese',
+                    'pl': 'Polish',
+                    'ar': 'Arabic'
+                  };
+                  const readableLang = langCodeMap[voiceInfo.language] || voiceInfo.language;
+                  infoParts.push(readableLang);
+                } else {
+                  // Use detected language from prefix
+                  infoParts.push(detectedLang);
+                }
+                
+                // Always add gender (from metadata or prefix)
+                if (voiceInfo.gender) {
+                  const genderText = voiceInfo.gender.charAt(0).toUpperCase() + voiceInfo.gender.slice(1);
+                  infoParts.push(genderText);
+                } else {
+                  // Use detected gender from prefix
+                  infoParts.push(detectedGender);
+                }
+                
+                // Additional info from metadata
+                if (voiceInfo.traits) {
+                  infoParts.push(voiceInfo.traits);
+                }
+                if (voiceInfo.targetQuality) {
+                  infoParts.push(`Quality: ${voiceInfo.targetQuality}`);
+                }
+                if (voiceInfo.overallGrade) {
+                  infoParts.push(`Grade: ${voiceInfo.overallGrade}`);
+                }
+                
+                // Format: "Name - Language, Gender, ..."
+                const infoString = ` - ${infoParts.join(', ')}`;
+                
                 if (!groupedVoices[groupKey]) {
                   groupedVoices[groupKey] = [];
                 }
-                groupedVoices[groupKey].push({ id: voiceId, name: displayName });
+                const voiceData = { 
+                  id: voiceId, 
+                  name: displayName,
+                  info: infoString,
+                  voiceInfo: voiceInfo
+                };
+                console.log('Adding voice to group:', { voiceId, displayName, infoString, infoParts });
+                groupedVoices[groupKey].push(voiceData);
               });
               
               // Create optgroups for better organization
@@ -219,10 +304,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const optgroup = document.createElement('optgroup');
                 optgroup.label = groupName;
                 
+                // Sort voices within group by name
+                groupedVoices[groupName].sort((a, b) => a.name.localeCompare(b.name));
+                
                 groupedVoices[groupName].forEach(voice => {
                   const option = document.createElement('option');
-                  option.value = voice.id; // Use voice ID (e.g., 'af_heart')
-                  option.textContent = voice.name; // Use display name (e.g., 'Heart')
+                  option.value = voice.id; // Store voice ID as value
+                  // Use display name as main text with additional info
+                  const fullText = `${voice.name}${voice.info || ''}`;
+                  console.log('Setting option text:', { name: voice.name, info: voice.info, fullText });
+                  option.textContent = fullText;
+                  // Store voice ID in data attribute for easy access
+                  option.dataset.voiceId = voice.id;
                   optgroup.appendChild(option);
                 });
                 
@@ -237,12 +330,73 @@ document.addEventListener('DOMContentLoaded', async () => {
               // Use fallback voices from config
               if (TTS_MODEL_CONFIG.voices && TTS_MODEL_CONFIG.voices.length > 0) {
                 voiceSelectKokoro.innerHTML = '';
-                TTS_MODEL_CONFIG.voices.forEach(voice => {
-                  const option = document.createElement('option');
-                  option.value = voice;
-                  option.textContent = voice.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                  voiceSelectKokoro.appendChild(option);
+                
+                // Group fallback voices by language/gender
+                const fallbackGrouped = {};
+                TTS_MODEL_CONFIG.voices.forEach(voiceId => {
+                  const prefix = voiceId.substring(0, 2);
+                  const langMap = {
+                    'a': 'English (US)',
+                    'b': 'English (UK)',
+                    'c': 'Chinese',
+                    'd': 'German',
+                    'e': 'Spanish',
+                    'f': 'French',
+                    'h': 'Hindi',
+                    'i': 'Italian',
+                    'j': 'Japanese',
+                    'k': 'Korean',
+                    'p': prefix[1] === 't' ? 'Portuguese' : 'Polish',
+                    'r': 'Russian',
+                    't': 'Turkish',
+                    'u': 'Ukrainian',
+                    'v': 'Vietnamese',
+                    'z': 'Chinese',
+                    'ar': 'Arabic'
+                  };
+                  const detectedLang = langMap[prefix[0]] || 'Other';
+                  const detectedGender = prefix[1] === 'f' ? 'Female' : prefix[1] === 'm' ? 'Male' : 'Other';
+                  
+                  const lang = prefix[0] === 'a' ? 'American' : prefix[0] === 'b' ? 'British' : 
+                              prefix[0] === 'c' ? 'Chinese' : prefix[0] === 'd' ? 'German' :
+                              prefix[0] === 'e' ? 'Spanish' : prefix[0] === 'f' ? 'French' :
+                              prefix[0] === 'h' ? 'Hindi' : prefix[0] === 'i' ? 'Italian' :
+                              prefix[0] === 'j' ? 'Japanese' : prefix[0] === 'k' ? 'Korean' :
+                              prefix[0] === 'p' ? (prefix[1] === 't' ? 'Portuguese' : 'Polish') :
+                              prefix[0] === 'r' ? 'Russian' : prefix[0] === 't' ? 'Turkish' :
+                              prefix[0] === 'u' ? 'Ukrainian' : prefix[0] === 'v' ? 'Vietnamese' :
+                              prefix[0] === 'z' ? 'Chinese' : 'Other';
+                  const gender = prefix[1] === 'f' ? 'Female' : prefix[1] === 'm' ? 'Male' : 'Other';
+                  const groupKey = `${lang} ${gender}`;
+                  
+                  if (!fallbackGrouped[groupKey]) {
+                    fallbackGrouped[groupKey] = [];
+                  }
+                  
+                  const displayName = voiceId.substring(3).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                  const infoString = ` - ${detectedLang}, ${detectedGender}`;
+                  
+                  fallbackGrouped[groupKey].push({ id: voiceId, name: displayName, info: infoString });
                 });
+                
+                // Create optgroups
+                const sortedGroups = Object.keys(fallbackGrouped).sort();
+                sortedGroups.forEach(groupName => {
+                  const optgroup = document.createElement('optgroup');
+                  optgroup.label = groupName;
+                  
+                  fallbackGrouped[groupName].sort((a, b) => a.name.localeCompare(b.name));
+                  
+                  fallbackGrouped[groupName].forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.id;
+                    option.textContent = `${voice.name}${voice.info}`;
+                    optgroup.appendChild(option);
+                  });
+                  
+                  voiceSelectKokoro.appendChild(optgroup);
+                });
+                
                 voiceSelectKokoro.value = TTS_MODEL_CONFIG.voices[0] || 'af_heart';
                 console.log('Using fallback voices from config:', TTS_MODEL_CONFIG.voices.length, 'voices');
               } else {
@@ -258,12 +412,73 @@ document.addEventListener('DOMContentLoaded', async () => {
           // Fallback to hardcoded voices if list_voices fails
           if (voiceSelectKokoro && TTS_MODEL_CONFIG.voices) {
             voiceSelectKokoro.innerHTML = '';
-            TTS_MODEL_CONFIG.voices.forEach(voice => {
-              const option = document.createElement('option');
-              option.value = voice;
-              option.textContent = voice.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-              voiceSelectKokoro.appendChild(option);
+            
+            // Group fallback voices by language/gender
+            const errorFallbackGrouped = {};
+            TTS_MODEL_CONFIG.voices.forEach(voiceId => {
+              const prefix = voiceId.substring(0, 2);
+              const langMap = {
+                'a': 'English (US)',
+                'b': 'English (UK)',
+                'c': 'Chinese',
+                'd': 'German',
+                'e': 'Spanish',
+                'f': 'French',
+                'h': 'Hindi',
+                'i': 'Italian',
+                'j': 'Japanese',
+                'k': 'Korean',
+                'p': prefix[1] === 't' ? 'Portuguese' : 'Polish',
+                'r': 'Russian',
+                't': 'Turkish',
+                'u': 'Ukrainian',
+                'v': 'Vietnamese',
+                'z': 'Chinese',
+                'ar': 'Arabic'
+              };
+              const detectedLang = langMap[prefix[0]] || 'Other';
+              const detectedGender = prefix[1] === 'f' ? 'Female' : prefix[1] === 'm' ? 'Male' : 'Other';
+              
+              const lang = prefix[0] === 'a' ? 'American' : prefix[0] === 'b' ? 'British' : 
+                          prefix[0] === 'c' ? 'Chinese' : prefix[0] === 'd' ? 'German' :
+                          prefix[0] === 'e' ? 'Spanish' : prefix[0] === 'f' ? 'French' :
+                          prefix[0] === 'h' ? 'Hindi' : prefix[0] === 'i' ? 'Italian' :
+                          prefix[0] === 'j' ? 'Japanese' : prefix[0] === 'k' ? 'Korean' :
+                          prefix[0] === 'p' ? (prefix[1] === 't' ? 'Portuguese' : 'Polish') :
+                          prefix[0] === 'r' ? 'Russian' : prefix[0] === 't' ? 'Turkish' :
+                          prefix[0] === 'u' ? 'Ukrainian' : prefix[0] === 'v' ? 'Vietnamese' :
+                          prefix[0] === 'z' ? 'Chinese' : 'Other';
+              const gender = prefix[1] === 'f' ? 'Female' : prefix[1] === 'm' ? 'Male' : 'Other';
+              const groupKey = `${lang} ${gender}`;
+              
+              if (!errorFallbackGrouped[groupKey]) {
+                errorFallbackGrouped[groupKey] = [];
+              }
+              
+              const displayName = voiceId.substring(3).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              const infoString = ` - ${detectedLang}, ${detectedGender}`;
+              
+              errorFallbackGrouped[groupKey].push({ id: voiceId, name: displayName, info: infoString });
             });
+            
+            // Create optgroups
+            const sortedGroups = Object.keys(errorFallbackGrouped).sort();
+            sortedGroups.forEach(groupName => {
+              const optgroup = document.createElement('optgroup');
+              optgroup.label = groupName;
+              
+              errorFallbackGrouped[groupName].sort((a, b) => a.name.localeCompare(b.name));
+              
+              errorFallbackGrouped[groupName].forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.id;
+                option.textContent = `${voice.name}${voice.info}`;
+                optgroup.appendChild(option);
+              });
+              
+              voiceSelectKokoro.appendChild(optgroup);
+            });
+            
             voiceSelectKokoro.value = TTS_MODEL_CONFIG.voices[0] || 'af_heart';
           }
         }
