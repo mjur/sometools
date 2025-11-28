@@ -61,6 +61,15 @@
 
         <div class="output-section">
           <div id="status" class="status-message" aria-live="polite"></div>
+          <div id="progress-container" style="display: none; margin-top: 1rem; padding: 1rem; background-color: var(--bg-elev); border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span id="progress-text">Processing...</span>
+              <span id="progress-percent">0%</span>
+            </div>
+            <div style="width: 100%; height: 8px; background-color: var(--border); border-radius: 4px; overflow: hidden;">
+              <div id="progress-bar" style="width: 0%; height: 100%; background-color: var(--accent); transition: width 0.3s;"></div>
+            </div>
+          </div>
           <div id="audio-container" style="display: none;">
             <audio id="audio-player" controls></audio>
           </div>

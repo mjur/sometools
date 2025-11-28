@@ -33,10 +33,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   const status = qs('#status');
   const audioContainer = qs('#audio-container');
   const audioPlayer = qs('#audio-player');
+  const progressContainer = qs('#progress-container');
+  const progressText = qs('#progress-text');
+  const progressPercent = qs('#progress-percent');
+  const progressBar = qs('#progress-bar');
   
   // Get voice selector elements for Kokoro WebGPU
   const voiceSelectKokoro = qs('#voice-select-kokoro');
   const voiceSelectGroup = qs('#voice-select-group');
+  
+  // Progress bar helper functions
+  function showProgress(text = 'Processing...', percent = 0) {
+    if (progressContainer) {
+      progressContainer.style.display = 'block';
+      if (progressText) progressText.textContent = text;
+      if (progressPercent) progressPercent.textContent = `${Math.round(percent)}%`;
+      if (progressBar) progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    }
+  }
+  
+  function updateProgress(text, percent) {
+    if (progressText) progressText.textContent = text;
+    if (progressPercent) progressPercent.textContent = `${Math.round(percent)}%`;
+    if (progressBar) progressBar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+  }
+  
+  function hideProgress() {
+    if (progressContainer) {
+      progressContainer.style.display = 'none';
+    }
+  }
 
   // Initialize ONNX Runtime
   async function initONNX() {
@@ -116,8 +142,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         status.textContent = `Loading ${TTS_MODEL_CONFIG.name}...`;
         status.className = 'status-message info';
+        showProgress('Loading kokoro-js library...', 10);
         
         const KokoroTTS = await loadKokoroJS();
+        updateProgress('Initializing model...', 30);
         
         // Load Kokoro TTS model using kokoro-js
         // Model ID from Hugging Face
@@ -137,10 +165,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Use fp32 for WebGPU, q8 for WASM (as per kokoro-js recommendations)
         const dtype = device === 'webgpu' ? 'fp32' : 'q8';
         
+        updateProgress('Downloading model files...', 50);
         kokoroModel = await KokoroTTS.from_pretrained(TTS_MODEL_CONFIG.modelId, {
           dtype: dtype,
           device: device
         });
+        updateProgress('Loading voices...', 80);
         
         console.log(`Kokoro model loaded with device: ${device}, dtype: ${dtype}`);
         
@@ -522,6 +552,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
         
+        // Update progress to 100% after voices are loaded
+        updateProgress('Model loaded!', 100);
+        setTimeout(() => {
+          hideProgress();
+        }, 500);
+        
         status.textContent = `${TTS_MODEL_CONFIG.name} loaded successfully!`;
         status.className = 'status-message success';
         setTimeout(() => {
@@ -533,6 +569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return kokoroModel;
       } catch (error) {
         console.error('Failed to load kokoro-js model:', error);
+        hideProgress(); // Hide progress on error
         status.textContent = `${TTS_MODEL_CONFIG.name} failed to load: ${error.message}`;
         status.className = 'status-message error';
         return null;
@@ -986,6 +1023,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         status.textContent = 'Generating speech with Kokoro WebGPU...';
         status.className = 'status-message info';
+        showProgress('Preparing text...', 10);
         
         // Get selected voice
         // Re-query element to ensure we have the latest reference
@@ -1048,9 +1086,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Generate audio using kokoro-js
         // Pass text directly - kokoro-js handles all preprocessing
+        updateProgress('Generating speech...', 30);
+        
+        // Simulate progress during generation (since kokoro-js doesn't provide progress callbacks)
+        const progressInterval = setInterval(() => {
+          const currentPercent = parseFloat(progressBar ? progressBar.style.width : '30') || 30;
+          if (currentPercent < 90) {
+            updateProgress('Generating speech...', currentPercent + 5);
+          }
+        }, 200);
+        
         const audio = await kokoroModel.generate(text, {
           voice: selectedVoice
         });
+        
+        clearInterval(progressInterval);
+        updateProgress('Processing audio...', 90);
         
         // kokoro-js returns an audio object with structure: {audio: Float32Array, sampling_rate: number}
         // Based on the console logs and kokoro-js documentation:
@@ -1095,6 +1146,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           throw new Error(`Unable to extract audio data: ${error.message}`);
         }
         
+        updateProgress('Finalizing audio...', 95);
+        
         // Create AudioContext and play audio while recording
         const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
         const buffer = ctx.createBuffer(1, audioArray.length, sampleRate);
@@ -1129,6 +1182,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         return new Promise((resolve) => {
           mediaRecorder.onstop = () => {
+            updateProgress('Complete!', 100);
+            setTimeout(() => {
+              hideProgress();
+            }, 300);
+            
             const audioBlob = new Blob(audioChunks, {
               type: mediaRecorder.mimeType || 'audio/webm'
             });
@@ -1532,6 +1590,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       generateBtn.disabled = false;
+      hideProgress();
       
     } catch (error) {
       console.error('Error:', error);
@@ -1539,6 +1598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       status.className = 'status-message error';
       generateBtn.disabled = false;
       downloadBtn.disabled = true;
+      hideProgress();
     }
   }
 
