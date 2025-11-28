@@ -222,10 +222,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Load Kokoro TTS model using kokoro-js
         // Model ID from Hugging Face
+        // Check for WebGPU support
+        let device = 'wasm';
+        try {
+          if (navigator.gpu) {
+            const adapter = await navigator.gpu.requestAdapter();
+            if (adapter) {
+              device = 'webgpu';
+            }
+          }
+        } catch (e) {
+          console.warn('WebGPU not available, using WASM:', e);
+        }
+        
+        // Use fp32 for WebGPU, q8 for WASM (as per kokoro-js recommendations)
+        const dtype = device === 'webgpu' ? 'fp32' : 'q8';
+        
         kokoroModel = await KokoroTTS.from_pretrained(currentModelConfig.modelId, {
-          dtype: 'q8', // Quantized for faster loading
-          device: 'webgpu' // Use WebGPU if available, falls back to WASM
+          dtype: dtype,
+          device: device
         });
+        
+        console.log(`Kokoro model loaded with device: ${device}, dtype: ${dtype}`);
         
         // Get available voices from the model
         let availableVoices = [];
@@ -790,13 +808,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         const voiceSelect = qs('#voice-select-kokoro');
         const selectedVoice = voiceSelect ? voiceSelect.value : (currentModelConfig.voices?.[0] || 'af_heart');
         
+        // Kokoro-js handles text preprocessing internally, so pass text directly
+        // No need for complex tokenization or preprocessing
+        console.log('Generating speech with Kokoro:', {
+          text: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+          voice: selectedVoice,
+          textLength: text.length
+        });
+        
         // Generate audio using kokoro-js
+        // Pass text directly - kokoro-js handles all preprocessing
         const audio = await kokoroModel.generate(text, {
-          voice: selectedVoice
+          voice: selectedVoice,
+          speed: Math.max(0.5, Math.min(2.0, rate)) // Apply speed if supported
         });
         
         // kokoro-js returns an audio object with structure: {audio: Float32Array, sampling_rate: number}
-        // Based on the console logs, we know it has:
+        // Based on the console logs and kokoro-js documentation:
         // - audio.audio: Float32Array
         // - audio.sampling_rate: number
         // - Methods: toWav(), toBlob(), save()
@@ -804,33 +832,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         let audioArray;
         let sampleRate = 24000; // Kokoro typically uses 24kHz
         
-        // Extract audio data - the structure is {audio: Float32Array, sampling_rate: number}
-        if (audio.audio && audio.audio instanceof Float32Array) {
-          audioArray = audio.audio;
-          sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
-        } else if (audio.data && audio.data instanceof Float32Array) {
-          audioArray = audio.data;
-          sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
-        } else if (audio instanceof AudioBuffer) {
-          audioArray = audio.getChannelData(0);
-          sampleRate = audio.sampleRate;
-        } else {
-          // Fallback: try to use toBlob() method and decode
-          try {
-            if (audio.toBlob && typeof audio.toBlob === 'function') {
-              const blob = await audio.toBlob();
-              const arrayBuffer = await blob.arrayBuffer();
-              const ctx = new (window.AudioContext || window.webkitAudioContext)();
-              const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-              audioArray = audioBuffer.getChannelData(0);
-              sampleRate = audioBuffer.sampleRate;
-            } else {
-              throw new Error('Audio object does not have expected structure');
-            }
-          } catch (error) {
-            console.error('Failed to extract audio data:', error);
-            throw new Error(`Unable to extract audio data: ${error.message}`);
+        // Extract audio data - prefer using toBlob() as per kokoro-js documentation
+        try {
+          if (audio.toBlob && typeof audio.toBlob === 'function') {
+            // Use toBlob() method as recommended by kokoro-js
+            const blob = await audio.toBlob();
+            const arrayBuffer = await blob.arrayBuffer();
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+            audioArray = audioBuffer.getChannelData(0);
+            sampleRate = audioBuffer.sampleRate;
+            console.log('Extracted audio using toBlob():', { length: audioArray.length, sampleRate });
+          } else if (audio.audio && audio.audio instanceof Float32Array) {
+            // Direct Float32Array access
+            audioArray = audio.audio;
+            sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
+            console.log('Extracted audio from audio.audio property:', { length: audioArray.length, sampleRate });
+          } else if (audio.data && audio.data instanceof Float32Array) {
+            // Alternative data property
+            audioArray = audio.data;
+            sampleRate = audio.sampling_rate || audio.sampleRate || 24000;
+            console.log('Extracted audio from audio.data property:', { length: audioArray.length, sampleRate });
+          } else if (audio instanceof AudioBuffer) {
+            // Direct AudioBuffer
+            audioArray = audio.getChannelData(0);
+            sampleRate = audio.sampleRate;
+            console.log('Extracted audio from AudioBuffer:', { length: audioArray.length, sampleRate });
+          } else {
+            throw new Error('Audio object does not have expected structure');
           }
+        } catch (error) {
+          console.error('Failed to extract audio data:', error);
+          throw new Error(`Unable to extract audio data: ${error.message}`);
         }
         
         // Create AudioContext and process audio
