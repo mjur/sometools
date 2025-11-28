@@ -182,6 +182,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
           
+          // IMPORTANT: Only use voices that are actually available in the model
+          // The model may not have all voices from the config, so we must filter
+          if (availableVoices.length > 0) {
+            // Use the voices directly from the model - these are guaranteed to work
+            console.log('Using voices directly from model:', availableVoices.length, 'voices');
+            console.log('Available voices:', availableVoices);
+          } else {
+            // If we couldn't get voices from the model, try to get them from generate error
+            // This is a fallback - we'll populate with a minimal set
+            console.warn('Could not get voices from model, will try to populate from error message if generation fails');
+          }
+          
           // Update the voice selector with available voices
           if (voiceSelectKokoro) {
             if (availableVoices.length > 0) {
@@ -322,18 +334,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                 voiceSelectKokoro.appendChild(optgroup);
               });
               
-              // Set default voice
-              voiceSelectKokoro.value = availableVoices[0] || 'af_heart';
-              console.log('Voice selector populated with', availableVoices.length, 'voices');
+              // Set default voice - must be from availableVoices
+              if (availableVoices.length > 0) {
+                voiceSelectKokoro.value = availableVoices[0];
+                console.log('Voice selector populated with', availableVoices.length, 'voices from model');
+              } else {
+                console.error('No voices available from model!');
+                voiceSelectKokoro.innerHTML = '<option value="">No voices available</option>';
+              }
             } else {
-              console.warn('No voices found from model, using fallback list');
-              // Use fallback voices from config
-              if (TTS_MODEL_CONFIG.voices && TTS_MODEL_CONFIG.voices.length > 0) {
+              console.warn('No voices found from model, using known-available voices from error message');
+              // Use only the voices that are actually available in the model
+              // These are the voices from the error message when an unavailable voice is used
+              const knownAvailableVoices = [
+                'af_heart', 'af_alloy', 'af_aoede', 'af_bella', 'af_jessica', 'af_kore', 
+                'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky',
+                'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 
+                'am_onyx', 'am_puck', 'am_santa',
+                'bf_emma', 'bf_isabella', 'bm_george', 'bm_lewis', 'bf_alice', 
+                'bf_lily', 'bm_daniel', 'bm_fable'
+              ];
+              
+              availableVoices = knownAvailableVoices; // Set this so the rest of the code works
+              
+              if (knownAvailableVoices.length > 0) {
                 voiceSelectKokoro.innerHTML = '';
                 
-                // Group fallback voices by language/gender
+                // Group voices by language/gender
                 const fallbackGrouped = {};
-                TTS_MODEL_CONFIG.voices.forEach(voiceId => {
+                knownAvailableVoices.forEach(voiceId => {
                   const prefix = voiceId.substring(0, 2);
                   const langMap = {
                     'a': 'English (US)',
@@ -397,8 +426,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                   voiceSelectKokoro.appendChild(optgroup);
                 });
                 
-                voiceSelectKokoro.value = TTS_MODEL_CONFIG.voices[0] || 'af_heart';
-                console.log('Using fallback voices from config:', TTS_MODEL_CONFIG.voices.length, 'voices');
+                voiceSelectKokoro.value = knownAvailableVoices[0] || 'af_heart';
+                console.log('Using known-available voices:', knownAvailableVoices.length, 'voices');
               } else {
                 voiceSelectKokoro.innerHTML = '<option value="">No voices available</option>';
                 console.error('No fallback voices available in config');
@@ -408,14 +437,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn('Voice selector element not found');
           }
         } catch (voiceError) {
-          console.warn('Failed to get voices from model, using default list:', voiceError);
-          // Fallback to hardcoded voices if list_voices fails
-          if (voiceSelectKokoro && TTS_MODEL_CONFIG.voices) {
+          console.warn('Failed to get voices from model, using known-available voices:', voiceError);
+          // Use only the voices that are actually available in the model
+          const knownAvailableVoices = [
+            'af_heart', 'af_alloy', 'af_aoede', 'af_bella', 'af_jessica', 'af_kore', 
+            'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky',
+            'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 
+            'am_onyx', 'am_puck', 'am_santa',
+            'bf_emma', 'bf_isabella', 'bm_george', 'bm_lewis', 'bf_alice', 
+            'bf_lily', 'bm_daniel', 'bm_fable'
+          ];
+          
+          if (voiceSelectKokoro && knownAvailableVoices.length > 0) {
             voiceSelectKokoro.innerHTML = '';
             
-            // Group fallback voices by language/gender
+            // Group voices by language/gender
             const errorFallbackGrouped = {};
-            TTS_MODEL_CONFIG.voices.forEach(voiceId => {
+            knownAvailableVoices.forEach(voiceId => {
               const prefix = voiceId.substring(0, 2);
               const langMap = {
                 'a': 'English (US)',
@@ -479,7 +517,8 @@ document.addEventListener('DOMContentLoaded', async () => {
               voiceSelectKokoro.appendChild(optgroup);
             });
             
-            voiceSelectKokoro.value = TTS_MODEL_CONFIG.voices[0] || 'af_heart';
+            voiceSelectKokoro.value = knownAvailableVoices[0] || 'af_heart';
+            console.log('Using known-available voices in error handler:', knownAvailableVoices.length, 'voices');
           }
         }
         
@@ -951,7 +990,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Get selected voice
         // Re-query element to ensure we have the latest reference
         const voiceSelect = qs('#voice-select-kokoro');
-        const selectedVoice = voiceSelect ? voiceSelect.value : (TTS_MODEL_CONFIG.voices?.[0] || 'af_heart');
+        let selectedVoice = voiceSelect ? voiceSelect.value : 'af_heart';
+        
+        // Verify the selected voice is actually available in the model
+        // If not, fall back to a default available voice
+        if (selectedVoice && kokoroModel) {
+          try {
+            // Try to get available voices from the model to verify
+            const voices = kokoroModel.list_voices ? await kokoroModel.list_voices() : null;
+            let availableVoiceList = [];
+            if (voices && typeof voices === 'object' && !Array.isArray(voices)) {
+              availableVoiceList = Object.keys(voices);
+            } else if (Array.isArray(voices)) {
+              availableVoiceList = voices;
+            }
+            
+            // If we have a list and the selected voice isn't in it, use the first available
+            if (availableVoiceList.length > 0 && !availableVoiceList.includes(selectedVoice)) {
+              console.warn(`Voice "${selectedVoice}" not available, using "${availableVoiceList[0]}" instead`);
+              selectedVoice = availableVoiceList[0];
+            }
+          } catch (e) {
+            console.warn('Could not verify voice availability:', e);
+            // Fall back to default
+            selectedVoice = 'af_heart';
+          }
+        }
         
         // Kokoro-js handles text preprocessing internally, so pass text directly
         // No need for complex tokenization or preprocessing
@@ -960,6 +1024,27 @@ document.addEventListener('DOMContentLoaded', async () => {
           voice: selectedVoice,
           textLength: text.length
         });
+        
+        // Validate voice is available before generating
+        try {
+          // Get available voices from model to verify
+          const voices = kokoroModel.list_voices ? await kokoroModel.list_voices() : null;
+          let availableVoiceList = [];
+          if (voices && typeof voices === 'object' && !Array.isArray(voices)) {
+            availableVoiceList = Object.keys(voices);
+          } else if (Array.isArray(voices)) {
+            availableVoiceList = voices;
+          }
+          
+          // If selected voice is not available, use first available voice
+          if (availableVoiceList.length > 0 && !availableVoiceList.includes(selectedVoice)) {
+            console.warn(`Voice "${selectedVoice}" not available in model. Available voices:`, availableVoiceList);
+            console.warn(`Using "${availableVoiceList[0]}" instead`);
+            selectedVoice = availableVoiceList[0];
+          }
+        } catch (e) {
+          console.warn('Could not verify voice availability, proceeding with selected voice:', e);
+        }
         
         // Generate audio using kokoro-js
         // Pass text directly - kokoro-js handles all preprocessing
