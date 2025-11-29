@@ -296,7 +296,7 @@ function displayNotes() {
   // Add event listeners
   notesList.querySelectorAll('.notes-widget-item-btn').forEach(btn => {
     on(btn, 'click', (e) => {
-      e.stopPropagation();
+      e.stopPropagation(); // Prevent event from bubbling to document
       const action = btn.dataset.action;
       const noteId = btn.dataset.noteId;
       
@@ -316,6 +316,7 @@ function displayNotes() {
       if (e.target.classList.contains('notes-widget-item-btn')) {
         return;
       }
+      e.stopPropagation(); // Prevent event from bubbling to document
       const noteId = item.dataset.noteId;
       loadNote(noteId);
     });
@@ -367,6 +368,33 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && widgetPanel.classList.contains('expanded')) {
     closeWidget();
   }
+});
+
+// Close when clicking outside the widget
+document.addEventListener('click', (e) => {
+  // Only close if panel is expanded
+  if (!widgetPanel.classList.contains('expanded')) {
+    return;
+  }
+  
+  // Don't close if clicking on the toggle button (it handles its own toggle)
+  if (widgetToggle.contains(e.target) || widgetToggle === e.target) {
+    return;
+  }
+  
+  // Don't close if clicking inside the panel or any of its children
+  if (widgetPanel.contains(e.target) || widgetPanel === e.target) {
+    return;
+  }
+  
+  // Don't close if clicking on the delete modal overlay
+  const deleteModal = document.querySelector('.delete-modal-overlay');
+  if (deleteModal && (deleteModal.contains(e.target) || deleteModal === e.target)) {
+    return;
+  }
+  
+  // Close if clicking outside both toggle and panel
+  closeWidget();
 });
 
 // Add modal styles
