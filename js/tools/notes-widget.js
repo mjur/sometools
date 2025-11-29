@@ -4,6 +4,8 @@ import { toast, on, qs } from '/js/ui.js';
 const STORAGE_KEY = 'notes-tool-notes'; // Same storage as main notes tool
 const TITLE_LENGTH = 50;
 let currentNoteId = null;
+let originalContent = ''; // Track original content to detect changes
+let isLoadingNote = false; // Flag to prevent autosave when loading a note
 
 // Widget elements
 const widgetToggle = qs('#notes-widget-toggle');
@@ -57,25 +59,101 @@ function generateTitle(content) {
 
 // Save current note (autosave)
 function saveNote(showToast = false) {
+  console.log('=== saveNote() called ===', {
+    isLoadingNote,
+    currentNoteId,
+    showToast,
+    stack: new Error().stack.split('\n').slice(1, 4).join('\n')
+  });
+  
+  // CRITICAL: Never save if we're in the middle of loading a note
+  if (isLoadingNote) {
+    console.log('❌ BLOCKED: isLoadingNote is true');
+    return;
+  }
+  
   const content = noteContentInput.value.trim();
+  console.log('Content from textarea:', {
+    length: content.length,
+    preview: content.substring(0, 50)
+  });
   
   // Don't save empty notes
   if (!content) {
+    console.log('❌ BLOCKED: Empty content');
     return;
+  }
+  
+  // Check if content actually changed (compare trimmed versions)
+  if (currentNoteId) {
+    const originalContentTrimmed = (originalContent || '').trim();
+    console.log('Comparing with originalContent:', {
+      originalLength: originalContentTrimmed.length,
+      currentLength: content.length,
+      match: content === originalContentTrimmed,
+      originalPreview: originalContentTrimmed.substring(0, 50),
+      currentPreview: content.substring(0, 50)
+    });
+    
+    if (content === originalContentTrimmed) {
+      // Content hasn't changed, don't save
+      console.log('❌ BLOCKED: Content matches originalContent');
+      return;
+    }
   }
   
   const notes = loadNotes();
   const noteId = currentNoteId || generateId();
+  console.log('Note ID:', noteId);
+  
+  // If this is an existing note, check if content actually changed by comparing with stored content
+  if (notes[noteId]) {
+    const storedContentTrimmed = (notes[noteId].content || '').trim();
+    const currentContentTrimmed = content.trim();
+    
+    console.log('Comparing with stored content:', {
+      storedLength: storedContentTrimmed.length,
+      currentLength: currentContentTrimmed.length,
+      match: storedContentTrimmed === currentContentTrimmed,
+      storedPreview: storedContentTrimmed.substring(0, 50),
+      currentPreview: currentContentTrimmed.substring(0, 50)
+    });
+    
+    // If content hasn't changed, don't save at all
+    if (storedContentTrimmed === currentContentTrimmed) {
+      // Content unchanged, just update tracked content and return
+      console.log('❌ BLOCKED: Content matches stored content');
+      originalContent = content;
+      return;
+    }
+  }
+  
+  // Content has changed (or it's a new note), proceed with save
+  console.log('✅ PROCEEDING WITH SAVE');
   const now = Date.now();
   const title = generateTitle(content);
   
   if (notes[noteId]) {
-    // Update existing note
+    // Content has changed, update it
+    const oldUpdated = notes[noteId].updated;
     notes[noteId].title = title;
     notes[noteId].content = content;
     notes[noteId].updated = now;
+    originalContent = content; // Update tracked content (already trimmed)
+    
+    console.log('💾 UPDATING NOTE:', {
+      noteId,
+      oldUpdated,
+      newUpdated: now,
+      title: title.substring(0, 30)
+    });
+    
     if (showToast) {
       toast('Note updated', 'success');
+    }
+    // Save to storage and update display
+    if (saveNotes(notes)) {
+      displayNotes();
     }
   } else {
     // Create new note
@@ -87,19 +165,24 @@ function saveNote(showToast = false) {
       updated: now
     };
     currentNoteId = noteId;
+    originalContent = content; // Track the new content
     if (showToast) {
       toast('Note saved', 'success');
     }
-  }
-  
-  if (saveNotes(notes)) {
-    displayNotes();
+    // Save to storage and update display
+    if (saveNotes(notes)) {
+      displayNotes();
+    }
   }
 }
 
 // Debounce function for autosave
 let autosaveTimeout = null;
 function debouncedAutosave() {
+  // Don't autosave if we're loading a note programmatically
+  if (isLoadingNote) {
+    return;
+  }
   clearTimeout(autosaveTimeout);
   autosaveTimeout = setTimeout(() => {
     saveNote(false);
@@ -108,26 +191,133 @@ function debouncedAutosave() {
 
 // Create new note
 function newNote() {
-  // Save current note before creating new one
+  // Save current note before creating new one (only if changed)
   if (noteContentInput.value.trim()) {
-    saveNote(false);
+    const currentContent = noteContentInput.value.trim();
+    // Only save if content actually changed
+    if (!currentNoteId || currentContent !== originalContent) {
+      saveNote(false);
+    }
   }
+  
+  // Set flag to prevent autosave from triggering when we clear the value
+  isLoadingNote = true;
+  
   currentNoteId = null;
+  originalContent = '';
   noteContentInput.value = '';
   noteContentInput.focus();
   displayNotes();
+  
+  // Clear the flag after a short delay
+  setTimeout(() => {
+    isLoadingNote = false;
+  }, 100);
 }
 
 // Load note for editing
 function loadNote(noteId) {
+  console.log('=== loadNote() called ===', {
+    noteId,
+    currentNoteId,
+    isLoadingNote,
+    textareaValue: noteContentInput.value.substring(0, 30),
+    originalContent: (originalContent || '').substring(0, 30)
+  });
+  
+  // Don't reload if it's already the current note
+  if (currentNoteId === noteId) {
+    console.log('⚠️ Already loaded, skipping');
+    return;
+  }
+  
+  // Clear any pending autosave immediately
+  clearTimeout(autosaveTimeout);
+  autosaveTimeout = null;
+  console.log('Cleared autosave timeout');
+  
+  // Set flag EARLY to prevent any autosave from triggering
+  isLoadingNote = true;
+  console.log('✅ Set isLoadingNote = true');
+  
   const notes = loadNotes();
   const note = notes[noteId];
   
   if (note) {
+    // Save current note first ONLY if it has changes (only if changed)
+    // Do this check BEFORE loading the new note
+    if (currentNoteId && noteContentInput.value.trim()) {
+      const currentContent = noteContentInput.value.trim();
+      const originalContentTrimmed = (originalContent || '').trim();
+      
+      console.log('Checking if previous note needs saving:', {
+        currentNoteId,
+        currentContentLength: currentContent.length,
+        originalContentLength: originalContentTrimmed.length,
+        match: currentContent === originalContentTrimmed,
+        currentPreview: currentContent.substring(0, 50),
+        originalPreview: originalContentTrimmed.substring(0, 50)
+      });
+      
+      // Only save if content actually changed (compare trimmed versions)
+      if (currentContent !== originalContentTrimmed) {
+        console.log('💾 Saving previous note - content changed');
+        // Temporarily allow save for the previous note
+        const wasLoading = isLoadingNote;
+        isLoadingNote = false;
+        saveNote(false);
+        isLoadingNote = wasLoading;
+      } else {
+        console.log('⏭️ Skipping save of previous note - content unchanged');
+        // If content hasn't changed, do NOT save - just skip it
+      }
+    } else {
+      console.log('⏭️ Skipping save - no current note or empty content', {
+        hasCurrentNoteId: !!currentNoteId,
+        hasContent: !!noteContentInput.value.trim()
+      });
+    }
+    
+    // Now load the new note
+    // IMPORTANT: Set originalContent to the trimmed content to match what we compare against
+    // This must be set BEFORE changing currentNoteId to prevent any race conditions
+    const noteContentTrimmed = (note.content || '').trim();
+    const oldNoteId = currentNoteId;
+    const oldOriginalContent = originalContent;
+    
+    originalContent = noteContentTrimmed; // Store trimmed version for accurate comparison
     currentNoteId = noteId;
-    noteContentInput.value = note.content;
-    noteContentInput.focus();
-    displayNotes();
+    
+    console.log('📝 Loading new note:', {
+      oldNoteId,
+      newNoteId: noteId,
+      oldOriginalContentLength: (oldOriginalContent || '').length,
+      newOriginalContentLength: originalContent.length,
+      noteContentLength: note.content.length,
+      noteContentTrimmedLength: noteContentTrimmed.length
+    });
+    
+    // Set the value - this might trigger input event, but isLoadingNote is true so saveNote will return early
+    // Use a small delay to ensure flag is set before value change
+    setTimeout(() => {
+      console.log('Setting textarea value, isLoadingNote:', isLoadingNote);
+      noteContentInput.value = note.content;
+      noteContentInput.focus();
+      
+      // Update display immediately to show active state
+      displayNotes();
+      
+      console.log('✅ Note loaded and displayed');
+    }, 10);
+    
+    // Clear the flag after events have settled (longer delay to be safe)
+    setTimeout(() => {
+      console.log('🔄 Clearing isLoadingNote flag');
+      isLoadingNote = false;
+    }, 1000);
+  } else {
+    // Note not found, clear the flag
+    isLoadingNote = false;
   }
 }
 
@@ -293,34 +483,9 @@ function displayNotes() {
   
   notesList.innerHTML = html;
   
-  // Add event listeners
-  notesList.querySelectorAll('.notes-widget-item-btn').forEach(btn => {
-    on(btn, 'click', (e) => {
-      e.stopPropagation(); // Prevent event from bubbling to document
-      const action = btn.dataset.action;
-      const noteId = btn.dataset.noteId;
-      
-      if (action === 'edit') {
-        loadNote(noteId);
-      } else if (action === 'download') {
-        downloadNote(noteId);
-      } else if (action === 'delete') {
-        showDeleteModal(noteId);
-      }
-    });
-  });
-  
-  // Make note items clickable to edit
-  notesList.querySelectorAll('.notes-widget-item').forEach(item => {
-    on(item, 'click', (e) => {
-      if (e.target.classList.contains('notes-widget-item-btn')) {
-        return;
-      }
-      e.stopPropagation(); // Prevent event from bubbling to document
-      const noteId = item.dataset.noteId;
-      loadNote(noteId);
-    });
-  });
+  // Use event delegation on the list container for all clicks
+  // This is more efficient and prevents double-click issues
+  // The listener is set up once, not on every displayNotes() call
 }
 
 // Escape HTML
@@ -342,9 +507,13 @@ function toggleWidget() {
 // Close widget panel
 function closeWidget() {
   widgetPanel.classList.remove('expanded');
-  // Save current note when closing
+  // Save current note when closing (only if changed)
   if (noteContentInput.value.trim()) {
-    saveNote(false);
+    const content = noteContentInput.value.trim();
+    // Only save if content actually changed
+    if (!currentNoteId || content !== originalContent) {
+      saveNote(false);
+    }
   }
 }
 
@@ -354,13 +523,66 @@ on(widgetClose, 'click', closeWidget);
 on(newBtn, 'click', newNote);
 on(downloadAllBtn, 'click', downloadAllNotes);
 
-// Autosave on input
-on(noteContentInput, 'input', debouncedAutosave);
+// Set up event delegation for notes list (only once, not on every render)
+// This handles clicks on note items and buttons
+on(notesList, 'click', (e) => {
+  // Find the closest note item
+  const noteItem = e.target.closest('.notes-widget-item');
+  if (!noteItem) return;
+  
+  // Check if clicking on a button
+  const btn = e.target.closest('.notes-widget-item-btn');
+  if (btn) {
+    e.stopPropagation(); // Prevent event from bubbling to document
+    const action = btn.dataset.action;
+    const noteId = btn.dataset.noteId;
+    
+    if (action === 'edit') {
+      loadNote(noteId);
+    } else if (action === 'download') {
+      downloadNote(noteId);
+    } else if (action === 'delete') {
+      showDeleteModal(noteId);
+    }
+    return;
+  }
+  
+  // Clicking on the note item itself (not a button)
+  e.stopPropagation(); // Prevent event from bubbling to document
+  const noteId = noteItem.dataset.noteId;
+  if (noteId) {
+    loadNote(noteId);
+  }
+});
 
-// Save on blur
-on(noteContentInput, 'blur', () => {
+// Autosave on input
+on(noteContentInput, 'input', (e) => {
+  // Only autosave if we're not loading a note
+  if (!isLoadingNote) {
+    debouncedAutosave();
+  }
+});
+
+// Save on blur (only if changed)
+on(noteContentInput, 'blur', (e) => {
+  // CRITICAL: Never save on blur if we're loading a note
+  if (isLoadingNote) {
+    return;
+  }
+  
   clearTimeout(autosaveTimeout);
-  saveNote(false);
+  autosaveTimeout = null;
+  
+  const content = noteContentInput.value.trim();
+  const originalContentTrimmed = (originalContent || '').trim();
+  
+  // Only save if content actually changed
+  if (content && currentNoteId && content !== originalContentTrimmed) {
+    saveNote(false);
+  } else if (content && !currentNoteId) {
+    // New note with content
+    saveNote(false);
+  }
 });
 
 // Close on Escape key
