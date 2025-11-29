@@ -91,11 +91,12 @@
       <div class="option-group">
         <label for="model-select">Enhancement Type</label>
         <select id="model-select">
-          <option value="upscale">Upscale (Real-ESRGAN)</option>
+          <option value="upscale" selected>Upscale (Real-ESRGAN)</option>
           <option value="enhance">Enhance Quality</option>
           <option value="super_resolution">Super Resolution</option>
           <option value="restore">Restore Faces (GFPGAN)</option>
-          <option value="colorize">Colorize B&W</option>
+          <option value="colorize">Colorize B&W (DDColor)</option>
+          <option value="deoldify">Photo Restoration (DeOldify)</option>
           <option value="style">Style Transfer</option>
         </select>
       </div>
@@ -121,6 +122,9 @@
     
     <div id="model-status" style="padding: 1rem; background-color: var(--bg-elev); border-radius: 6px; margin-bottom: 1rem;">
       <p style="margin: 0; color: var(--muted);">Select an enhancement type and upload an image to begin</p>
+      <p id="debug-status" style="margin: 0.5rem 0 0 0; color: var(--text-subtle); font-size: 0.75rem; display: none;">
+        <strong>Debug:</strong> <span id="debug-text">Loading...</span>
+      </p>
       <p style="margin: 0.5rem 0 0 0; color: var(--text-subtle); font-size: 0.75rem;">
         <strong>Note:</strong> Models need to be set up first. See <code>README-IMAGE-ENHANCE.md</code> for instructions.
       </p>

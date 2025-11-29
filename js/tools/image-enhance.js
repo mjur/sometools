@@ -1,6 +1,8 @@
 // Image Enhancement Tool
 // Uses ONNX models for AI-powered image enhancement
 
+console.log('🚀 image-enhance.js script loading...');
+
 import { toast, on, qs, downloadFile } from '/js/ui.js';
 import { loadONNXRuntime, createInferenceSession } from '/js/utils/onnx-loader.js';
 import { getOrDownloadModel, getCacheStats, formatBytes, deleteCachedModel } from '/js/utils/model-cache.js';
@@ -48,7 +50,7 @@ const MODEL_CONFIGS = {
     requiresSetup: true
   },
   colorize: {
-    name: 'Image Colorization',
+    name: 'Image Colorization (DDColor)',
     key: 'ddcolor-modelscope-v1',
     url: 'http://localhost:3000/ddcolor_modelscope.onnx', // DDColor ModelScope model
     // Model: DDColor ModelScope
@@ -58,6 +60,21 @@ const MODEL_CONFIGS = {
     description: 'Add realistic color to black and white photographs',
     requiresSetup: false,
     inputSize: 512 // This model expects 512x512 input
+  },
+  deoldify: {
+    name: 'Photo Restoration & Colorization (DeOldify)',
+    key: 'deoldify-backbone-lite-v1',
+    url: 'http://localhost:5000/deoldify_backbone-lite/onnx/model.onnx', // DeOldify model (same port as AI detector)
+    // Model: DeOldify Artistic (backbone-lite variant)
+    inputName: 'input',
+    outputName: 'output',
+    scaleFactor: 1,
+    description: 'Restore and colorize old black and white photographs with high-quality AI',
+    requiresSetup: false,
+    inputSize: 512, // This model works best with 512x512 or smaller input
+    // DeOldify uses ImageNet normalization stats (not [0.5, 0.5, 0.5])
+    mean: [0.485, 0.456, 0.406], // ImageNet mean
+    std: [0.229, 0.224, 0.225]   // ImageNet std
   },
   style: {
     name: 'Style Transfer',
@@ -113,6 +130,28 @@ const progressText = qs('#progress-text');
 const progressPercent = qs('#progress-percent');
 const progressBar = qs('#progress-bar');
 const clearModelCacheBtn = qs('#clear-model-cache');
+const debugStatus = qs('#debug-status');
+const debugText = qs('#debug-text');
+
+// Debug: Log all DOM elements
+console.log('🔍 DOM elements found:');
+console.log('  modelSelect:', modelSelect);
+console.log('  enhanceBtn:', enhanceBtn);
+console.log('  fileInput:', fileInput);
+
+// Show debug info on page
+if (debugStatus && debugText) {
+  debugStatus.style.display = 'block';
+  debugText.textContent = `Script loaded. Model select: ${modelSelect ? 'found' : 'NOT FOUND'}`;
+}
+
+if (!modelSelect) {
+  console.error('❌ CRITICAL ERROR: modelSelect (#model-select) not found in DOM!');
+  if (debugText) {
+    debugText.textContent = 'ERROR: Model select element not found!';
+    debugText.style.color = 'red';
+  }
+}
 
 // State
 let currentFile = null;
@@ -135,9 +174,22 @@ async function initONNX() {
 }
 
 // Update UI based on model selection
-on(modelSelect, 'change', () => {
-  const modelType = modelSelect.value;
-  currentModelConfig = MODEL_CONFIGS[modelType];
+if (modelSelect) {
+  on(modelSelect, 'change', () => {
+    const modelType = modelSelect.value;
+    console.log('🔵 Model selection changed to:', modelType);
+    console.log('🔵 Available configs:', Object.keys(MODEL_CONFIGS));
+    console.log('🔵 Config for', modelType, ':', MODEL_CONFIGS[modelType]);
+    
+    if (!modelType || !MODEL_CONFIGS[modelType]) {
+      console.error('❌ Invalid model type:', modelType, 'Available models:', Object.keys(MODEL_CONFIGS));
+      toast('Invalid model selection. Please select a valid enhancement type.', 'error');
+      return;
+    }
+    
+    currentModelConfig = MODEL_CONFIGS[modelType];
+    console.log('✅ Current model config set to:', currentModelConfig?.name);
+    console.log('✅ Full config:', currentModelConfig);
   
   // Show/hide scale factor for upscaling
   scaleFactorGroup.style.display = (modelType === 'upscale' || modelType === 'enhance' || modelType === 'super_resolution') ? 'flex' : 'none';
@@ -150,7 +202,23 @@ on(modelSelect, 'change', () => {
   
   // Update status
   updateModelStatus();
-});
+  
+  // Enable enhance button if image is already loaded
+  if (currentImage && currentModelConfig) {
+    enhanceBtn.disabled = false;
+    if (outputArea) {
+      outputArea.innerHTML = '<p>Ready to enhance</p>';
+    }
+  } else if (currentImage && !currentModelConfig) {
+    enhanceBtn.disabled = true;
+    if (outputArea) {
+      outputArea.innerHTML = '<p>Please select an enhancement type</p>';
+    }
+  }
+  });
+} else {
+  console.error('CRITICAL: modelSelect element not found, cannot attach change handler!');
+}
 
 // Strength slider
 on(strengthSlider, 'input', (e) => {
@@ -239,8 +307,14 @@ function handleFile(file) {
       imageInfo.textContent = imageInfoText;
       
       dropZone.style.display = 'none';
-      enhanceBtn.disabled = false;
-      outputArea.innerHTML = '<p>Ready to enhance</p>';
+      // Only enable enhance button if model is also selected
+      if (currentModelConfig) {
+        enhanceBtn.disabled = false;
+        outputArea.innerHTML = '<p>Ready to enhance</p>';
+      } else {
+        enhanceBtn.disabled = true;
+        outputArea.innerHTML = '<p>Please select an enhancement type</p>';
+      }
       outputArea.style.display = 'flex';
       outputArea.style.flexDirection = 'column';
       outputArea.style.alignItems = 'center';
@@ -401,8 +475,30 @@ async function loadModelSession() {
 
 // Enhance image
 async function enhanceImage() {
-  if (!currentImage || !currentModelConfig) {
-    toast('Please upload an image and select a model', 'error');
+  console.log('Enhance button clicked. currentImage:', !!currentImage, 'currentModelConfig:', !!currentModelConfig);
+  
+  // Ensure model is selected - always check dropdown value
+  const modelType = modelSelect.value;
+  console.log('Selected model type from dropdown:', modelType);
+  
+  if (!modelType || !MODEL_CONFIGS[modelType]) {
+    toast('Please select an enhancement type from the dropdown', 'error');
+    console.error('Invalid or missing model type. Available:', Object.keys(MODEL_CONFIGS));
+    return;
+  }
+  
+  // Always set from dropdown to ensure it's current
+  currentModelConfig = MODEL_CONFIGS[modelType];
+  console.log('Model config:', currentModelConfig?.name);
+  
+  if (!currentImage) {
+    toast('Please upload an image first', 'error');
+    return;
+  }
+  
+  if (!currentModelConfig) {
+    toast('Please select an enhancement type from the dropdown', 'error');
+    console.error('Failed to set model config for type:', modelType);
     return;
   }
   
@@ -563,19 +659,27 @@ async function enhanceImage() {
       // Check if model requires grayscale input
       const requiresGrayscale = currentModelConfig.grayscale === true;
       
+      // Use model-specific mean/std if provided, otherwise use defaults
+      const mean = currentModelConfig.mean || [0.5, 0.5, 0.5];
+      const std = currentModelConfig.std || [0.5, 0.5, 0.5];
+      
+      console.log(`Using normalization - mean: [${mean.join(', ')}], std: [${std.join(', ')}]`);
+      
       outputCanvas = await processImageWithModel(processedImage, session, {
         originalImage: processedImage, // Pass original image for LAB color space models
         preprocessOptions: {
           // Don't pass targetWidth/Height - use the actual image dimensions
           // targetWidth: modelInputWidth,
           // targetHeight: modelInputHeight
-          grayscale: requiresGrayscale // Pass grayscale flag to preprocessing
+          grayscale: requiresGrayscale, // Pass grayscale flag to preprocessing
+          mean: mean, // Use model-specific mean
+          std: std    // Use model-specific std
         },
         postprocessOptions: {
           scaleFactor: scaleFactor,
           denormalize: true,
-          mean: [0.5, 0.5, 0.5],
-          std: [0.5, 0.5, 0.5]
+          mean: mean, // Use model-specific mean for denormalization
+          std: std    // Use model-specific std for denormalization
         },
         inputName: currentModelConfig.inputName,
         outputName: currentModelConfig.outputName
@@ -600,17 +704,21 @@ async function enhanceImage() {
         // Retry inference with WASM backend
         progressText.textContent = 'Processing image (WASM backend)...';
         const requiresGrayscaleRetry = currentModelConfig.grayscale === true;
+        const meanRetry = currentModelConfig.mean || [0.5, 0.5, 0.5];
+        const stdRetry = currentModelConfig.std || [0.5, 0.5, 0.5];
         outputCanvas = await processImageWithModel(processedImage, currentSession, {
           preprocessOptions: {
             targetWidth: modelInputWidth,
             targetHeight: modelInputHeight,
-            grayscale: requiresGrayscaleRetry
+            grayscale: requiresGrayscaleRetry,
+            mean: meanRetry,
+            std: stdRetry
           },
           postprocessOptions: {
             scaleFactor: scaleFactor,
             denormalize: true,
-            mean: [0.5, 0.5, 0.5],
-            std: [0.5, 0.5, 0.5]
+            mean: meanRetry,
+            std: stdRetry
           },
           inputName: currentModelConfig.inputName,
           outputName: currentModelConfig.outputName
@@ -853,8 +961,32 @@ on(document, 'keydown', (e) => {
 
 // Initialize
 (async () => {
+  console.log('Image enhance tool initializing...');
+  console.log('Model select element:', modelSelect);
+  console.log('Available model configs:', Object.keys(MODEL_CONFIGS));
+  
+  if (!modelSelect) {
+    console.error('CRITICAL: modelSelect element not found!');
+    return;
+  }
+  
+  // Ensure a model is selected (set default if none selected)
+  if (!modelSelect.value || !MODEL_CONFIGS[modelSelect.value]) {
+    console.log('No model selected, setting default to upscale');
+    modelSelect.value = 'upscale'; // Default to upscale
+  }
+  
+  console.log('Selected model value:', modelSelect.value);
+  
   // Set initial model
   currentModelConfig = MODEL_CONFIGS[modelSelect.value];
+  console.log('Initial model config:', currentModelConfig?.name);
+  
+  if (!currentModelConfig) {
+    console.error('Failed to initialize model config. Available models:', Object.keys(MODEL_CONFIGS));
+    toast('Failed to initialize model. Please refresh the page.', 'error');
+    return;
+  }
   
   // Check for and clear old cached models with GitHub URLs (CORS issues)
   try {
