@@ -30,6 +30,7 @@ const detectBtn = qs('#detect-btn');
 const clearBtn = qs('#clear-btn');
 const resultBox = qs('#result');
 const resultPlaceholder = qs('#result-placeholder');
+const resultPane = resultBox ? resultBox.parentElement : null;
 const resultTitle = qs('#result-title');
 const resultDescription = qs('#result-description');
 const resultDetails = qs('#result-details');
@@ -94,6 +95,20 @@ function tokenizeText(text, maxLength = 512) {
     console.error('Tokenization error:', error);
     throw new Error(`Failed to tokenize text: ${error.message}`);
   }
+}
+
+// Helper to reset result UI back to neutral placeholder
+function resetResults() {
+  if (!resultPane) return;
+  resultPane.style.display = 'block';
+  resultBox.style.display = 'none';
+  resultPlaceholder.style.display = 'block';
+  resultBox.className = 'result-box';
+  resultTitle.textContent = '';
+  resultDescription.textContent = '';
+  resultDetails.innerHTML = '';
+  confidenceFill.style.width = '0%';
+  confidenceFill.style.backgroundColor = 'var(--accent)';
 }
 
 // Load model using ONNX Runtime
@@ -187,17 +202,30 @@ async function detectAI(text) {
     detectBtn.disabled = true;
     detectBtn.textContent = 'Analyzing...';
     
+    // We already hid the result area in the click handler; just update status/progress here
+    modelStatus.textContent = 'Preparing model...';
+    modelStatus.style.color = '';
+    
+    // Show loading bar for analysis
+    progressContainer.style.display = 'block';
+    progressFill.style.width = '10%';
+    progressText.textContent = 'Preparing analysis...';
+    modelStatus.textContent = 'Preparing model...';
+    
     // Load model if needed
     const modelData = await loadModel();
     if (!modelData) {
       detectBtn.disabled = false;
       detectBtn.textContent = 'Detect AI';
+      progressContainer.style.display = 'none';
       return;
     }
     
     const { session: modelSession } = modelData;
     
     modelStatus.textContent = 'Tokenizing text...';
+    progressFill.style.width = '40%';
+    progressText.textContent = 'Tokenizing text...';
     
     // Tokenize text using the loaded tokenizer
     const tokens = tokenizeText(text, MODEL_CONFIG.maxLength);
@@ -243,6 +271,8 @@ async function detectAI(text) {
     }
     
     modelStatus.textContent = 'Running inference...';
+    progressFill.style.width = '70%';
+    progressText.textContent = 'Running model inference...';
     
     // Prepare inputs
     const inputs = {
@@ -328,6 +358,13 @@ async function detectAI(text) {
     // Display results
     displayResults(humanProb, aiProb, text);
     
+    // Finish loading bar
+    progressFill.style.width = '100%';
+    progressText.textContent = 'Analysis complete';
+    setTimeout(() => {
+      progressContainer.style.display = 'none';
+    }, 300);
+    
     detectBtn.disabled = false;
     detectBtn.textContent = 'Detect AI';
     modelStatus.textContent = 'Analysis complete';
@@ -339,6 +376,7 @@ async function detectAI(text) {
     detectBtn.textContent = 'Detect AI';
     modelStatus.textContent = `Error: ${error.message}`;
     modelStatus.style.color = 'var(--error)';
+    progressContainer.style.display = 'none';
   }
 }
 
@@ -355,7 +393,10 @@ function displayResults(humanProb, aiProb, text) {
     resultType = 'human';
   }
   
-  // Update UI
+  // Update UI - ensure the entire result pane is visible again
+  if (resultPane) {
+    resultPane.style.display = 'block';
+  }
   resultBox.className = `result-box ${resultType}`;
   resultPlaceholder.style.display = 'none';
   resultBox.style.display = 'block';
@@ -400,16 +441,23 @@ on(detectBtn, 'click', () => {
     toast('Please enter some text to analyze', 'info');
     return;
   }
-  detectAI(text);
+  // Completely hide the entire result pane while processing
+  if (resultPane) {
+    resultPane.style.display = 'none';
+  }
+  // Defer heavy work so the DOM can repaint and hide the box immediately
+  setTimeout(() => {
+    detectAI(text);
+  }, 0);
 });
 
 on(clearBtn, 'click', () => {
   textInput.value = '';
   fileInput.value = '';
   fileInfo.textContent = '';
-  resultBox.style.display = 'none';
-  resultPlaceholder.style.display = 'block';
-  resultBox.className = 'result-box';
+  resetResults();
+  modelStatus.textContent = 'Model not loaded. Click "Detect AI" to download and load the model (first time only).';
+  modelStatus.style.color = '';
 });
 
 // File input handling
