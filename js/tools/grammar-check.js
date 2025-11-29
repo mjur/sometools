@@ -1,29 +1,11 @@
 import { loadStateWithStorage, saveStateWithStorage } from '/js/url-state.js';
 import { toast, on, qs } from '/js/ui.js';
 
-// WebLLM will be loaded dynamically
-let CreateMLCEngine = null;
-let currentEngine = null;
-let isModelLoading = false;
 let originalText = '';
 let checkedText = '';
 let errors = [];
 let fixedText = '';
 
-// Check WebGPU support
-function checkWebGPUSupport() {
-  if (typeof navigator !== 'undefined' && navigator.gpu) {
-    return true;
-  }
-  return false;
-}
-
-const modelSelect = qs('#model-select');
-const downloadModelBtn = qs('#download-model');
-const checkModelBtn = qs('#check-model');
-const clearModelBtn = qs('#clear-model');
-const modelStatus = qs('#model-status');
-const modelList = qs('#model-list');
 const textInput = qs('#text-input');
 const fileInput = qs('#file-input');
 const fileUploadArea = qs('#file-upload-area');
@@ -39,272 +21,196 @@ const errorsSummary = qs('#errors-summary');
 const storageKey = 'grammar-check-state';
 const state = loadStateWithStorage(storageKey);
 if (state?.text) textInput.value = state.text;
-if (state?.model) modelSelect.value = state.model;
 
-// Load WebLLM library (same as regex generator)
-async function loadWebLLM() {
-  if (CreateMLCEngine) return CreateMLCEngine;
+// Dictionary for spell checking
+let dictionary = new Set();
+let dictionaryLoaded = false;
+
+// Load comprehensive dictionary from a word list
+async function loadDictionary() {
+  if (dictionaryLoaded) return dictionary;
   
   try {
-    toast('Loading WebLLM library...', 'info');
+    toast('Loading dictionary...', 'info');
     
-    if (typeof window !== 'undefined' && window.CreateMLCEngine) {
-      CreateMLCEngine = window.CreateMLCEngine;
-      toast('WebLLM library loaded', 'success');
-      return CreateMLCEngine;
-    }
-
+    // Try to load from a comprehensive word list
+    // Using a common English word list from a CDN
     try {
-      const bundledModule = await import('/js/tools/bundled/webllm-bundle.js');
-      CreateMLCEngine = bundledModule.CreateMLCEngine || window.CreateMLCEngine;
-      if (CreateMLCEngine && typeof CreateMLCEngine === 'function') {
-        toast('WebLLM library loaded', 'success');
-        return CreateMLCEngine;
+      const response = await fetch('https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt');
+      if (response.ok) {
+        const text = await response.text();
+        const words = text.split('\n').map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+        words.forEach(word => dictionary.add(word));
+        console.log('Dictionary loaded with', dictionary.size, 'words from GitHub');
+        dictionaryLoaded = true;
+        toast('Dictionary loaded!', 'success');
+        return dictionary;
       }
-    } catch (e) {
-      console.log('Bundled WebLLM not available:', e);
+    } catch (fetchError) {
+      console.warn('Failed to load dictionary from GitHub, using fallback:', fetchError);
     }
     
-    const cdnSources = [
-      {
-        url: 'https://esm.run/@mlc-ai/web-llm',
-        name: 'esm.run'
+    // Fallback: Load a comprehensive word list from another source
+    try {
+      // Try loading from jsDelivr CDN with a word list
+      const response = await fetch('https://cdn.jsdelivr.net/gh/dwyl/english-words@master/words_alpha.txt');
+      if (response.ok) {
+        const text = await response.text();
+        const words = text.split('\n').map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+        words.forEach(word => dictionary.add(word));
+        console.log('Dictionary loaded with', dictionary.size, 'words from jsDelivr');
+        dictionaryLoaded = true;
+        toast('Dictionary loaded!', 'success');
+        return dictionary;
       }
+    } catch (fetchError) {
+      console.warn('Failed to load dictionary from jsDelivr, using local fallback:', fetchError);
+    }
+    
+    // Final fallback: Use a comprehensive local word list
+    const comprehensiveWords = [
+      // Common words
+      'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
+      'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she', 'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their',
+      'what', 'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me', 'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know',
+      'take', 'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other', 'than', 'then', 'now', 'look', 'only', 'come', 'its', 'over',
+      'think', 'also', 'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well', 'way', 'even', 'new', 'want', 'because', 'any', 'these', 'give', 'day',
+      'most', 'us', 'is', 'are', 'was', 'were', 'been', 'being', 'has', 'had', 'does', 'did', 'doing', 'done', 'can', 'could', 'may', 'might', 'must', 'shall',
+      'should', 'will', 'would', 'am', 'going', 'goes', 'went', 'gone', 'come', 'comes', 'came', 'coming', 'see', 'sees', 'saw', 'seeing', 'seen',
+      'make', 'makes', 'made', 'making', 'take', 'takes', 'took', 'taking', 'taken', 'give', 'gives', 'gave', 'giving', 'given',
+      'get', 'gets', 'got', 'getting', 'gotten', 'know', 'knows', 'knew', 'knowing', 'known', 'think', 'thinks', 'thought', 'thinking',
+      'see', 'sees', 'saw', 'seeing', 'seen', 'come', 'comes', 'came', 'coming', 'want', 'wants', 'wanted', 'wanting',
+      'use', 'uses', 'used', 'using', 'find', 'finds', 'found', 'finding', 'give', 'gives', 'gave', 'giving', 'given',
+      'tell', 'tells', 'told', 'telling', 'work', 'works', 'worked', 'working', 'call', 'calls', 'called', 'calling',
+      'try', 'tries', 'tried', 'trying', 'ask', 'asks', 'asked', 'asking', 'need', 'needs', 'needed', 'needing',
+      'feel', 'feels', 'felt', 'feeling', 'become', 'becomes', 'became', 'becoming', 'leave', 'leaves', 'left', 'leaving',
+      'put', 'puts', 'putting', 'mean', 'means', 'meant', 'meaning', 'keep', 'keeps', 'kept', 'keeping',
+      'let', 'lets', 'letting', 'begin', 'begins', 'began', 'beginning', 'begun', 'seem', 'seems', 'seemed', 'seeming',
+      'help', 'helps', 'helped', 'helping', 'talk', 'talks', 'talked', 'talking', 'turn', 'turns', 'turned', 'turning',
+      'start', 'starts', 'started', 'starting', 'show', 'shows', 'showed', 'showing', 'shown', 'hear', 'hears', 'heard', 'hearing',
+      'play', 'plays', 'played', 'playing', 'run', 'runs', 'ran', 'running', 'move', 'moves', 'moved', 'moving',
+      'like', 'likes', 'liked', 'liking', 'live', 'lives', 'lived', 'living', 'believe', 'believes', 'believed', 'believing',
+      'bring', 'brings', 'brought', 'bringing', 'happen', 'happens', 'happened', 'happening', 'write', 'writes', 'wrote', 'writing', 'written',
+      'sit', 'sits', 'sat', 'sitting', 'stand', 'stands', 'stood', 'standing', 'lose', 'loses', 'lost', 'losing',
+      'pay', 'pays', 'paid', 'paying', 'meet', 'meets', 'met', 'meeting', 'include', 'includes', 'included', 'including',
+      'continue', 'continues', 'continued', 'continuing', 'set', 'sets', 'setting', 'learn', 'learns', 'learned', 'learning', 'learnt',
+      'change', 'changes', 'changed', 'changing', 'lead', 'leads', 'led', 'leading', 'understand', 'understands', 'understood', 'understanding',
+      'watch', 'watches', 'watched', 'watching', 'follow', 'follows', 'followed', 'following', 'stop', 'stops', 'stopped', 'stopping',
+      'create', 'creates', 'created', 'creating', 'speak', 'speaks', 'spoke', 'speaking', 'spoken', 'read', 'reads', 'reading',
+      'allow', 'allows', 'allowed', 'allowing', 'add', 'adds', 'added', 'adding', 'spend', 'spends', 'spent', 'spending',
+      'grow', 'grows', 'grew', 'growing', 'grown', 'open', 'opens', 'opened', 'opening', 'walk', 'walks', 'walked', 'walking',
+      'win', 'wins', 'won', 'winning', 'offer', 'offers', 'offered', 'offering', 'remember', 'remembers', 'remembered', 'remembering',
+      'love', 'loves', 'loved', 'loving', 'consider', 'considers', 'considered', 'considering', 'appear', 'appears', 'appeared', 'appearing',
+      'buy', 'buys', 'bought', 'buying', 'wait', 'waits', 'waited', 'waiting', 'serve', 'serves', 'served', 'serving',
+      'die', 'dies', 'died', 'dying', 'send', 'sends', 'sent', 'sending', 'build', 'builds', 'built', 'building',
+      'stay', 'stays', 'stayed', 'staying', 'fall', 'falls', 'fell', 'falling', 'fallen', 'cut', 'cuts', 'cutting',
+      'reach', 'reaches', 'reached', 'reaching', 'kill', 'kills', 'killed', 'killing', 'raise', 'raises', 'raised', 'raising'
     ];
     
-    let lastError = null;
+    // Add all words and their common variations
+    comprehensiveWords.forEach(word => {
+      dictionary.add(word.toLowerCase());
+      // Add plural forms for nouns
+      if (!word.endsWith('s')) {
+        dictionary.add((word + 's').toLowerCase());
+      }
+      // Add -ing forms
+      if (!word.endsWith('ing')) {
+        const base = word.replace(/e$/, '');
+        dictionary.add((base + 'ing').toLowerCase());
+      }
+      // Add -ed forms
+      if (!word.endsWith('ed')) {
+        const base = word.replace(/e$/, '');
+        dictionary.add((base + 'ed').toLowerCase());
+      }
+    });
     
-    for (const source of cdnSources) {
-      try {
-        console.log(`Trying to load WebLLM from: ${source.name}`);
-        const module = await import(/* @vite-ignore */ source.url);
-        
-        CreateMLCEngine = module.CreateMLCEngine || module.default?.CreateMLCEngine || module.default;
-        
-        if (CreateMLCEngine && typeof CreateMLCEngine === 'function') {
-          console.log('WebLLM CreateMLCEngine loaded successfully from', source.name);
-          toast('WebLLM library loaded', 'success');
-          return CreateMLCEngine;
-        }
-        
-        lastError = new Error(`Engine class not found in module from ${source.name}`);
-      } catch (importError) {
-        console.warn(`Failed to load from ${source.name}:`, importError);
-        lastError = importError;
-        continue;
+    // Add numbers
+    for (let i = 0; i < 10000; i++) {
+      dictionary.add(i.toString());
+    }
+    
+    console.log('Dictionary loaded with', dictionary.size, 'words (fallback)');
+    dictionaryLoaded = true;
+    toast('Dictionary loaded!', 'success');
+  } catch (error) {
+    console.error('Failed to load dictionary:', error);
+    toast('Failed to load dictionary, using basic word list', 'error');
+    dictionaryLoaded = true; // Mark as loaded even if failed to prevent infinite retries
+  }
+  
+  return dictionary;
+}
+
+// Check if a word is spelled correctly
+function isSpelledCorrectly(word) {
+  if (!word || word.length === 0) return true;
+  
+  // Remove punctuation and check
+  const cleanWord = word.toLowerCase().replace(/[^\w]/g, '');
+  if (cleanWord.length === 0) return true;
+  
+  // Check if it's a number
+  if (/^\d+$/.test(cleanWord)) return true;
+  
+  // Check dictionary
+  return dictionary.has(cleanWord);
+}
+
+// Get suggestions for a misspelled word (simple implementation)
+function getSuggestions(word) {
+  if (!word || word.length === 0) return [];
+  
+  const cleanWord = word.toLowerCase().replace(/[^\w]/g, '');
+  const suggestions = [];
+  
+  // Simple edit distance suggestions (very basic)
+  // In a real implementation, you'd use a proper spell checker library
+  for (const dictWord of dictionary) {
+    if (dictWord.length >= cleanWord.length - 2 && dictWord.length <= cleanWord.length + 2) {
+      const distance = levenshteinDistance(cleanWord, dictWord);
+      if (distance <= 2 && distance > 0) {
+        suggestions.push(dictWord);
+        if (suggestions.length >= 5) break;
       }
     }
-    
-    throw new Error(`WebLLM library not found. Please build the bundled version by running: npm install && npm run build.`);
-  } catch (error) {
-    console.error('Failed to load WebLLM:', error);
-    toast(`Failed to load WebLLM: ${error.message}`, 'error');
-    throw error;
   }
+  
+  return suggestions.slice(0, 5);
 }
 
-// List cached models (same as regex generator)
-let webllmApi = null;
-
-async function listCachedModels() {
-  if (!modelList) return;
+// Simple Levenshtein distance calculation
+function levenshteinDistance(str1, str2) {
+  const matrix = [];
   
-  // Update webllmApi from window if available
-  if (typeof window !== 'undefined' && window.webllm) {
-    webllmApi = window.webllm;
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
   }
   
-  if (!webllmApi || typeof webllmApi.hasModelInCache !== 'function') {
-    modelList.innerHTML = '<p class="text-sm text-muted" style="margin: 0;">Cache API not available yet. Download a model first.</p>';
-    return;
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
   }
-
-  const options = Array.from(modelSelect?.options || []).map(o => o.value);
-  const cached = [];
-
-  for (const id of options) {
-    try {
-      const ok = await webllmApi.hasModelInCache(id);
-      if (ok) cached.push(id);
-    } catch {
-      // Ignore all errors - database might not be initialized, model doesn't exist, etc.
+  
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
     }
   }
-
-  if (cached.length === 0) {
-    modelList.innerHTML = '<p class="text-sm text-muted" style="margin: 0;">No cached models found.</p>';
-    return;
-  }
-
-  const items = cached.map(key => {
-    const isSelected = key === modelSelect.value;
-    return `<li${isSelected ? ' style="font-weight: 600;"' : ''}>${key}</li>`;
-  }).join('');
-
-  modelList.innerHTML = `
-    <p class="text-sm text-muted" style="margin: 0 0 0.25rem 0;">Cached models:</p>
-    <ul class="text-sm" style="margin: 0; padding-left: 1.25rem;">
-      ${items}
-    </ul>
-  `;
+  
+  return matrix[str2.length][str1.length];
 }
 
-// Download and cache model
-async function downloadModel() {
-  if (isModelLoading) {
-    toast('Model is already loading', 'info');
-    return;
-  }
-  
-  if (!checkWebGPUSupport()) {
-    toast('WebGPU is not supported in your browser. Please use Chrome 113+, Edge 113+, or Safari 18+', 'error');
-    return;
-  }
-  
-  const modelName = modelSelect.value;
-  let hasError = false;
-  let errorMessage = null;
-  
-  const setError = (msg) => {
-    hasError = true;
-    errorMessage = msg;
-  };
-  
-  try {
-    isModelLoading = true;
-    downloadModelBtn.disabled = true;
-    downloadModelBtn.textContent = 'Downloading...';
-    modelStatus.textContent = 'Initializing download...';
-    modelStatus.style.color = 'var(--muted)';
-    
-    const createEngine = await loadWebLLM();
-    
-    if (!createEngine || typeof createEngine !== 'function') {
-      throw new Error('WebLLM CreateMLCEngine is not available. Please refresh the page.');
-    }
-    
-    let engine;
-    try {
-      engine = await createEngine(
-        modelName,
-        {
-          initProgressCallback: (report) => {
-            if (hasError) return;
-            
-            const progress = report.progress || 0;
-            const text = report.text || '';
-            const percentage = (progress * 100).toFixed(1);
-            modelStatus.textContent = `Downloading: ${percentage}% - ${text}`;
-            
-            if (progress === 1) {
-              modelStatus.textContent = `✓ Model "${modelName}" downloaded and cached successfully!`;
-              modelStatus.style.color = 'var(--ok)';
-            }
-          },
-          gpuDevice: null,
-        }
-      );
-    } catch (engineError) {
-      setError(engineError.message);
-      throw engineError;
-    }
-    
-    currentEngine = engine;
-    isModelLoading = false;
-    downloadModelBtn.disabled = false;
-    downloadModelBtn.textContent = 'Download & Cache Model';
-    
-    toast('Model downloaded and cached successfully!', 'success');
-    modelStatus.textContent = `✓ Model "${modelName}" is ready to use`;
-    modelStatus.style.color = 'var(--ok)';
-    listCachedModels().catch(console.error);
-    
-  } catch (e) {
-    hasError = true;
-    isModelLoading = false;
-    downloadModelBtn.disabled = false;
-    downloadModelBtn.textContent = 'Download & Cache Model';
-    
-    const errorMsg = e.message || 'Unknown error';
-    modelStatus.textContent = `✗ Error: ${errorMsg}`;
-    modelStatus.style.color = 'var(--error)';
-    modelStatus.style.whiteSpace = 'pre-wrap';
-    
-    toast(`Failed to download model: ${errorMsg}`, 'error');
-    console.error('Model download error:', e);
-  }
-}
-
-// Initialize engine
-async function initializeEngine() {
-  if (currentEngine) {
-    return currentEngine;
-  }
-  
-  const modelName = modelSelect.value;
-  let hasError = false;
-  let errorMessage = null;
-  
-  const setError = (msg) => {
-    hasError = true;
-    errorMessage = msg;
-  };
-  
-  try {
-    const createEngine = await loadWebLLM();
-    
-    if (!createEngine || typeof createEngine !== 'function') {
-      throw new Error('WebLLM CreateMLCEngine is not available. Please refresh the page.');
-    }
-    
-    toast('Loading model from cache...', 'info');
-    
-    let engine;
-    try {
-      engine = await createEngine(
-        modelName,
-        {
-          initProgressCallback: (report) => {
-            if (hasError) return;
-            
-            const progress = report.progress || 0;
-            const text = report.text || '';
-            if (progress < 1) {
-              const percentage = (progress * 100).toFixed(1);
-              modelStatus.textContent = `Loading: ${percentage}% - ${text}`;
-            }
-          },
-          gpuDevice: null,
-        }
-      );
-    } catch (engineError) {
-      setError(engineError.message);
-      throw engineError;
-    }
-    currentEngine = engine;
-    
-    toast('Model loaded successfully!', 'success');
-    modelStatus.textContent = `✓ Model "${modelName}" is ready`;
-    modelStatus.style.color = 'var(--ok)';
-    listCachedModels().catch(console.error);
-    
-    return engine;
-  } catch (e) {
-    hasError = true;
-    const errorMsg = e.message || 'Unknown error';
-    modelStatus.textContent = `✗ Error: ${errorMsg}`;
-    modelStatus.style.color = 'var(--error)';
-    modelStatus.style.whiteSpace = 'pre-wrap';
-    
-    toast(`Failed to load model: ${errorMsg}`, 'error');
-    console.error('Model initialization error:', e);
-    
-    throw e;
-  }
-}
-
-// Check grammar and spelling
-async function checkGrammar() {
+// Check spelling in text
+async function checkSpelling() {
   const text = textInput.value.trim();
   
   if (!text) {
@@ -315,104 +221,44 @@ async function checkGrammar() {
   try {
     checkBtn.disabled = true;
     checkBtn.textContent = 'Checking...';
-    output.innerHTML = '<p class="placeholder" style="color: var(--muted);">Checking grammar and spelling...</p>';
+    output.innerHTML = '<p class="placeholder" style="color: var(--muted);">Checking spelling...</p>';
     errorsSummary.textContent = '';
     fixIssuesBtn.disabled = true;
     downloadBtn.disabled = true;
     errors = [];
     originalText = text;
     
-    let engine = currentEngine;
-    if (!engine) {
-      engine = await initializeEngine();
+    // Load dictionary if needed
+    await loadDictionary();
+    
+    // Extract words from text
+    const wordRegex = /\b\w+\b/g;
+    const words = text.match(wordRegex) || [];
+    const wordPositions = [];
+    
+    // Find positions of each word
+    let match;
+    while ((match = wordRegex.exec(text)) !== null) {
+      wordPositions.push({
+        word: match[0],
+        start: match.index,
+        end: match.index + match[0].length
+      });
     }
     
-    const prompt = `You are a grammar and spelling checker. Analyze the following text and identify all errors. For each error, provide:
-1. The exact text that contains the error
-2. The type of error (spelling, grammar, punctuation, etc.)
-3. A brief explanation
-4. The suggested correction
-
-Format your response as JSON array of objects, where each object has:
-- "text": the exact text with the error
-- "type": error type (e.g., "spelling", "grammar", "punctuation")
-- "explanation": brief explanation
-- "correction": the corrected text
-
-Text to check:
-${text}
-
-Return ONLY the JSON array, no other text.`;
-
-    let response = '';
-    
-    try {
-      if (engine.chat && engine.chat.completions && engine.chat.completions.create) {
-        const result = await engine.chat.completions.create({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a grammar and spelling checker. Return only valid JSON arrays with error objects.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 2000
+    // Check each word
+    for (const pos of wordPositions) {
+      if (!isSpelledCorrectly(pos.word)) {
+        const suggestions = getSuggestions(pos.word);
+        errors.push({
+          text: pos.word,
+          start: pos.start,
+          end: pos.end,
+          type: 'spelling',
+          suggestions: suggestions,
+          correction: suggestions.length > 0 ? suggestions[0] : pos.word
         });
-        
-        if (result && typeof result === 'object' && 'choices' in result) {
-          response = result.choices[0].message.content.trim();
-        } else if (typeof result === 'string') {
-          response = result.trim();
-        }
-      } else if (engine.generate) {
-        response = await engine.generate(prompt, {
-          temperature: 0.1,
-          max_tokens: 2000
-        });
-      } else if (engine.chat) {
-        const result = await engine.chat({
-          messages: [
-            { role: 'system', content: 'You are a grammar and spelling checker. Return only valid JSON arrays with error objects.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.1,
-          max_tokens: 2000
-        });
-        
-        if (typeof result === 'string') {
-          response = result;
-        } else if (result && result.content) {
-          response = result.content;
-        }
-      } else {
-        throw new Error('WebLLM engine does not support chat or generate methods');
       }
-      
-      response = response.trim();
-      
-      // Try to extract JSON from response
-      let jsonMatch = response.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        response = jsonMatch[0];
-      }
-      
-      // Remove markdown code blocks if present
-      response = response.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
-      
-      errors = JSON.parse(response);
-      
-      if (!Array.isArray(errors)) {
-        errors = [];
-      }
-      
-    } catch (apiError) {
-      console.error('API error:', apiError);
-      // Fallback: try to parse errors from natural language response
-      errors = parseErrorsFromText(response, text);
     }
     
     // Highlight errors in text
@@ -420,19 +266,13 @@ Return ONLY the JSON array, no other text.`;
     
     // Show errors summary
     if (errors.length > 0) {
-      const spellingCount = errors.filter(e => e.type === 'spelling').length;
-      const grammarCount = errors.filter(e => e.type === 'grammar').length;
-      const otherCount = errors.length - spellingCount - grammarCount;
-      
       errorsSummary.innerHTML = `
-        <strong>Found ${errors.length} error(s):</strong><br>
-        ${spellingCount > 0 ? `• ${spellingCount} spelling error(s)` : ''}
-        ${grammarCount > 0 ? `• ${grammarCount} grammar error(s)` : ''}
-        ${otherCount > 0 ? `• ${otherCount} other error(s)` : ''}
+        <strong>Found ${errors.length} spelling error(s):</strong><br>
+        ${errors.map(e => `• "${e.text}"${e.suggestions.length > 0 ? ` (suggestions: ${e.suggestions.slice(0, 3).join(', ')})` : ''}`).join('<br>')}
       `;
       fixIssuesBtn.disabled = false;
     } else {
-      errorsSummary.innerHTML = '<strong style="color: var(--ok);">✓ No errors found!</strong>';
+      errorsSummary.innerHTML = '<strong style="color: var(--ok);">✓ No spelling errors found!</strong>';
       fixIssuesBtn.disabled = true;
     }
     
@@ -440,133 +280,44 @@ Return ONLY the JSON array, no other text.`;
     downloadBtn.disabled = false;
     
     saveStateWithStorage({
-      text,
-      model: modelSelect.value
+      text
     }, storageKey);
     
-    toast('Grammar check completed!', 'success');
+    toast('Spell check completed!', 'success');
     
   } catch (e) {
     const errorMsg = e.message || 'Unknown error';
-    toast(`Failed to check grammar: ${errorMsg}`, 'error');
+    toast(`Failed to check spelling: ${errorMsg}`, 'error');
     output.innerHTML = `<p class="error">Error: ${errorMsg}</p>`;
-    console.error('Grammar check error:', e);
+    console.error('Spell check error:', e);
   } finally {
     checkBtn.disabled = false;
-    checkBtn.textContent = 'Check Grammar & Spelling';
+    checkBtn.textContent = 'Check Spelling';
   }
-}
-
-// Apply corrections directly from errors array (fallback method)
-function applyCorrectionsFromErrors(text, errors) {
-  if (!errors || errors.length === 0) {
-    return text;
-  }
-  
-  // Sort errors by position (reverse order for safe replacement)
-  const sortedErrors = errors
-    .map(error => {
-      const index = text.indexOf(error.text);
-      return { ...error, index };
-    })
-    .filter(e => e.index !== -1)
-    .sort((a, b) => b.index - a.index);
-  
-  let corrected = text;
-  
-  // Apply corrections from end to start to preserve indices
-  for (const error of sortedErrors) {
-    if (error.correction) {
-      const before = corrected.substring(0, error.index);
-      const after = corrected.substring(error.index + error.text.length);
-      corrected = before + error.correction + after;
-    }
-  }
-  
-  return corrected;
-}
-
-// Parse errors from natural language response (fallback)
-function parseErrorsFromText(response, originalText) {
-  const errors = [];
-  // Simple heuristic: look for patterns like "error: ..." or "issue: ..."
-  // This is a fallback if JSON parsing fails
-  const lines = response.split('\n');
-  for (const line of lines) {
-    if (line.toLowerCase().includes('error') || line.toLowerCase().includes('issue')) {
-      // Try to extract text and suggestion
-      const match = line.match(/(.+?)\s*(?:should be|correct to|change to|->|→)\s*(.+)/i);
-      if (match) {
-        errors.push({
-          text: match[1].trim(),
-          type: 'grammar',
-          explanation: line,
-          correction: match[2].trim()
-        });
-      }
-    }
-  }
-  return errors;
 }
 
 // Display text with highlighted errors
 function displayHighlightedText(text, errors) {
   if (errors.length === 0) {
-    output.innerHTML = `<p style="color: var(--ok);">✓ No errors found in the text!</p>`;
+    output.innerHTML = `<p style="color: var(--ok);">✓ No spelling errors found in the text!</p>`;
     return;
   }
   
-  // Find all error positions in the text
-  const errorRanges = [];
-  for (const error of errors) {
-    const errorText = error.text.trim();
-    if (!errorText) continue;
-    
-    // Find all occurrences of the error text
-    let searchIndex = 0;
-    while (true) {
-      const index = text.indexOf(errorText, searchIndex);
-      if (index === -1) break;
-      
-      errorRanges.push({
-        start: index,
-        end: index + errorText.length,
-        error: error
-      });
-      
-      searchIndex = index + 1;
-    }
-  }
-  
-  // Sort by start position
-  errorRanges.sort((a, b) => a.start - b.start);
-  
-  // Remove overlapping ranges (keep first occurrence)
-  const nonOverlapping = [];
-  for (const range of errorRanges) {
-    const overlaps = nonOverlapping.some(r => 
-      (range.start >= r.start && range.start < r.end) ||
-      (range.end > r.start && range.end <= r.end) ||
-      (range.start <= r.start && range.end >= r.end)
-    );
-    
-    if (!overlaps) {
-      nonOverlapping.push(range);
-    }
-  }
-  
-  // Sort by position in reverse order for safe replacement
-  nonOverlapping.sort((a, b) => b.start - a.start);
+  // Sort errors by position (reverse order for safe replacement)
+  const sortedErrors = [...errors].sort((a, b) => b.start - a.start);
   
   let highlighted = text;
   
   // Replace errors with highlighted spans (working backwards to preserve indices)
-  for (const range of nonOverlapping) {
-    const before = highlighted.substring(0, range.start);
-    const errorText = highlighted.substring(range.start, range.end);
-    const after = highlighted.substring(range.end);
+  for (const error of sortedErrors) {
+    const before = highlighted.substring(0, error.start);
+    const errorText = highlighted.substring(error.start, error.end);
+    const after = highlighted.substring(error.end);
     
-    const tooltip = range.error.explanation || `${range.error.type}: ${range.error.correction || 'needs correction'}`;
+    const suggestionsText = error.suggestions.length > 0 
+      ? `Suggestions: ${error.suggestions.join(', ')}`
+      : 'No suggestions available';
+    const tooltip = `${error.type}: ${suggestionsText}`;
     const escapedTooltip = tooltip.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const highlight = `<span class="error-highlight" title="${escapedTooltip}">${errorText}<span class="error-tooltip">${escapedTooltip}</span></span>`;
     
@@ -577,7 +328,7 @@ function displayHighlightedText(text, errors) {
 }
 
 // Fix all issues
-async function fixAllIssues() {
+function fixAllIssues() {
   if (errors.length === 0 || !checkedText) {
     toast('No errors to fix', 'info');
     return;
@@ -587,170 +338,33 @@ async function fixAllIssues() {
     fixIssuesBtn.disabled = true;
     fixIssuesBtn.textContent = 'Fixing...';
     
-    let engine = currentEngine;
-    if (!engine) {
-      engine = await initializeEngine();
+    // Sort errors by position (reverse order for safe replacement)
+    const sortedErrors = [...errors]
+      .filter(e => e.correction && e.correction !== e.text)
+      .sort((a, b) => b.start - a.start);
+    
+    let corrected = checkedText;
+    
+    // Apply corrections from end to start to preserve indices
+    for (const error of sortedErrors) {
+      const before = corrected.substring(0, error.start);
+      const after = corrected.substring(error.end);
+      corrected = before + error.correction + after;
     }
     
-    const prompt = `Correct the following text by fixing all grammar and spelling errors. Return ONLY the corrected text with no explanations, no labels, no markdown, no code blocks.
-
-${checkedText}`;
-
-    let response = '';
+    fixedText = corrected;
     
-    try {
-      if (engine.chat && engine.chat.completions && engine.chat.completions.create) {
-        const result = await engine.chat.completions.create({
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a text corrector. When given text with errors, return ONLY the corrected version of the text. Do not include any explanations, labels, or additional text. Just return the corrected text.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 2000
-        });
-        
-        if (result && typeof result === 'object' && 'choices' in result) {
-          response = result.choices[0].message.content.trim();
-        } else if (typeof result === 'string') {
-          response = result.trim();
-        }
-      } else if (engine.generate) {
-        response = await engine.generate(prompt, {
-          temperature: 0.1,
-          max_tokens: 2000
-        });
-      } else if (engine.chat) {
-        const result = await engine.chat({
-          messages: [
-            { role: 'system', content: 'You are a text corrector. When given text with errors, return ONLY the corrected version of the text. Do not include any explanations, labels, or additional text. Just return the corrected text.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.1,
-          max_tokens: 2000
-        });
-        
-        if (typeof result === 'string') {
-          response = result;
-        } else if (result && result.content) {
-          response = result.content;
-        }
-      }
-      
-      console.log('Raw AI response:', response);
-      response = response.trim();
-      
-      // Remove any markdown code blocks
-      response = response.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/i, '').trim();
-      
-      // Try to extract just the corrected text by removing instruction patterns
-      // Remove common prefixes
-      response = response.replace(/^(?:corrected text:|here is the corrected text:|corrected version:|the corrected text is:|here's the corrected text:|fixed text:)\s*/i, '');
-      
-      // If response contains markers like "Original:" or "Corrected:", extract the corrected part
-      if (response.includes('Original:') || response.includes('Corrected:') || response.includes('Fixed:')) {
-        const correctedMatch = response.match(/(?:Corrected|Fixed):[\s\n]*([\s\S]+?)(?:\n\n|$)/i);
-        if (correctedMatch) {
-          response = correctedMatch[1].trim();
-        }
-      }
-      
-      // Remove instruction lines at the start
-      const lines = response.split('\n');
-      let startIndex = 0;
-      const instructionPatterns = /^(corrected|fixed|here|original|text|instructions?|note:|error|issue)/i;
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        // Skip lines that look like instructions (short lines with instruction keywords)
-        if (instructionPatterns.test(line) && (line.length < 100 || line.endsWith(':'))) {
-          continue;
-        }
-        
-        // If we find a line that doesn't look like an instruction, start from there
-        startIndex = i;
-        break;
-      }
-      
-      response = lines.slice(startIndex).join('\n').trim();
-      
-      // Final cleanup: if response still seems to contain instructions, try to find the actual text
-      // Look for the longest continuous block of text that doesn't contain instruction keywords
-      if (response.toLowerCase().includes('instruction') || response.toLowerCase().includes('note:') || response.toLowerCase().includes('error:')) {
-        // Split by double newlines and find the longest block
-        const blocks = response.split(/\n\n+/);
-        const textBlocks = blocks.filter(block => {
-          const lower = block.toLowerCase();
-          return !lower.includes('instruction') && 
-                 !lower.includes('note:') && 
-                 !lower.startsWith('corrected') &&
-                 !lower.startsWith('error:') &&
-                 !lower.startsWith('issue:') &&
-                 block.trim().length > 20; // Reasonable minimum length
-        });
-        
-        if (textBlocks.length > 0) {
-          // Use the longest block that looks like actual text
-          response = textBlocks.reduce((a, b) => a.length > b.length ? a : b).trim();
-        }
-      }
-      
-      // If response is still problematic, try a different approach:
-      // Find the part that most closely matches the original text structure
-      if (!response || response.length < checkedText.length * 0.3) {
-        console.warn('Extracted text seems too short, trying alternative extraction');
-        
-        // Try to find text that contains words from the original
-        const originalWords = checkedText.split(/\s+/).filter(w => w.length > 3);
-        const responseWords = response.split(/\s+/);
-        const matchingWords = responseWords.filter(w => originalWords.some(ow => ow.toLowerCase().includes(w.toLowerCase()) || w.toLowerCase().includes(ow.toLowerCase())));
-        
-        if (matchingWords.length < originalWords.length * 0.3) {
-          // Response doesn't seem to contain the corrected text
-          // Fallback: Apply corrections directly from errors array
-          console.warn('Response does not appear to contain corrected text, applying corrections from errors array');
-          response = applyCorrectionsFromErrors(checkedText, errors);
-        }
-      }
-      
-      // Final validation: check if response looks like actual text (not just instructions)
-      const responseLower = response.toLowerCase();
-      if (responseLower.includes('instruction') || 
-          responseLower.includes('error:') || 
-          responseLower.includes('issue:') ||
-          (responseLower.includes('corrected') && response.length < 200)) {
-        // Still looks like instructions, try applying corrections directly
-        console.warn('Response still looks like instructions, applying corrections from errors array');
-        response = applyCorrectionsFromErrors(checkedText, errors);
-      }
-      
-      console.log('Extracted corrected text:', response.substring(0, 100) + '...');
-      
-      fixedText = response;
-      
-      // Update textarea with fixed text
-      textInput.value = fixedText;
-      
-      // Show the fixed text in output (without re-checking)
-      const escapedText = fixedText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-      output.innerHTML = `<p style="color: var(--ok); margin-bottom: 1rem;">✓ Text corrected! The corrected text is now in the input field.</p><div class="highlighted-text">${escapedText}</div>`;
-      
-      // Update errors summary
-      errorsSummary.innerHTML = '<strong style="color: var(--ok);">✓ All issues have been fixed!</strong>';
-      
-      toast('All issues fixed!', 'success');
-      
-    } catch (apiError) {
-      console.error('Fix API error:', apiError);
-      throw new Error(`Failed to fix issues: ${apiError.message}`);
-    }
+    // Update textarea with fixed text
+    textInput.value = fixedText;
+    
+    // Show the fixed text in output
+    const escapedText = fixedText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    output.innerHTML = `<p style="color: var(--ok); margin-bottom: 1rem;">✓ Text corrected! The corrected text is now in the input field.</p><div class="highlighted-text">${escapedText}</div>`;
+    
+    // Update errors summary
+    errorsSummary.innerHTML = '<strong style="color: var(--ok);">✓ All issues have been fixed!</strong>';
+    
+    toast('All issues fixed!', 'success');
     
   } catch (e) {
     const errorMsg = e.message || 'Unknown error';
@@ -813,88 +427,8 @@ function clearAll() {
   fixedText = '';
 }
 
-// Clear selected model
-async function clearSelectedModel() {
-  const modelName = modelSelect.value;
-  
-  if (!modelName) {
-    toast('No model selected', 'info');
-    return;
-  }
-  
-  if (!confirm(`Are you sure you want to clear the cached model "${modelName}"? This will delete it from your browser's storage.`)) {
-    return;
-  }
-  
-  try {
-    // WebLLM uses IndexedDB, we need to clear it
-    // The model name is used as the key
-    if (typeof indexedDB !== 'undefined') {
-      // Note: WebLLM manages its own cache, we can't directly delete it
-      // But we can clear the engine reference
-      currentEngine = null;
-      toast('Model reference cleared. The cached model files remain in storage.', 'info');
-      modelStatus.textContent = 'Model reference cleared';
-      modelStatus.style.color = 'var(--muted)';
-    }
-  } catch (e) {
-    console.error('Failed to clear model:', e);
-    toast('Failed to clear model', 'error');
-  }
-}
-
-// Check model status (same as regex generator)
-async function checkModelStatus() {
-  const modelName = modelSelect.value;
-  try {
-    modelStatus.textContent = 'Checking model status...';
-    modelStatus.style.color = 'var(--muted)';
-
-    // Update webllmApi from window if available
-    if (typeof window !== 'undefined' && window.webllm) {
-      webllmApi = window.webllm;
-    }
-
-    if (!webllmApi || typeof webllmApi.hasModelInCache !== 'function') {
-      modelStatus.textContent = 'WebLLM cache API not available yet. Make sure the WebLLM bundle is loaded.';
-      modelStatus.style.color = 'var(--error)';
-      await listCachedModels();
-      return false;
-    }
-
-    let cached = false;
-    try {
-      cached = await webllmApi.hasModelInCache(modelName);
-    } catch (e) {
-      // Ignore IndexedDB errors - database might not be initialized
-      if (e.name === 'NotFoundError' || e.message?.includes('object stores')) {
-        cached = false;
-      } else {
-        throw e;
-      }
-    }
-    
-    if (cached) {
-      modelStatus.textContent = `✓ Model "${modelName}" is cached and ready`;
-      modelStatus.style.color = 'var(--ok)';
-    } else {
-      modelStatus.textContent = `✗ Model "${modelName}" is not cached. Click "Download & Cache Model" to download it.`;
-      modelStatus.style.color = 'var(--error)';
-    }
-    await listCachedModels();
-    return cached;
-  } catch (e) {
-    modelStatus.textContent = `Error checking model status: ${e.message}`;
-    modelStatus.style.color = 'var(--error)';
-    return false;
-  }
-}
-
 // Event listeners
-on(downloadModelBtn, 'click', downloadModel);
-on(checkModelBtn, 'click', checkModelStatus);
-on(clearModelBtn, 'click', clearSelectedModel);
-on(checkBtn, 'click', checkGrammar);
+on(checkBtn, 'click', checkSpelling);
 on(clearBtn, 'click', clearAll);
 on(fixIssuesBtn, 'click', fixAllIssues);
 on(downloadBtn, 'click', downloadFixedText);
@@ -922,14 +456,12 @@ on(fileUploadArea, 'drop', (e) => {
   e.preventDefault();
   fileUploadArea.classList.remove('dragover');
   const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+  if (file && (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md'))) {
     handleFileUpload(file);
   } else {
     toast('Please upload a text file', 'error');
   }
 });
 
-// Check model status on load
-checkModelStatus().catch(console.error);
-listCachedModels().catch(console.error);
-
+// Load dictionary on page load
+loadDictionary().catch(console.error);
