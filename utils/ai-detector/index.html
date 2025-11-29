@@ -108,6 +108,18 @@
       background-color: var(--accent);
       transition: width 0.3s ease;
     }
+    details.info-box summary {
+      list-style: none;
+    }
+    details.info-box summary::-webkit-details-marker {
+      display: none;
+    }
+    details.info-box summary::marker {
+      display: none;
+    }
+    details.info-box summary:hover {
+      opacity: 0.8;
+    }
   </style>
 </head>
 <body>
@@ -125,15 +137,22 @@
     <h1>AI Text Detector</h1>
     <p>Detect AI-generated text using ModernBERT. Powered by ONNX - runs entirely in your browser.</p>
     
-    <div class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
-      <h3 style="margin-top: 0;">ℹ️ Technical Details</h3>
-      <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-        <li><strong>Library:</strong> Transformers.js (requires ONNX models)</li>
-        <li><strong>First Use:</strong> Models will be downloaded and cached in your browser (IndexedDB)</li>
-        <li><strong>Privacy:</strong> All processing happens locally in your browser</li>
-        <li><strong>Format:</strong> Models must be in ONNX format for browser execution</li>
-      </ul>
-    </div>
+    <details class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600; list-style: none; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <span>ℹ️ Technical Details</span>
+          <span style="font-size: 0.875rem; color: var(--muted); font-weight: normal;">(click to expand)</span>
+        </span>
+      </summary>
+      <div style="margin-top: 1rem;">
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          <li><strong>Library:</strong> Transformers.js (requires ONNX models)</li>
+          <li><strong>First Use:</strong> Models will be downloaded and cached in your browser (IndexedDB)</li>
+          <li><strong>Privacy:</strong> All processing happens locally in your browser</li>
+          <li><strong>Format:</strong> Models must be in ONNX format for browser execution</li>
+        </ul>
+      </div>
+    </details>
     
     <section class="tool">
       <div class="pane">

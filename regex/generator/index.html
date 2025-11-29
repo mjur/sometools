@@ -14,6 +14,20 @@
   <script type="module" src="/js/analytics.js"></script>
   <meta property="og:title" content="Regex Generator">
   <meta property="og:description" content="Generate regular expressions from natural language descriptions using AI.">
+  <style>
+    details.info-box summary {
+      list-style: none;
+    }
+    details.info-box summary::-webkit-details-marker {
+      display: none;
+    }
+    details.info-box summary::marker {
+      display: none;
+    }
+    details.info-box summary:hover {
+      opacity: 0.8;
+    }
+  </style>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -79,32 +93,38 @@
     <h1>Regex Generator</h1>
     <p>Generate regular expressions from natural language descriptions using AI. Powered by WebLLM - runs entirely in your browser.</p>
     
-    <div class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
-      <h3 style="margin-top: 0;">⚠️ Important: WebLLM Requirements</h3>
-      <p><strong>WebLLM requires WebGPU support in your browser.</strong></p>
-      <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-        <li><strong>WebGPU Support:</strong> Required for model execution. Check support at <a href="https://webgpureport.org/" target="_blank">webgpureport.org</a></li>
-        <li><strong>Browser Requirements:</strong> Chrome 113+, Edge 113+, or Safari 18+ (with WebGPU enabled)</li>
-        <li><strong>GPU:</strong> A compatible GPU (dedicated or integrated) is recommended for best performance</li>
-        <li><strong>AI Models:</strong> Large files (ranging from ~300MB to several GB) that need to be downloaded</li>
-        <li>Models are cached in your browser's IndexedDB for faster subsequent use</li>
-        <li>Some models may exceed your browser's default cache limit</li>
-      </ul>
-      <details style="margin-top: 0.5rem;">
-        <summary style="cursor: pointer; font-weight: bold;">How to increase browser cache size</summary>
-        <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
-          <li><strong>Chrome/Edge:</strong> Settings → Site settings → Storage → Increase quota</li>
-          <li><strong>Firefox:</strong> about:config → search "dom.storage.max_quota" → increase value</li>
-          <li><strong>Safari:</strong> Preferences → Advanced → Show Develop menu → Develop → Empty Caches (then increase in Develop menu)</li>
+    <details class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600; list-style: none; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <span>⚠️ Important: WebLLM Requirements</span>
+          <span style="font-size: 0.875rem; color: var(--muted); font-weight: normal;">(click to expand)</span>
+        </span>
+      </summary>
+      <div style="margin-top: 1rem;">
+        <p><strong>WebLLM requires WebGPU support in your browser.</strong></p>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          <li><strong>WebGPU Support:</strong> Required for model execution. Check support at <a href="https://webgpureport.org/" target="_blank">webgpureport.org</a></li>
+          <li><strong>Browser Requirements:</strong> Chrome 113+, Edge 113+, or Safari 18+ (with WebGPU enabled)</li>
+          <li><strong>GPU:</strong> A compatible GPU (dedicated or integrated) is recommended for best performance</li>
+          <li><strong>AI Models:</strong> Large files (ranging from ~300MB to several GB) that need to be downloaded</li>
+          <li>Models are cached in your browser's IndexedDB for faster subsequent use</li>
+          <li>Some models may exceed your browser's default cache limit</li>
         </ul>
-      </details>
-      <details style="margin-top: 0.5rem;">
-        <summary style="cursor: pointer; font-weight: bold;">Troubleshooting WebLLM Issues</summary>
-        <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
-          <li><strong>WebGPU errors:</strong> WebLLM requires WebGPU support. Use Chrome 113+, Edge 113+, or Safari 18+. Check support at <a href="https://webgpureport.org/" target="_blank">webgpureport.org</a></li>
-          <li><strong>Enable WebGPU in Chrome:</strong> Go to chrome://flags/#enable-unsafe-webgpu and enable it, then restart Chrome</li>
-          <li><strong>Shader compilation errors:</strong> Usually indicates GPU compatibility issues. Try updating GPU drivers, using a different browser, or selecting a smaller model</li>
-          <li><strong>GPU requirements:</strong> A compatible GPU (dedicated or integrated) is required. Some older or integrated GPUs may not support all WebGPU features</li>
+        <details style="margin-top: 0.5rem;">
+          <summary style="cursor: pointer; font-weight: bold;">How to increase browser cache size</summary>
+          <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+            <li><strong>Chrome/Edge:</strong> Settings → Site settings → Storage → Increase quota</li>
+            <li><strong>Firefox:</strong> about:config → search "dom.storage.max_quota" → increase value</li>
+            <li><strong>Safari:</strong> Preferences → Advanced → Show Develop menu → Develop → Empty Caches (then increase in Develop menu)</li>
+          </ul>
+        </details>
+        <details style="margin-top: 0.5rem;">
+          <summary style="cursor: pointer; font-weight: bold;">Troubleshooting WebLLM Issues</summary>
+          <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+            <li><strong>WebGPU errors:</strong> WebLLM requires WebGPU support. Use Chrome 113+, Edge 113+, or Safari 18+. Check support at <a href="https://webgpureport.org/" target="_blank">webgpureport.org</a></li>
+            <li><strong>Enable WebGPU in Chrome:</strong> Go to chrome://flags/#enable-unsafe-webgpu and enable it, then restart Chrome</li>
+            <li><strong>Shader compilation errors:</strong> Usually indicates GPU compatibility issues. Try updating GPU drivers, using a different browser, or selecting a smaller model</li>
+            <li><strong>GPU requirements:</strong> A compatible GPU (dedicated or integrated) is required. Some older or integrated GPUs may not support all WebGPU features</li>
           <li><strong>Update GPU drivers:</strong> Outdated drivers can cause shader errors. Update to the latest drivers from your GPU manufacturer</li>
           <li><strong>Try smaller models:</strong> If you encounter errors, try the smallest models first (Qwen2.5-0.5B or Qwen2-0.5B)</li>
           <li><strong>If you see "Failed to load WebLLM":</strong> Check the browser console (F12) for detailed errors</li>
@@ -113,7 +133,8 @@
           <li><strong>Model download errors:</strong> Check your browser's storage quota and internet connection</li>
         </ul>
       </details>
-    </div>
+      </div>
+    </details>
     
     <section class="tool">
       <div class="pane">

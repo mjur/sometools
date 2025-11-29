@@ -14,6 +14,20 @@
   <script type="module" src="/js/analytics.js"></script>
   <meta property="og:title" content="WebLLM Chatbot">
   <meta property="og:description" content="Chat with WebLLM models locally in your browser.">
+  <style>
+    details.info-box summary {
+      list-style: none;
+    }
+    details.info-box summary::-webkit-details-marker {
+      display: none;
+    }
+    details.info-box summary::marker {
+      display: none;
+    }
+    details.info-box summary:hover {
+      opacity: 0.8;
+    }
+  </style>
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to main content</a>
@@ -35,16 +49,23 @@
     <h1>WebLLM Chatbot</h1>
     <p>Chat with AI models that run entirely in your browser using WebLLM. Download models once, cache them locally, and clear them any time.</p>
 
-    <div class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
-      <h3 style="margin-top: 0;">⚠️ WebLLM Requirements</h3>
-      <p><strong>WebLLM requires WebGPU support in your browser.</strong></p>
-      <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-        <li><strong>WebGPU Support:</strong> Required for model execution. Check support at <a href="https://webgpureport.org/" target="_blank" rel="noreferrer">webgpureport.org</a></li>
-        <li><strong>Browser Requirements:</strong> Chrome 113+, Edge 113+, or Safari 18+ (with WebGPU enabled)</li>
-        <li><strong>Models:</strong> Large files that are downloaded once and cached in your browser's IndexedDB</li>
-        <li>You can clear individual models or all WebLLM cache from this page.</li>
-      </ul>
-    </div>
+    <details class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600; list-style: none; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <span>⚠️ WebLLM Requirements</span>
+          <span style="font-size: 0.875rem; color: var(--muted); font-weight: normal;">(click to expand)</span>
+        </span>
+      </summary>
+      <div style="margin-top: 1rem;">
+        <p><strong>WebLLM requires WebGPU support in your browser.</strong></p>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          <li><strong>WebGPU Support:</strong> Required for model execution. Check support at <a href="https://webgpureport.org/" target="_blank" rel="noreferrer">webgpureport.org</a></li>
+          <li><strong>Browser Requirements:</strong> Chrome 113+, Edge 113+, or Safari 18+ (with WebGPU enabled)</li>
+          <li><strong>Models:</strong> Large files that are downloaded once and cached in your browser's IndexedDB</li>
+          <li>You can clear individual models or all WebLLM cache from this page.</li>
+        </ul>
+      </div>
+    </details>
 
     <section class="tool">
       <div class="pane">
