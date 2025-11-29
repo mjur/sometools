@@ -227,6 +227,8 @@
   
   <script type="module" src="/js/header.js"></script>
   <!-- Load bundled WebLLM (shared by regex generator and chatbot) -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
   <script type="module">
     try {
       await import('/js/tools/bundled/webllm-bundle.js');
@@ -235,6 +237,10 @@
     }
   </script>
   <script type="module" src="/js/tools/regex-generator.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
 </body>
 </html>
 

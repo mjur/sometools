@@ -110,8 +110,13 @@ tomorrow 14:00" style="flex: 1; resize: none;"></textarea>
 
   <!-- Luxon for robust timezone handling -->
   <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script type="module" src="/js/header.js"></script>
   <script type="module" src="/js/tools/time-parse.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
 </body>
 </html>
 

@@ -199,8 +199,13 @@
   
   <!-- Load ONNX Runtime from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script type="module" src="/js/header.js"></script>
   <script type="module" src="/js/tools/image-enhance.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
 </body>
 </html>
 

@@ -125,21 +125,6 @@
     <h1>AI Text Detector</h1>
     <p>Detect AI-generated text using ModernBERT. Powered by ONNX - runs entirely in your browser.</p>
     
-    <div class="info-box" style="padding: 1rem; background: rgba(255, 193, 7, 0.1); border: 2px solid var(--warning); border-radius: 6px; margin-bottom: 1.5rem;">
-      <h3 style="margin-top: 0;">⚠️ Important Limitation</h3>
-      <p style="margin: 0.5rem 0;"><strong>Transformers.js requires ONNX models, but most AI detection models on Hugging Face don't have ONNX versions.</strong></p>
-      <p style="margin: 0.5rem 0;">The tool will attempt to load models, but most will fail because they lack ONNX exports.</p>
-      <p style="margin: 0.5rem 0;"><strong>Solution:</strong> To use this tool effectively, you need to:</p>
-      <ol style="margin: 0.5rem 0; padding-left: 1.5rem;">
-        <li>Convert an AI detection model to ONNX format using Python and Optimum:
-          <pre style="background: var(--bg); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; font-size: 0.875rem;">python -m scripts.convert --quantize --model_id roberta-base-openai-detector</pre>
-        </li>
-        <li>Host the converted model files locally (or on a server)</li>
-        <li>Update the model configuration in the code to point to your local model</li>
-      </ol>
-      <p style="margin: 0.5rem 0; color: var(--muted); font-size: 0.875rem;">Alternatively, the Hugging Face space version likely uses server-side processing or pre-converted models.</p>
-    </div>
-    
     <div class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
       <h3 style="margin-top: 0;">ℹ️ Technical Details</h3>
       <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
@@ -193,8 +178,13 @@
     </section>
   </main>
   
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script type="module" src="/js/header.js"></script>
   <script type="module" src="/js/tools/ai-detector-onnx.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
 </body>
 </html>
 

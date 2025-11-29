@@ -145,8 +145,13 @@
     </section>
   </main>
   
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script type="module" src="/js/header.js?v=2"></script>
   <script type="module" src="/js/tools/json-format.js?v=2"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
 </body>
 </html>
 
