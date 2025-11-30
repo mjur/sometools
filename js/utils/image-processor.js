@@ -23,10 +23,11 @@ export function preprocessImage(image, options = {}) {
     mean = [0.5, 0.5, 0.5],
     std = [0.5, 0.5, 0.5],
     inputName = 'input',
-    grayscale = false // If true, convert to grayscale (1 channel instead of 3)
+    grayscale = false, // If true, convert to grayscale (1 channel instead of 3)
+    grayscaleToRGB = false // If true, convert to grayscale but keep as RGB (3 channels, all same value) - for DeOldify
   } = options;
   
-  console.log(`preprocessImage: grayscale=${grayscale}, targetSize=${targetWidth}x${targetHeight}`);
+  console.log(`preprocessImage: grayscale=${grayscale}, grayscaleToRGB=${grayscaleToRGB}, targetSize=${targetWidth}x${targetHeight}`);
   
   // Create canvas for processing
   const canvas = document.createElement('canvas');
@@ -53,7 +54,8 @@ export function preprocessImage(image, options = {}) {
   
   // Convert to float32 array
   const numPixels = width * height;
-  const numChannels = grayscale ? 1 : 3;
+  // DeOldify needs grayscale converted to RGB (3 channels, all same value)
+  const numChannels = (grayscale && !grayscaleToRGB) ? 1 : 3;
   const inputData = new Float32Array(1 * numChannels * height * width);
   
   for (let i = 0; i < numPixels; i++) {
@@ -61,8 +63,24 @@ export function preprocessImage(image, options = {}) {
     const g = data[i * 4 + 1];
     const b = data[i * 4 + 2];
     
-    if (grayscale) {
-      // Convert RGB to grayscale using luminance formula
+    if (grayscaleToRGB) {
+      // Convert RGB to grayscale, but keep as RGB (3 channels, all same value) - for DeOldify
+      const gray = (0.299 * r + 0.587 * g + 0.114 * b);
+      
+      // Normalize to [0, 1] and apply mean/std, then duplicate to all 3 channels
+      if (normalize) {
+        const normalizedGray = ((gray / 255.0) - mean[0]) / std[0];
+        inputData[i] = normalizedGray; // R channel
+        inputData[i + numPixels] = normalizedGray; // G channel
+        inputData[i + numPixels * 2] = normalizedGray; // B channel
+      } else {
+        const grayNorm = gray / 255.0;
+        inputData[i] = grayNorm;
+        inputData[i + numPixels] = grayNorm;
+        inputData[i + numPixels * 2] = grayNorm;
+      }
+    } else if (grayscale) {
+      // Convert RGB to grayscale using luminance formula (1 channel)
       const gray = (0.299 * r + 0.587 * g + 0.114 * b);
       
       // Normalize to [0, 1] and apply mean/std
@@ -123,7 +141,8 @@ export function postprocessImage(outputData, metadata, options = {}) {
     denormalize = true,
     mean = [0.5, 0.5, 0.5],
     std = [0.5, 0.5, 0.5],
-    scaleFactor = 1
+    scaleFactor = 1,
+    useYUVPostProcessing = false // For DeOldify: combine original luminance with colorized chrominance
   } = options;
   
   console.log('postprocessImage: Determining output dimensions from metadata.shape:', metadata.shape);
@@ -319,6 +338,83 @@ export function postprocessImage(outputData, metadata, options = {}) {
   }
   
   ctx.putImageData(imageData, 0, 0);
+  
+  // Apply YUV post-processing for DeOldify (combine original luminance with colorized chrominance)
+  if (useYUVPostProcessing && metadata.originalImage) {
+    console.log('Applying YUV post-processing: combining original luminance with colorized chrominance');
+    
+    // Get the colorized output
+    const colorizedData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    
+    // Get the original image (resized to match output dimensions)
+    const origCanvas = document.createElement('canvas');
+    origCanvas.width = canvas.width;
+    origCanvas.height = canvas.height;
+    const origCtx = origCanvas.getContext('2d');
+    origCtx.drawImage(metadata.originalImage, 0, 0, canvas.width, canvas.height);
+    const origData = origCtx.getImageData(0, 0, canvas.width, canvas.height);
+    
+    // Convert both to YUV and combine
+    const finalData = ctx.createImageData(canvas.width, canvas.height);
+    
+    for (let i = 0; i < numPixels; i++) {
+      // Original RGB
+      const origR = origData.data[i * 4];
+      const origG = origData.data[i * 4 + 1];
+      const origB = origData.data[i * 4 + 2];
+      
+      // Colorized RGB
+      const colorR = colorizedData.data[i * 4];
+      const colorG = colorizedData.data[i * 4 + 1];
+      const colorB = colorizedData.data[i * 4 + 2];
+      
+      // Convert original to YUV (OpenCV format: Y in [0,255], U/V in [0,255] with 128 as center)
+      const origY = 0.299 * origR + 0.587 * origG + 0.114 * origB;
+      const origU = -0.14713 * origR - 0.28886 * origG + 0.436 * origB + 128;
+      const origV = 0.615 * origR - 0.51499 * origG - 0.10001 * origB + 128;
+      
+      // Convert colorized to YUV
+      const colorY = 0.299 * colorR + 0.587 * colorG + 0.114 * colorB;
+      const colorU = -0.14713 * colorR - 0.28886 * colorG + 0.436 * colorB + 128;
+      const colorV = 0.615 * colorR - 0.51499 * colorG - 0.10001 * colorB + 128;
+      
+      // Combine: use original Y (luminance) with colorized U, V (chrominance)
+      const finalY = origY;
+      const finalU = colorU;
+      const finalV = colorV;
+      
+      // Convert back to RGB (OpenCV format: subtract 128 from U/V)
+      let finalR = finalY + 1.13983 * (finalV - 128);
+      let finalG = finalY - 0.39465 * (finalU - 128) - 0.58060 * (finalV - 128);
+      let finalB = finalY + 2.03211 * (finalU - 128);
+      
+      // Clamp to [0, 255]
+      finalR = Math.max(0, Math.min(255, finalR));
+      finalG = Math.max(0, Math.min(255, finalG));
+      finalB = Math.max(0, Math.min(255, finalB));
+      
+      finalData.data[i * 4] = finalR;
+      finalData.data[i * 4 + 1] = finalG;
+      finalData.data[i * 4 + 2] = finalB;
+      finalData.data[i * 4 + 3] = 255;
+    }
+    
+    ctx.putImageData(finalData, 0, 0);
+    console.log('YUV post-processing complete');
+  }
+  
+  // Resize back to original dimensions if they differ
+  if (metadata.originalWidth && metadata.originalHeight && 
+      (canvas.width !== metadata.originalWidth || canvas.height !== metadata.originalHeight)) {
+    console.log(`Resizing output from ${canvas.width}x${canvas.height} back to original ${metadata.originalWidth}x${metadata.originalHeight}`);
+    const resizedCanvas = document.createElement('canvas');
+    resizedCanvas.width = metadata.originalWidth;
+    resizedCanvas.height = metadata.originalHeight;
+    const resizedCtx = resizedCanvas.getContext('2d');
+    resizedCtx.drawImage(canvas, 0, 0, metadata.originalWidth, metadata.originalHeight);
+    return resizedCanvas;
+  }
+  
   return canvas;
 }
 

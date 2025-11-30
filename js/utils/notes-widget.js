@@ -979,3 +979,5 @@ function initWidgetFunctionality() {
   displayNotes();
 }
 
+
+

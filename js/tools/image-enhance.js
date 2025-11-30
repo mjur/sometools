@@ -63,18 +63,19 @@ const MODEL_CONFIGS = {
   },
   deoldify: {
     name: 'Photo Restoration & Colorization (DeOldify)',
-    key: 'deoldify-backbone-lite-v1',
-    url: 'http://localhost:5000/deoldify_backbone-lite/onnx/model.onnx', // DeOldify model (same port as AI detector)
+    key: 'deoldify-art-v1',
+    url: 'http://localhost:5000/deoldify_backbone-lite/onnx/deoldify-art.onnx', // DeOldify model (same port as AI detector)
     // Model: DeOldify Artistic (backbone-lite variant)
     inputName: 'input',
     outputName: 'output',
     scaleFactor: 1,
     description: 'Restore and colorize old black and white photographs with high-quality AI',
     requiresSetup: false,
-    inputSize: 512, // This model works best with 512x512 or smaller input
+    // DeOldify expects grayscale input (converted to RGB) and uses YUV post-processing
     // DeOldify uses ImageNet normalization stats (not [0.5, 0.5, 0.5])
     mean: [0.485, 0.456, 0.406], // ImageNet mean
-    std: [0.229, 0.224, 0.225]   // ImageNet std
+    std: [0.229, 0.224, 0.225],   // ImageNet std
+    useYUVPostProcessing: true // Use YUV post-processing to combine original luminance with colorized chrominance
   },
   style: {
     name: 'Style Transfer',
@@ -512,6 +513,20 @@ async function enhanceImage() {
     // Load model
     const session = await loadModelSession();
     
+    // Store original image for DeOldify YUV post-processing (before any resizing)
+    const isDeOldify = currentModelConfig.key.includes('deoldify');
+    let originalImageForPostProcessing = null;
+    if (isDeOldify && currentModelConfig.useYUVPostProcessing) {
+      // Store the original full-resolution image before any processing
+      const origCanvas = document.createElement('canvas');
+      origCanvas.width = currentImage.width;
+      origCanvas.height = currentImage.height;
+      const origCtx = origCanvas.getContext('2d');
+      origCtx.drawImage(currentImage, 0, 0);
+      originalImageForPostProcessing = origCanvas;
+      console.log('DeOldify: Stored original full-resolution image for YUV post-processing');
+    }
+    
     // Limit input size for performance
     const maxInputSize = 1024;
     let processedImage = currentImage;
@@ -544,8 +559,56 @@ async function enhanceImage() {
     const realesrganFixedSize = 128;
     const modelInputSize = currentModelConfig.inputSize;
     
+    // DeOldify requires dimensions to be multiples of a specific value
+    // Try multiples of 64 first (more common for U-Net architectures), fallback to 32
+    const roundToMultiple = (value, multiple) => Math.round(value / multiple) * multiple;
+    
+    // Check if this is DeOldify - needs square dimensions that are multiples of 16
+    // DeOldify uses render_factor * render_base (render_base=16), so sizes are multiples of 16
+    // Common sizes: 256 (16*16), 320 (20*16), 384 (24*16), 448 (28*16), 512 (32*16), 560 (35*16)
+    // The model scales to square for processing, so we'll use square dimensions
+    if (isDeOldify) {
+      console.log(`DeOldify model detected - resizing to square (multiples of 16)`);
+      const originalWidth = processedImage.width;
+      const originalHeight = processedImage.height;
+      
+      // DeOldify uses render_factor * 16 for square dimensions
+      // Default render_factor is 35 (560x560), but for browser we'll use smaller sizes
+      // Common sizes: 256 (16*16), 320 (20*16), 384 (24*16), 448 (28*16), 512 (32*16), 560 (35*16)
+      // Use the larger dimension and round to nearest multiple of 16, then make square
+      const maxDim = Math.max(originalWidth, originalHeight);
+      
+      // Calculate render_factor equivalent (size / 16)
+      // Cap at render_factor 32 (512x512) for browser performance
+      let renderFactor = Math.max(16, Math.round(maxDim / 16));
+      if (renderFactor > 32) {
+        renderFactor = 32; // Cap at 512x512
+      }
+      
+      const squareSize = renderFactor * 16;
+      
+      modelInputWidth = squareSize;
+      modelInputHeight = squareSize;
+      
+      console.log(`Original size: ${originalWidth}x${originalHeight}`);
+      console.log(`DeOldify render_factor equivalent: ${renderFactor} (size: ${squareSize}x${squareSize})`);
+      console.log(`Note: DeOldify stretches to square for best quality (as per original implementation)`);
+      
+      if (processedImage.width !== squareSize || processedImage.height !== squareSize) {
+        console.log(`🔄 Resizing image from ${processedImage.width}x${processedImage.height} to ${squareSize}x${squareSize} (square)`);
+        progressText.textContent = `Resizing to ${squareSize}x${squareSize}...`;
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = squareSize;
+        resizedCanvas.height = squareSize;
+        const ctx = resizedCanvas.getContext('2d');
+        // Stretch to square (as DeOldify does - works better than padding per their docs)
+        ctx.drawImage(processedImage, 0, 0, squareSize, squareSize);
+        processedImage = resizedCanvas;
+        console.log(`✓ Resized to square: ${processedImage.width}x${processedImage.height}`);
+      }
+    }
     // Check if this model requires a fixed input size (super resolution, colorize, etc.)
-    if (modelInputSize) {
+    else if (modelInputSize) {
       console.log(`${currentModelConfig.name} model detected - using fixed input size: ${modelInputSize}x${modelInputSize}`);
       modelInputWidth = modelInputSize;
       modelInputHeight = modelInputSize;
@@ -659,19 +722,26 @@ async function enhanceImage() {
       // Check if model requires grayscale input
       const requiresGrayscale = currentModelConfig.grayscale === true;
       
+      // DeOldify expects grayscale input (converted to RGB format)
+      const useGrayscaleInput = requiresGrayscale || isDeOldify;
+      
       // Use model-specific mean/std if provided, otherwise use defaults
       const mean = currentModelConfig.mean || [0.5, 0.5, 0.5];
       const std = currentModelConfig.std || [0.5, 0.5, 0.5];
       
       console.log(`Using normalization - mean: [${mean.join(', ')}], std: [${std.join(', ')}]`);
+      if (isDeOldify) {
+        console.log('DeOldify: Converting input to grayscale (RGB format)');
+      }
       
       outputCanvas = await processImageWithModel(processedImage, session, {
-        originalImage: processedImage, // Pass original image for LAB color space models
+        originalImage: originalImageForPostProcessing || currentImage, // Pass original full-res image for YUV post-processing or LAB models
         preprocessOptions: {
           // Don't pass targetWidth/Height - use the actual image dimensions
           // targetWidth: modelInputWidth,
           // targetHeight: modelInputHeight
-          grayscale: requiresGrayscale, // Pass grayscale flag to preprocessing
+          grayscale: false, // Don't use single-channel grayscale
+          grayscaleToRGB: isDeOldify, // For DeOldify: convert to grayscale but keep as RGB (3 channels)
           mean: mean, // Use model-specific mean
           std: std    // Use model-specific std
         },
@@ -679,7 +749,8 @@ async function enhanceImage() {
           scaleFactor: scaleFactor,
           denormalize: true,
           mean: mean, // Use model-specific mean for denormalization
-          std: std    // Use model-specific std for denormalization
+          std: std,    // Use model-specific std for denormalization
+          useYUVPostProcessing: isDeOldify && currentModelConfig.useYUVPostProcessing // Enable YUV post-processing for DeOldify
         },
         inputName: currentModelConfig.inputName,
         outputName: currentModelConfig.outputName
@@ -756,17 +827,59 @@ async function enhanceImage() {
   } catch (error) {
     console.error('Enhancement error:', error);
     
-    let errorMessage = error.message;
+    // Handle different error types
+    let errorMessage = '';
+    if (error && typeof error === 'object') {
+      errorMessage = error.message || error.toString() || String(error);
+    } else {
+      errorMessage = String(error);
+    }
+    
     let userFriendlyMessage = '';
     
     // Check for dynamic batch dimension error (ONNX Runtime Web limitation)
-    if (errorMessage.includes('expected shape') && errorMessage.includes(',') && errorMessage.includes('dynamic batch')) {
+    if (errorMessage && errorMessage.includes && errorMessage.includes('expected shape') && errorMessage.includes(',') && errorMessage.includes('dynamic batch')) {
       userFriendlyMessage = 'This model uses a dynamic batch dimension which may not be fully supported by ONNX Runtime Web. The model needs to be re-exported with a fixed batch size (e.g., batch=1) to work in the browser.';
-    } else if (errorMessage.includes('expected shape') && errorMessage.includes('[,1,224,224]')) {
+    } else if (errorMessage && errorMessage.includes && errorMessage.includes('expected shape') && errorMessage.includes('[,1,224,224]')) {
       userFriendlyMessage = 'The super resolution model expects a dynamic batch dimension, but ONNX Runtime Web may not support this. The model file needs to be re-exported with a fixed batch size (batch=1) to work in the browser.';
     }
+    // Check for dimension mismatch errors (DeOldify and similar models)
+    else if (errorMessage && errorMessage.includes && (errorMessage.includes('mismatched dimensions') || errorMessage.includes('Concat') || errorMessage.includes('Non concat axis') || errorMessage.includes('855068792'))) {
+      userFriendlyMessage = `
+        <div style="text-align: center; padding: 2rem;">
+          <p style="color: var(--error); margin-bottom: 1rem; font-weight: 500;">Model Processing Error</p>
+          <p class="text-sm text-muted" style="margin-bottom: 1rem;">
+            The model encountered an error during processing. This may be due to:
+            <ul style="text-align: left; display: inline-block; margin-top: 0.5rem;">
+              <li>Corrupted model cache - try clearing the model cache</li>
+              <li>Incompatible model file - the ONNX model may need to be re-exported</li>
+              <li>Dimension constraints - the model may require specific input dimensions</li>
+            </ul>
+          </p>
+          <button id="clear-cache-btn" class="primary" style="margin-top: 1rem;">Clear Model Cache</button>
+          <p class="text-sm text-muted" style="margin-top: 0.5rem; font-family: monospace; font-size: 0.75rem;">${errorMessage}</p>
+        </div>
+      `;
+      
+      // Add event listener for clear cache button
+      setTimeout(() => {
+        const clearCacheBtn = document.getElementById('clear-cache-btn');
+        if (clearCacheBtn) {
+          clearCacheBtn.addEventListener('click', async () => {
+            try {
+              await clearModelCache();
+              toast('Model cache cleared. Please try again.', 'success');
+              // Reload the page to re-download the model
+              setTimeout(() => window.location.reload(), 1000);
+            } catch (err) {
+              toast(`Failed to clear cache: ${err.message}`, 'error');
+            }
+          });
+        }
+      }, 100);
+    }
     // Provide helpful error messages
-    else if (errorMessage.includes('CORS') || errorMessage.includes('cross-origin')) {
+    else if (errorMessage && errorMessage.includes && (errorMessage.includes('CORS') || errorMessage.includes('cross-origin'))) {
       userFriendlyMessage = `
         <div style="text-align: center; padding: 2rem;">
           <p style="color: var(--error); margin-bottom: 1rem; font-weight: 500;">CORS Error</p>
@@ -784,7 +897,7 @@ async function enhanceImage() {
           </details>
         </div>
       `;
-    } else if (errorMessage.includes('404') || errorMessage.includes('Failed to download') || errorMessage.includes('not found')) {
+    } else if (errorMessage && errorMessage.includes && (errorMessage.includes('404') || errorMessage.includes('Failed to download') || errorMessage.includes('not found'))) {
       // Check if model requires setup
       const requiresSetup = currentModelConfig?.requiresSetup;
       userFriendlyMessage = `
@@ -843,7 +956,7 @@ async function enhanceImage() {
           </p>
         </div>
       `;
-    } else if (errorMessage.includes('IR_VERSION')) {
+    } else if (errorMessage && errorMessage.includes && errorMessage.includes('IR_VERSION')) {
       userFriendlyMessage = `
         <div style="text-align: center; padding: 2rem;">
           <p style="color: var(--error); margin-bottom: 1rem; font-weight: 500;">ONNX Model Version Error</p>
@@ -862,7 +975,7 @@ async function enhanceImage() {
           <p class="text-sm text-muted" style="margin-top: 1rem; font-family: monospace; font-size: 0.75rem;">${error.message}</p>
         </div>
       `;
-    } else if (errorMessage.includes('tensor') || errorMessage.includes('shape') || errorMessage.includes('size')) {
+    } else if (errorMessage && errorMessage.includes && (errorMessage.includes('tensor') || errorMessage.includes('shape') || errorMessage.includes('size'))) {
       userFriendlyMessage = `
         <div style="text-align: center; padding: 2rem;">
           <p style="color: var(--error); margin-bottom: 1rem;">Model Processing Error</p>
@@ -879,7 +992,7 @@ async function enhanceImage() {
           <p class="text-sm text-muted" style="margin-top: 1rem; font-family: monospace; font-size: 0.75rem;">${error.message}</p>
         </div>
       `;
-    } else if (errorMessage.includes('WebGL') || errorMessage.includes('GPU')) {
+    } else if (errorMessage && errorMessage.includes && (errorMessage.includes('WebGL') || errorMessage.includes('GPU'))) {
       userFriendlyMessage = `
         <div style="text-align: center; padding: 2rem;">
           <p style="color: var(--error); margin-bottom: 1rem;">GPU Acceleration Error</p>

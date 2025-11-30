@@ -473,16 +473,35 @@ export async function runInference(session, inputs) {
   } catch (error) {
     console.error('Inference error:', error);
     
-    // Check if it's a WebGL compatibility issue (e.g., resize mode not supported)
-    if (error.message && (
-      error.message.includes('resize') && error.message.includes('does not support') ||
-      error.message.includes('packed') && error.message.includes('does not support')
-    )) {
-      console.warn('WebGL backend compatibility issue detected. This model may require WASM backend.');
-      throw new Error(`Model operation not supported by WebGL backend. Please try using WASM backend instead. Original error: ${error.message}`);
+    // Convert error to Error object if it's not already
+    let errorObj = error;
+    if (typeof error === 'number') {
+      // ONNX Runtime error code
+      errorObj = new Error(`ONNX Runtime error code: ${error}. This may indicate a dimension mismatch or unsupported operation.`);
+    } else if (!(error instanceof Error)) {
+      errorObj = new Error(String(error));
     }
     
-    throw error;
+    // Check if it's a WebGL compatibility issue (e.g., resize mode not supported)
+    if (errorObj.message && (
+      errorObj.message.includes('resize') && errorObj.message.includes('does not support') ||
+      errorObj.message.includes('packed') && errorObj.message.includes('does not support')
+    )) {
+      console.warn('WebGL backend compatibility issue detected. This model may require WASM backend.');
+      throw new Error(`Model operation not supported by WebGL backend. Please try using WASM backend instead. Original error: ${errorObj.message}`);
+    }
+    
+    // Check for dimension mismatch errors
+    if (errorObj.message && (
+      errorObj.message.includes('mismatched dimensions') ||
+      errorObj.message.includes('Concat') ||
+      errorObj.message.includes('Non concat axis') ||
+      errorObj.message.includes('dimension')
+    )) {
+      throw new Error(`Dimension mismatch: ${errorObj.message}. The model may require specific input dimensions (multiples of 8, 16, or 32).`);
+    }
+    
+    throw errorObj;
   }
 }
 
