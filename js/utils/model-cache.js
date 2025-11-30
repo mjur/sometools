@@ -333,14 +333,24 @@ export async function getOrDownloadModel(modelKey, url, progressCallback) {
  */
 export async function getCacheStats() {
   try {
-    const database = await initDB();
-    const transaction = database.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
+    const database = await Promise.race([
+      initDB(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('IndexedDB init timeout')), 3000))
+    ]);
     
     return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.getAll();
+      
+      // Add timeout for the request
+      const timeout = setTimeout(() => {
+        reject(new Error('getAll request timeout'));
+      }, 3000);
+      
       request.onsuccess = () => {
-        const models = request.result;
+        clearTimeout(timeout);
+        const models = request.result || [];
         const totalSize = models.reduce((sum, model) => sum + (model.size || 0), 0);
         
         resolve({
@@ -356,7 +366,13 @@ export async function getCacheStats() {
       };
       
       request.onerror = () => {
+        clearTimeout(timeout);
         reject(new Error('Failed to get cache stats'));
+      };
+      
+      transaction.onerror = () => {
+        clearTimeout(timeout);
+        reject(new Error('Transaction failed'));
       };
     });
   } catch (error) {

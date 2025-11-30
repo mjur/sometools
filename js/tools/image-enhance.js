@@ -131,6 +131,8 @@ const progressText = qs('#progress-text');
 const progressPercent = qs('#progress-percent');
 const progressBar = qs('#progress-bar');
 const clearModelCacheBtn = qs('#clear-model-cache');
+const cachedModelsContainer = qs('#cached-models-container');
+const refreshCacheListBtn = qs('#refresh-cache-list');
 const debugStatus = qs('#debug-status');
 const debugText = qs('#debug-text');
 
@@ -240,11 +242,105 @@ if (clearModelCacheBtn) {
       currentSession = null;
       toast(`Cleared cache for ${currentModelConfig.name}`, 'success');
       await updateModelStatus();
+      await updateCachedModelsList(); // Refresh the list
     } catch (error) {
       console.error('Failed to clear model cache:', error);
       toast(`Failed to clear model cache: ${error.message}`, 'error');
     }
   });
+}
+
+// Refresh cache list button
+if (refreshCacheListBtn) {
+  on(refreshCacheListBtn, 'click', async () => {
+    await updateCachedModelsList();
+  });
+}
+
+// Update cached models list
+async function updateCachedModelsList() {
+  if (!cachedModelsContainer) {
+    console.warn('cachedModelsContainer not found');
+    return;
+  }
+  
+  try {
+    // Set loading state
+    cachedModelsContainer.innerHTML = '<p style="margin: 0; color: var(--muted);">Loading cached models...</p>';
+    
+    // Add timeout to prevent hanging
+    const stats = await Promise.race([
+      getCacheStats(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout loading cache stats')), 5000))
+    ]);
+    
+    if (!stats || !stats.models || stats.models.length === 0) {
+      cachedModelsContainer.innerHTML = '<p style="margin: 0; color: var(--muted);">No models cached</p>';
+      return;
+    }
+    
+    // Sort by timestamp (newest first)
+    const sortedModels = stats.models.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    let html = '<div style="display: flex; flex-direction: column; gap: 0.5rem;">';
+    html += `<p style="margin: 0 0 0.5rem 0; color: var(--text-subtle); font-size: 0.875rem;">
+      <strong>Total:</strong> ${stats.modelCount} model(s) - ${formatBytes(stats.totalSize)}
+    </p>`;
+    
+    sortedModels.forEach(model => {
+      const date = new Date(model.timestamp || 0);
+      const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+      const modelName = Object.values(MODEL_CONFIGS).find(m => m.key === model.key)?.name || model.key;
+      
+      html += `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background-color: var(--bg); border: 1px solid var(--border); border-radius: 4px;">
+          <div style="flex: 1;">
+            <div style="font-weight: 500; margin-bottom: 0.25rem;">${modelName}</div>
+            <div style="font-size: 0.75rem; color: var(--text-subtle);">
+              ${formatBytes(model.size || 0)} • ${dateStr}
+            </div>
+            ${model.url ? `<div style="font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.25rem; word-break: break-all;">${model.url}</div>` : ''}
+          </div>
+          <button class="secondary" data-model-key="${model.key}" style="margin-left: 0.75rem; padding: 0.5rem 1rem; font-size: 0.875rem;">
+            Delete
+          </button>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+    cachedModelsContainer.innerHTML = html;
+    
+    // Add click handlers for delete buttons
+    cachedModelsContainer.querySelectorAll('button[data-model-key]').forEach(btn => {
+      const modelKey = btn.getAttribute('data-model-key');
+      btn.addEventListener('click', async () => {
+        const modelName = Object.values(MODEL_CONFIGS).find(m => m.key === modelKey)?.name || modelKey;
+        if (!confirm(`Delete cached model "${modelName}"?`)) {
+          return;
+        }
+        
+        try {
+          await deleteCachedModel(modelKey);
+          toast('Model deleted from cache', 'success');
+          await updateCachedModelsList();
+          // If it was the current model, clear the session
+          if (currentModelConfig && currentModelConfig.key === modelKey) {
+            currentSession = null;
+            await updateModelStatus();
+          }
+        } catch (error) {
+          console.error('Failed to delete model:', error);
+          toast(`Failed to delete model: ${error.message}`, 'error');
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Failed to update cached models list:', error);
+    if (cachedModelsContainer) {
+      cachedModelsContainer.innerHTML = `<p style="margin: 0; color: var(--error);">Failed to load cached models: ${error.message}</p>`;
+    }
+  }
 }
 
 // Check model status
@@ -1107,10 +1203,15 @@ on(document, 'keydown', (e) => {
   console.log('Image enhance tool initializing...');
   console.log('Model select element:', modelSelect);
   console.log('Available model configs:', Object.keys(MODEL_CONFIGS));
+  console.log('Cached models container:', cachedModelsContainer);
   
   if (!modelSelect) {
     console.error('CRITICAL: modelSelect element not found!');
     return;
+  }
+  
+  if (!cachedModelsContainer) {
+    console.warn('cachedModelsContainer not found - cached models list will not be displayed');
   }
   
   // Ensure a model is selected (set default if none selected)
@@ -1146,6 +1247,14 @@ on(document, 'keydown', (e) => {
   }
   
   await updateModelStatus();
+  
+  // Load cached models list (non-blocking, with error handling)
+  updateCachedModelsList().catch(error => {
+    console.error('Failed to load cached models list on init:', error);
+    if (cachedModelsContainer) {
+      cachedModelsContainer.innerHTML = '<p style="margin: 0; color: var(--muted);">Unable to load cached models</p>';
+    }
+  });
   
   // Try to initialize ONNX (non-blocking)
   initONNX().catch(console.error);

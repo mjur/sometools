@@ -115,7 +115,19 @@
       <div class="option-group">
         <label for="clear-model-cache" style="visibility: hidden;">Clear model cache</label>
         <button id="clear-model-cache" class="secondary" type="button" style="margin-top: 1.25rem;">
-          Clear model cache
+          Clear current model cache
+        </button>
+      </div>
+    </div>
+    
+    <div class="options" style="margin-top: 1.5rem;">
+      <div class="option-group" style="flex: 1;">
+        <label>Cached Models</label>
+        <div id="cached-models-container" style="padding: 1rem; background-color: var(--bg-elev); border-radius: 6px; min-height: 100px;">
+          <p style="margin: 0; color: var(--muted);">Loading cached models...</p>
+        </div>
+        <button id="refresh-cache-list" class="secondary" type="button" style="margin-top: 0.5rem;">
+          Refresh List
         </button>
       </div>
     </div>
