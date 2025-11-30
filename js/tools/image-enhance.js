@@ -75,7 +75,7 @@ const MODEL_CONFIGS = {
     // DeOldify uses ImageNet normalization stats (not [0.5, 0.5, 0.5])
     mean: [0.485, 0.456, 0.406], // ImageNet mean
     std: [0.229, 0.224, 0.225],   // ImageNet std
-    useYUVPostProcessing: false // Disabled - use model output directly for restoration
+    useYUVPostProcessing: true // Use YUV post-processing to preserve original colors (no colorization)
   },
   style: {
     name: 'Style Transfer',
@@ -568,43 +568,72 @@ async function enhanceImage() {
     // Common sizes: 256 (16*16), 320 (20*16), 384 (24*16), 448 (28*16), 512 (32*16), 560 (35*16)
     // The model scales to square for processing, so we'll use square dimensions
     if (isDeOldify) {
-      console.log(`DeOldify model detected - resizing to square (multiples of 16)`);
+      console.log(`DeOldify model detected - resizing to multiples of 16 (preserving aspect ratio)`);
       const originalWidth = processedImage.width;
       const originalHeight = processedImage.height;
       
-      // DeOldify uses render_factor * 16 for square dimensions
-      // Default render_factor is 35 (560x560), but for browser we'll use smaller sizes
-      // Common sizes: 256 (16*16), 320 (20*16), 384 (24*16), 448 (28*16), 512 (32*16), 560 (35*16)
-      // Use the larger dimension and round to nearest multiple of 16, then make square
+      // DeOldify uses render_factor * 16 for dimensions
+      // Preserve aspect ratio while ensuring dimensions are multiples of 16
+      // Cap at 512x512 (render_factor 32) for browser performance
       const maxDim = Math.max(originalWidth, originalHeight);
+      const aspectRatio = originalWidth / originalHeight;
       
       // Calculate render_factor equivalent (size / 16)
-      // Cap at render_factor 32 (512x512) for browser performance
+      // Cap at render_factor 32 (512) for browser performance - same as before
       let renderFactor = Math.max(16, Math.round(maxDim / 16));
       if (renderFactor > 32) {
-        renderFactor = 32; // Cap at 512x512
+        renderFactor = 32; // Cap at 512 (same as 512x512 square)
       }
       
-      const squareSize = renderFactor * 16;
+      // Calculate dimensions preserving aspect ratio, rounded to multiples of 16
+      let newWidth, newHeight;
+      if (originalWidth >= originalHeight) {
+        // Landscape or square - use max dimension (512) for width
+        newWidth = Math.min(renderFactor * 16, 512); // Cap at 512
+        newHeight = Math.round((newWidth / aspectRatio) / 16) * 16;
+        // Ensure minimum dimension is at least 256 (16*16)
+        if (newHeight < 256) {
+          newHeight = 256;
+          newWidth = Math.round((newHeight * aspectRatio) / 16) * 16;
+        }
+        // Make sure we don't exceed 512 on either dimension
+        if (newWidth > 512) {
+          newWidth = 512;
+          newHeight = Math.round((newWidth / aspectRatio) / 16) * 16;
+        }
+      } else {
+        // Portrait - use max dimension (512) for height
+        newHeight = Math.min(renderFactor * 16, 512); // Cap at 512
+        newWidth = Math.round((newHeight * aspectRatio) / 16) * 16;
+        // Ensure minimum dimension is at least 256 (16*16)
+        if (newWidth < 256) {
+          newWidth = 256;
+          newHeight = Math.round((newWidth / aspectRatio) / 16) * 16;
+        }
+        // Make sure we don't exceed 512 on either dimension
+        if (newHeight > 512) {
+          newHeight = 512;
+          newWidth = Math.round((newHeight * aspectRatio) / 16) * 16;
+        }
+      }
       
-      modelInputWidth = squareSize;
-      modelInputHeight = squareSize;
+      modelInputWidth = newWidth;
+      modelInputHeight = newHeight;
       
       console.log(`Original size: ${originalWidth}x${originalHeight}`);
-      console.log(`DeOldify render_factor equivalent: ${renderFactor} (size: ${squareSize}x${squareSize})`);
-      console.log(`Note: DeOldify stretches to square for best quality (as per original implementation)`);
+      console.log(`DeOldify render_factor equivalent: ${renderFactor} (size: ${newWidth}x${newHeight}, preserving aspect ratio, max 512)`);
       
-      if (processedImage.width !== squareSize || processedImage.height !== squareSize) {
-        console.log(`🔄 Resizing image from ${processedImage.width}x${processedImage.height} to ${squareSize}x${squareSize} (square)`);
-        progressText.textContent = `Resizing to ${squareSize}x${squareSize}...`;
+      if (processedImage.width !== newWidth || processedImage.height !== newHeight) {
+        console.log(`🔄 Resizing image from ${processedImage.width}x${processedImage.height} to ${newWidth}x${newHeight} (preserving aspect ratio)`);
+        progressText.textContent = `Resizing to ${newWidth}x${newHeight}...`;
         const resizedCanvas = document.createElement('canvas');
-        resizedCanvas.width = squareSize;
-        resizedCanvas.height = squareSize;
+        resizedCanvas.width = newWidth;
+        resizedCanvas.height = newHeight;
         const ctx = resizedCanvas.getContext('2d');
-        // Stretch to square (as DeOldify does - works better than padding per their docs)
-        ctx.drawImage(processedImage, 0, 0, squareSize, squareSize);
+        // Preserve aspect ratio (don't stretch)
+        ctx.drawImage(processedImage, 0, 0, newWidth, newHeight);
         processedImage = resizedCanvas;
-        console.log(`✓ Resized to square: ${processedImage.width}x${processedImage.height}`);
+        console.log(`✓ Resized to ${processedImage.width}x${processedImage.height} (aspect ratio preserved)`);
       }
     }
     // Check if this model requires a fixed input size (super resolution, colorize, etc.)

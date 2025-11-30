@@ -146,11 +146,18 @@ export function postprocessImage(outputData, metadata, options = {}) {
   } = options;
   
   console.log('postprocessImage: Determining output dimensions from metadata.shape:', metadata.shape);
+  console.log('postprocessImage: metadata.processedWidth:', metadata.processedWidth, 'metadata.processedHeight:', metadata.processedHeight);
   
   // Determine output dimensions
+  // For DeOldify, always use processed dimensions (the model output should match input size)
   let outputWidth, outputHeight;
   
-  if (metadata.shape && metadata.shape.length >= 4) {
+  // Prefer processed dimensions over shape inference for DeOldify
+  if (metadata.processedWidth && metadata.processedHeight) {
+    outputWidth = metadata.processedWidth;
+    outputHeight = metadata.processedHeight;
+    console.log('postprocessImage: Using processed dimensions:', outputWidth, 'x', outputHeight);
+  } else if (metadata.shape && metadata.shape.length >= 4) {
     console.log('postprocessImage: Shape has 4+ dimensions, parsing...');
     // Most ONNX models use NCHW: [batch, channels, height, width]
     const numChannels = metadata.shape[1];
@@ -387,13 +394,13 @@ export function postprocessImage(outputData, metadata, options = {}) {
       const colorU = -0.14713 * colorR - 0.28886 * colorG + 0.436 * colorB + 128;
       const colorV = 0.615 * colorR - 0.51499 * colorG - 0.10001 * colorB + 128;
       
-      // Combine: use original Y (luminance) to preserve brightness, but blend with model's enhanced colors
-      // For restoration without colorization: use original Y and original U/V to preserve original colors
-      // For colorization: use original Y with model's U/V
-      // Since user wants restoration without affecting colors, use original Y, U, V
-      const finalY = origY; // Preserve original luminance (brightness)
-      const finalU = origU; // Preserve original chrominance (colors)
-      const finalV = origV; // Preserve original chrominance (colors)
+      // For restoration without colorization: 
+      // Use original Y (luminance) to preserve brightness and avoid washing out
+      // Preserve original U, V (chrominance/colors) to prevent colorization
+      // This keeps the original image appearance while the model can still enhance structure
+      const finalY = origY; // Use original luminance to avoid washing out
+      const finalU = origU; // Preserve original chrominance (colors) - no colorization
+      const finalV = origV; // Preserve original chrominance (colors) - no colorization
       
       // Convert back to RGB (OpenCV format: subtract 128 from U/V)
       let finalR = finalY + 1.13983 * (finalV - 128);
