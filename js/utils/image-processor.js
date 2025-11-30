@@ -173,10 +173,19 @@ export function postprocessImage(outputData, metadata, options = {}) {
       outputWidth = metadata.shape[metadata.shape.length - 1] || metadata.processedWidth * scaleFactor;
     }
   } else {
-    // Fallback: use scale factor
-    outputWidth = metadata.processedWidth * scaleFactor;
-    outputHeight = metadata.processedHeight * scaleFactor;
+    // Fallback: use processed dimensions (not scale factor, as DeOldify doesn't upscale)
+    outputWidth = metadata.processedWidth || metadata.originalWidth;
+    outputHeight = metadata.processedHeight || metadata.originalHeight;
   }
+  
+  // Ensure we have valid dimensions
+  if (!outputWidth || !outputHeight || outputWidth <= 0 || outputHeight <= 0) {
+    console.warn('Invalid output dimensions, using processed dimensions');
+    outputWidth = metadata.processedWidth || 512;
+    outputHeight = metadata.processedHeight || 512;
+  }
+  
+  console.log(`postprocessImage: Final output dimensions: ${outputWidth}x${outputHeight}`);
   
   // Create output canvas
   const canvas = document.createElement('canvas');
@@ -378,10 +387,13 @@ export function postprocessImage(outputData, metadata, options = {}) {
       const colorU = -0.14713 * colorR - 0.28886 * colorG + 0.436 * colorB + 128;
       const colorV = 0.615 * colorR - 0.51499 * colorG - 0.10001 * colorB + 128;
       
-      // Combine: use original Y (luminance) with colorized U, V (chrominance)
-      const finalY = origY;
-      const finalU = colorU;
-      const finalV = colorV;
+      // Combine: use original Y (luminance) to preserve brightness, but blend with model's enhanced colors
+      // For restoration without colorization: use original Y and original U/V to preserve original colors
+      // For colorization: use original Y with model's U/V
+      // Since user wants restoration without affecting colors, use original Y, U, V
+      const finalY = origY; // Preserve original luminance (brightness)
+      const finalU = origU; // Preserve original chrominance (colors)
+      const finalV = origV; // Preserve original chrominance (colors)
       
       // Convert back to RGB (OpenCV format: subtract 128 from U/V)
       let finalR = finalY + 1.13983 * (finalV - 128);

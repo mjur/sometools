@@ -75,7 +75,7 @@ const MODEL_CONFIGS = {
     // DeOldify uses ImageNet normalization stats (not [0.5, 0.5, 0.5])
     mean: [0.485, 0.456, 0.406], // ImageNet mean
     std: [0.229, 0.224, 0.225],   // ImageNet std
-    useYUVPostProcessing: true // Use YUV post-processing to combine original luminance with colorized chrominance
+    useYUVPostProcessing: false // Disabled - use model output directly for restoration
   },
   style: {
     name: 'Style Transfer',
@@ -634,7 +634,8 @@ async function enhanceImage() {
       }
     }
     // Check if this is a Real-ESRGAN model that requires fixed 128x128 input
-    else if (currentModelConfig.key.includes('realesrgan') || currentModelConfig.key.includes('image-enhance')) {
+    // Make sure DeOldify is checked first (already done above)
+    else if (!isDeOldify && (currentModelConfig.key.includes('realesrgan') || currentModelConfig.key.includes('image-enhance'))) {
       console.log(`Real-ESRGAN model detected - using fixed input size: ${realesrganFixedSize}x${realesrganFixedSize}`);
       modelInputWidth = realesrganFixedSize;
       modelInputHeight = realesrganFixedSize;
