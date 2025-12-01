@@ -21,6 +21,7 @@ const TOOLS = [
   { url: '/convert/units', name: 'Unit Converter', category: 'convert', description: 'Convert between hundreds of units across all measurement categories', expandable: true },
   { url: '/crypto/hash', name: 'Hash Generator', category: 'crypto', description: 'Generate SHA-1, SHA-256, SHA-384, SHA-512 hashes' },
   { url: '/crypto/uuid', name: 'UUID Generator', category: 'crypto', description: 'Generate UUIDs in versions 1, 2, 3, 4, and 5' },
+  { url: '/utils/calculator', name: 'Calculator', category: 'utils', description: 'Simple, advanced, and scientific calculator with history and memory functions' },
   { url: '/utils/random', name: 'Random Number Generator', category: 'utils', description: 'Generate random numbers with customizable range and count' },
   { url: '/utils/shuffler', name: 'List Shuffler', category: 'utils', description: 'Shuffle lists of items with customizable delimiters' },
   { url: '/utils/notes', name: 'Notes', category: 'utils', description: 'Create and manage notes saved locally' },
