@@ -179,6 +179,11 @@ function generateButtonGrid(containerId, buttons) {
       btn.classList.add('zero');
     }
     
+    // Remove grid-column span for equals button
+    if (type === 'equals') {
+      btn.style.gridColumn = 'span 1';
+    }
+    
     on(btn, 'click', () => handleButtonClick(type, value || label));
     container.appendChild(btn);
   });
