@@ -83,14 +83,33 @@ function validate(str) {
     output.textContent = 'Valid JSON ✅';
     output.className = 'ok';
   } else {
-    let errorMsg = `Invalid JSON ❌\n${result.error.message}`;
-    if (result.error.line) {
-      errorMsg += `\nLine: ${result.error.line}`;
+    const errors = result.errors || [result.error].filter(Boolean);
+    
+    if (errors.length === 1) {
+      const err = errors[0];
+      let errorMsg = `Invalid JSON ❌\n${err.message}`;
+      if (err.line) {
+        errorMsg += `\nLine: ${err.line}`;
+      }
+      if (err.column) {
+        errorMsg += `, Column: ${err.column}`;
+      }
+      output.textContent = errorMsg;
+    } else {
+      let errorMsg = `Invalid JSON ❌\nFound ${errors.length} error${errors.length > 1 ? 's' : ''}:\n\n`;
+      errors.forEach((err, index) => {
+        errorMsg += `${index + 1}. ${err.message}`;
+        if (err.line) {
+          errorMsg += ` (Line ${err.line}`;
+          if (err.column) {
+            errorMsg += `, Column ${err.column}`;
+          }
+          errorMsg += ')';
+        }
+        errorMsg += '\n';
+      });
+      output.textContent = errorMsg;
     }
-    if (result.error.column) {
-      errorMsg += `, Column: ${result.error.column}`;
-    }
-    output.textContent = errorMsg;
     output.className = 'error';
   }
   
