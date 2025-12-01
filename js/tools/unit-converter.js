@@ -34,6 +34,35 @@ function getCategoryFromURL() {
   return category;
 }
 
+// Get units from URL (format: /convert/units/category/fromUnit-to-toUnit)
+function getUnitsFromURL() {
+  const path = window.location.pathname;
+  const match = path.match(/\/convert\/units\/[^\/]+\/([^-]+)-to-(.+)$/);
+  if (match) {
+    return {
+      from: decodeURIComponent(match[1]),
+      to: decodeURIComponent(match[2])
+    };
+  }
+  return null;
+}
+
+// Update URL with selected units
+function updateURLWithUnits(fromUnitId, toUnitId) {
+  if (!fromUnitId || !toUnitId) return;
+  
+  const currentCategory = getCategoryFromURL();
+  if (!currentCategory) return;
+  
+  const basePath = `/convert/units/${currentCategory}`;
+  const newPath = `${basePath}/${encodeURIComponent(fromUnitId)}-to-${encodeURIComponent(toUnitId)}`;
+  
+  // Update URL without page reload
+  if (window.history && window.history.pushState) {
+    window.history.pushState({}, '', newPath);
+  }
+}
+
 // Initialize
 (async () => {
   console.log('Unit converter initializing...');
@@ -75,6 +104,41 @@ function getCategoryFromURL() {
     // Populate unit selects (filtered by category if on category page)
     populateUnitSelects('', currentCategory);
     
+    // Check URL for preloaded units
+    const urlUnits = getUnitsFromURL();
+    if (urlUnits && urlUnits.from && urlUnits.to) {
+      console.log(`Found units in URL: from=${urlUnits.from}, to=${urlUnits.to}`);
+      // Wait for options to be populated, then set the units
+      setTimeout(() => {
+        if (fromUnit && toUnit) {
+          // Set from unit
+          const fromOption = Array.from(fromUnit.options).find(opt => opt.value === urlUnits.from);
+          if (fromOption) {
+            fromUnit.value = urlUnits.from;
+            if (fromUnitSelect) {
+              fromUnitSelect.setValue(urlUnits.from);
+            }
+            updateUnitInfo('from');
+          }
+          
+          // Set to unit
+          const toOption = Array.from(toUnit.options).find(opt => opt.value === urlUnits.to);
+          if (toOption) {
+            toUnit.value = urlUnits.to;
+            if (toUnitSelect) {
+              toUnitSelect.setValue(urlUnits.to);
+            }
+            updateUnitInfo('to');
+          }
+          
+          // Perform conversion if from value is set
+          if (fromValue && fromValue.value) {
+            performConversion();
+          }
+        }
+      }, 300);
+    }
+    
     // Initialize searchable selects after options are populated
     // Use multiple attempts to ensure options are loaded
     const initSearchableSelects = () => {
@@ -84,6 +148,7 @@ function getCategoryFromURL() {
           placeholder: 'Search units...',
           onSelect: () => {
             updateUnitInfo('from');
+            updateURLWithUnits(fromUnit.value, toUnit.value);
             performConversion();
           }
         });
@@ -95,6 +160,7 @@ function getCategoryFromURL() {
           placeholder: 'Search units...',
           onSelect: () => {
             updateUnitInfo('to');
+            updateURLWithUnits(fromUnit.value, toUnit.value);
             performConversion();
           }
         });
@@ -175,6 +241,9 @@ function populateUnitSelects(filter = '', categoryId = null) {
             placeholder: 'Search units...',
             onSelect: () => {
               updateUnitInfo('from');
+              if (fromUnit.value && toUnit.value) {
+                updateURLWithUnits(fromUnit.value, toUnit.value);
+              }
               performConversion();
             }
           });
@@ -219,6 +288,9 @@ function populateUnitSelects(filter = '', categoryId = null) {
             placeholder: 'Search units...',
             onSelect: () => {
               updateUnitInfo('to');
+              if (fromUnit.value && toUnit.value) {
+                updateURLWithUnits(fromUnit.value, toUnit.value);
+              }
               performConversion();
             }
           });
@@ -291,6 +363,9 @@ function setupEventListeners() {
   if (fromUnit) {
     on(fromUnit, 'change', () => {
       updateUnitInfo('from');
+      if (fromUnit.value && toUnit.value) {
+        updateURLWithUnits(fromUnit.value, toUnit.value);
+      }
       performConversion();
     });
   }
@@ -299,6 +374,9 @@ function setupEventListeners() {
   if (toUnit) {
     on(toUnit, 'change', () => {
       updateUnitInfo('to');
+      if (fromUnit.value && toUnit.value) {
+        updateURLWithUnits(fromUnit.value, toUnit.value);
+      }
       performConversion();
     });
   }
@@ -328,6 +406,9 @@ function setupEventListeners() {
       
       updateUnitInfo('from');
       updateUnitInfo('to');
+      if (fromUnit.value && toUnit.value) {
+        updateURLWithUnits(fromUnit.value, toUnit.value);
+      }
       performConversion();
     });
   }
