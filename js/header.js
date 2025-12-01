@@ -1,8 +1,9 @@
-// Shared header functionality (theme toggle)
+// Shared header functionality (theme toggle and side menu)
 import { toggleTheme, qs } from '/js/ui.js';
+import { initSideMenu } from '/js/side-menu.js';
 
-// Initialize theme toggle on all pages
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize function
+function init() {
   const themeToggle = qs('#theme-toggle');
   const themeIcon = qs('#theme-icon');
   
@@ -16,5 +17,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     themeIcon.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
   }
-});
+  
+  // Initialize side menu (only on non-front pages)
+  initSideMenu();
+}
+
+// Initialize immediately if DOM is ready, otherwise wait
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  // DOM is already loaded
+  init();
+}
 
