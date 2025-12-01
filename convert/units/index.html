@@ -59,63 +59,8 @@
     <h1>Unit Converter</h1>
     <p>Convert between hundreds of units across length, area, volume, mass, time, temperature, speed, energy, and more.</p>
     
-    <div class="options">
-      <div class="option-group" style="flex: 1;">
-        <label for="category-select">Category</label>
-        <select id="category-select">
-          <option value="">All Categories</option>
-        </select>
-      </div>
-      <div class="option-group" style="flex: 1;">
-        <label for="unit-search">Search Units</label>
-        <input type="text" id="unit-search" placeholder="Search by name or symbol...">
-      </div>
-      <div class="option-group">
-        <label for="precision">Precision</label>
-        <select id="precision">
-          <option value="auto" selected>Auto</option>
-          <option value="2">2 decimals</option>
-          <option value="4">4 decimals</option>
-          <option value="6">6 decimals</option>
-          <option value="8">8 decimals</option>
-          <option value="10">10 decimals</option>
-        </select>
-      </div>
-    </div>
-    
-    <section class="tool" style="margin-top: 1.5rem;">
-      <div class="pane" style="display: flex; flex-direction: column;">
-        <label for="from-value">From</label>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-          <input type="number" id="from-value" step="any" placeholder="Enter value" style="flex: 1; font-size: 1.25rem; padding: 0.75rem;">
-          <select id="from-unit" style="min-width: 200px; font-size: 1rem; padding: 0.75rem;">
-            <option value="">Select unit...</option>
-          </select>
-        </div>
-        <div id="from-unit-info" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-subtle);"></div>
-      </div>
-      
-      <div style="display: flex; align-items: center; justify-content: center; padding: 1rem;">
-        <button id="swap-units" class="secondary" style="padding: 0.75rem 1.5rem; font-size: 1.25rem;" aria-label="Swap units">
-          ⇄
-        </button>
-      </div>
-      
-      <div class="pane" style="display: flex; flex-direction: column;">
-        <label for="to-value">To</label>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-          <input type="number" id="to-value" step="any" placeholder="Result" readonly style="flex: 1; font-size: 1.25rem; padding: 0.75rem; background-color: var(--bg-elev);">
-          <select id="to-unit" style="min-width: 200px; font-size: 1rem; padding: 0.75rem;">
-            <option value="">Select unit...</option>
-          </select>
-        </div>
-        <div id="to-unit-info" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-subtle);"></div>
-      </div>
-    </section>
-    
-    <div id="conversion-info" style="margin-top: 1rem; padding: 1rem; background-color: var(--bg-elev); border-radius: 6px; display: none;">
-      <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Conversion Formula</h3>
-      <p id="formula-text" style="margin: 0; font-family: monospace; color: var(--text-subtle);"></p>
+    <div class="tool-grid" id="category-grid" style="margin-top: 2rem;">
+      <!-- Categories will be populated by JavaScript -->
     </div>
     
     <section class="faq" aria-labelledby="faq-h" style="margin-top: 2rem;">
@@ -140,7 +85,7 @@
   </main>
   
   <script type="module" src="/js/header.js"></script>
-  <script type="module" src="/js/tools/unit-converter.js"></script>
+  <script type="module" src="/js/tools/unit-converter-categories.js"></script>
   <script type="module">
     import { initNotesWidget } from '/js/utils/notes-widget.js';
     initNotesWidget();

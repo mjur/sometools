@@ -23,9 +23,18 @@ const formulaText = qs('#formula-text');
 let unitDefinitions = {};
 let categories = [];
 
+// Get category from URL
+function getCategoryFromURL() {
+  const path = window.location.pathname;
+  const match = path.match(/\/convert\/units\/([^\/]+)/);
+  return match ? match[1] : null;
+}
+
 // Initialize
 (async () => {
   console.log('Unit converter initializing...');
+  
+  const currentCategory = getCategoryFromURL();
   
   // Load unit definitions
   try {
@@ -36,11 +45,31 @@ let categories = [];
     console.log(`Loaded ${Object.keys(unitDefinitions).length} unit definitions`);
     console.log(`Loaded ${categories.length} categories`);
     
-    // Populate category select
-    populateCategories();
+    // If we're on a category page, update the page title and description
+    if (currentCategory) {
+      const category = categories.find(c => c.id === currentCategory);
+      if (category) {
+        const titleEl = document.getElementById('category-title');
+        const descEl = document.getElementById('category-description');
+        const breadcrumbEl = document.getElementById('category-breadcrumb');
+        const pageTitleEl = document.getElementById('page-title');
+        
+        if (titleEl) titleEl.textContent = category.name;
+        if (descEl) descEl.textContent = `Convert between units in the ${category.name} category.`;
+        if (breadcrumbEl) breadcrumbEl.textContent = category.name;
+        if (pageTitleEl) pageTitleEl.textContent = `${category.name} Converter | BunchOfTools`;
+        
+        // Update meta description
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) metaDesc.content = `Convert between units in the ${category.name} category.`;
+      }
+    } else {
+      // On main page, populate category select (if it exists)
+      populateCategories();
+    }
     
-    // Populate unit selects
-    populateUnitSelects();
+    // Populate unit selects (filtered by category if on category page)
+    populateUnitSelects('', currentCategory);
     
     // Set up event listeners
     setupEventListeners();
@@ -64,8 +93,8 @@ function populateCategories() {
   });
 }
 
-function populateUnitSelects(filter = '') {
-  const units = getFilteredUnits(filter);
+function populateUnitSelects(filter = '', categoryId = null) {
+  const units = getFilteredUnits(filter, categoryId);
   
   // Populate from unit select
   if (fromUnit) {
@@ -102,8 +131,9 @@ function populateUnitSelects(filter = '') {
   }
 }
 
-function getFilteredUnits(searchFilter = '') {
-  const categoryFilter = categorySelect?.value || '';
+function getFilteredUnits(searchFilter = '', categoryId = null) {
+  // Use provided categoryId or get from select
+  const categoryFilter = categoryId || categorySelect?.value || '';
   const searchLower = searchFilter.toLowerCase();
   
   return Object.values(unitDefinitions).filter(unit => {
@@ -135,10 +165,11 @@ function getFilteredUnits(searchFilter = '') {
 }
 
 function setupEventListeners() {
-  // Category change
+  // Category change (only if category select exists)
   if (categorySelect) {
     on(categorySelect, 'change', () => {
-      populateUnitSelects(unitSearch?.value || '');
+      const currentCategory = getCategoryFromURL();
+      populateUnitSelects(unitSearch?.value || '', currentCategory);
       performConversion();
     });
   }
@@ -146,7 +177,8 @@ function setupEventListeners() {
   // Unit search
   if (unitSearch) {
     on(unitSearch, 'input', (e) => {
-      populateUnitSelects(e.target.value);
+      const currentCategory = getCategoryFromURL();
+      populateUnitSelects(e.target.value, currentCategory);
       performConversion();
     });
   }
