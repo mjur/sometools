@@ -208,10 +208,20 @@ function updateURLWithUnits(fromUnitId, toUnitId) {
         if (fromValue && fromValue.value) {
           performConversion();
         }
+        
+        // Update title after units are set
+        setTimeout(() => {
+          updatePageTitle();
+        }, 300);
       };
       
       // Start trying to set units
       setUnitsWithRetry();
+    } else {
+      // Even if no units to load, update title after a delay to ensure DOM is ready
+      setTimeout(() => {
+        updatePageTitle();
+      }, 300);
     }
     
     // Initialize searchable selects after options are populated
@@ -521,6 +531,7 @@ function updateUnitInfo(side) {
   const selectedOption = unitSelect.options[unitSelect.selectedIndex];
   if (!selectedOption || !selectedOption.value) {
     infoDiv.textContent = '';
+    updatePageTitle();
     return;
   }
   
@@ -541,8 +552,52 @@ function updateUnitInfo(side) {
     }
     
     infoDiv.textContent = parts.length > 0 ? parts.join(' • ') : '';
+    
+    // Update page title when units change
+    updatePageTitle();
   } catch (e) {
     infoDiv.textContent = '';
+    updatePageTitle();
+  }
+}
+
+function updatePageTitle() {
+  if (!fromUnit || !toUnit) return;
+  
+  const fromOption = fromUnit.options[fromUnit.selectedIndex];
+  const toOption = toUnit.options[toUnit.selectedIndex];
+  
+  if (!fromOption || !fromOption.value || !toOption || !toOption.value) {
+    return;
+  }
+  
+  try {
+    const fromUnitData = JSON.parse(fromOption.dataset.unit || '{}');
+    const toUnitData = JSON.parse(toOption.dataset.unit || '{}');
+    
+    if (fromUnitData.name && toUnitData.name) {
+      const fromName = fromUnitData.name.charAt(0).toUpperCase() + fromUnitData.name.slice(1);
+      const toName = toUnitData.name.charAt(0).toUpperCase() + toUnitData.name.slice(1);
+      const categoryName = fromUnitData.categoryName || 'Unit Converter';
+      
+      // Update page title
+      const pageTitle = `${fromName} to ${toName} Converter | ${categoryName} | BunchOfTools`;
+      document.title = pageTitle;
+      
+      // Update h1 if it exists (always update, regardless of id)
+      const h1 = document.querySelector('main h1#category-title, main h1');
+      if (h1) {
+        h1.textContent = `${fromName} to ${toName} Converter`;
+      }
+      
+      // Update meta description
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) {
+        metaDesc.content = `Convert ${fromName} (${fromUnitData.symbol || ''}) to ${toName} (${toUnitData.symbol || ''}) and other ${categoryName.toLowerCase()} units. Free online unit converter.`;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to update page title:', e);
   }
 }
 
