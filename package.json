@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.40",
+    "advanced-calculator": "^1.1.1",
     "onnxruntime-web": "^1.23.2"
   },
   "devDependencies": {
