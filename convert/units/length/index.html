@@ -117,6 +117,17 @@
   </main>
   
   <script type="module" src="/js/header.js"></script>
+  <script type="module">
+    // Handle URL rewriting client-side if server doesn't support it
+    // Check if we're on a unit conversion URL (e.g., /convert/units/length/cm-to-inch)
+    const path = window.location.pathname;
+    const unitMatch = path.match(/^\/convert\/units\/([^\/]+)\/([^-]+)-to-(.+)$/);
+    if (unitMatch) {
+      // This is a unit conversion URL - the server should rewrite it, but if not,
+      // we'll handle it client-side by keeping the URL as-is and letting the JS parse it
+      console.log('Unit conversion URL detected:', path);
+    }
+  </script>
   <script type="module" src="/js/tools/unit-converter.js"></script>
   <script type="module">
     import { initNotesWidget } from '/js/utils/notes-widget.js';

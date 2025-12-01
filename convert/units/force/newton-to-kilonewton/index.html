@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>newton to kilonewton Converter | Force | BunchOfTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Convert newton (N) to kilonewton (kN) and other force units. Free online unit converter.">
+  <link rel="canonical" href="https://example.com/convert/units/force/newton-to-kilonewton">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="newton to kilonewton Converter">
+  <meta property="og:description" content="Convert newton (N) to kilonewton (kN) and other force units. Free online unit converter.">
+  <meta property="og:type" content="website">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "newton to kilonewton Converter",
+    "description": "Convert newton (N) to kilonewton (kN) and other force units. Free online unit converter.",
+    "url": "https://example.com/convert/units/force/newton-to-kilonewton",
+    "applicationCategory": "UtilityApplication",
+    "operatingSystem": "Any"
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>BunchOfTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/units">Unit Converter</a>
+    <a href="/convert/units/force">Force</a>
+    <span>newton to kilonewton</span>
+  </nav>
+  
+  <main id="main">
+    <h1>newton to kilonewton Converter</h1>
+    <p>Convert newton (N) to kilonewton (kN) and other force units.</p>
+    
+    <div style="margin: 1rem 0;">
+      <a href="/convert/units/force" style="color: var(--link); text-decoration: none;">← Back to Force converter</a>
+    </div>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="precision">Precision</label>
+        <select id="precision">
+          <option value="auto" selected>Auto</option>
+          <option value="2">2 decimals</option>
+          <option value="4">4 decimals</option>
+          <option value="6">6 decimals</option>
+          <option value="8">8 decimals</option>
+          <option value="10">10 decimals</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool" style="margin-top: 1.5rem;">
+      <div style="display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column;">
+          <label for="from-value">From</label>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <input type="number" id="from-value" step="any" placeholder="Enter value" style="font-size: 1.25rem; padding: 0.75rem;">
+            <div style="position: relative;">
+              <select id="from-unit" style="width: 100%; font-size: 1rem; padding: 0.75rem;">
+                <option value="">Select unit...</option>
+              </select>
+            </div>
+          </div>
+          <div id="from-unit-info" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-subtle);"></div>
+        </div>
+        
+        <div style="display: flex; align-items: center; justify-content: center; padding-top: 2.5rem; flex-shrink: 0;">
+          <button id="swap-units" class="secondary" style="padding: 0.75rem 1.5rem; font-size: 1.25rem;" aria-label="Swap units">
+            ⇄
+          </button>
+        </div>
+        
+        <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column;">
+          <label for="to-value">To</label>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <input type="number" id="to-value" step="any" placeholder="Result" readonly style="font-size: 1.25rem; padding: 0.75rem; background-color: var(--bg-elev);">
+            <div style="position: relative;">
+              <select id="to-unit" style="width: 100%; font-size: 1rem; padding: 0.75rem;">
+                <option value="">Select unit...</option>
+              </select>
+            </div>
+          </div>
+          <div id="to-unit-info" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-subtle);"></div>
+        </div>
+      </div>
+    </section>
+    
+    <div id="conversion-info" style="margin-top: 1rem; padding: 1rem; background-color: var(--bg-elev); border-radius: 6px; display: none;">
+      <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">Conversion Formula</h3>
+      <p id="formula-text" style="margin: 0; font-family: monospace; color: var(--text-subtle);"></p>
+    </div>
+    
+    <section class="faq" aria-labelledby="faq-h" style="margin-top: 2rem;">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>How do I convert newton to kilonewton?</summary>
+        <p>Enter a value in newton (N) in the "From" field, and the equivalent value in kilonewton (kN) will be displayed in the "To" field automatically.</p>
+      </details>
+      <details>
+        <summary>What is the conversion factor?</summary>
+        <p>The conversion factor between newton and kilonewton is calculated automatically based on their relationship to the base unit in the force category.</p>
+      </details>
+      <details>
+        <summary>Can I convert other units?</summary>
+        <p>Yes, you can convert between any units in the force category. Use the dropdown menus to select different units.</p>
+      </details>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module">
+    // Preload units - store in sessionStorage to be picked up by unit-converter.js
+    sessionStorage.setItem('preloadFromUnit', 'newton');
+    sessionStorage.setItem('preloadToUnit', 'kilonewton');
+  </script>
+  <script type="module" src="/js/tools/unit-converter.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>

@@ -6,8 +6,30 @@ export default defineConfig({
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp'
+    },
+    // Rewrite URLs with unit conversions to the category index page
+    // e.g., /convert/units/length/cm-to-inch -> /convert/units/length/index.html
+    fs: {
+      allow: ['..']
     }
   },
+  // Add middleware to handle unit conversion URLs
+  plugins: [
+    {
+      name: 'unit-converter-rewrite',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          // Check if this is a unit conversion URL pattern
+          const match = req.url.match(/^\/convert\/units\/([^\/]+)\/([^-]+)-to-(.+)$/);
+          if (match) {
+            // Rewrite to the category index page
+            req.url = `/convert/units/${match[1]}/index.html`;
+          }
+          next();
+        });
+      }
+    }
+  ],
   build: {
     rollupOptions: {
       input: {

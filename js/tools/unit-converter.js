@@ -37,11 +37,22 @@ function getCategoryFromURL() {
 // Get units from URL (format: /convert/units/category/fromUnit-to-toUnit)
 function getUnitsFromURL() {
   const path = window.location.pathname;
-  const match = path.match(/\/convert\/units\/[^\/]+\/([^-]+)-to-(.+)$/);
+  // Match pattern: /convert/units/{category}/{fromUnit}-to-{toUnit}
+  // Handle trailing slashes by removing them first
+  const cleanPath = path.replace(/\/$/, '');
+  const match = cleanPath.match(/\/convert\/units\/[^\/]+\/([^-]+)-to-(.+)$/);
   if (match) {
+    let fromUnit = decodeURIComponent(match[1]);
+    let toUnit = decodeURIComponent(match[2]);
+    
+    // Remove any trailing slashes that might have been captured
+    fromUnit = fromUnit.replace(/\/$/, '');
+    toUnit = toUnit.replace(/\/$/, '');
+    
+    console.log(`Parsed units from URL: from=${fromUnit}, to=${toUnit}`);
     return {
-      from: decodeURIComponent(match[1]),
-      to: decodeURIComponent(match[2])
+      from: fromUnit,
+      to: toUnit
     };
   }
   return null;
@@ -106,37 +117,101 @@ function updateURLWithUnits(fromUnitId, toUnitId) {
     
     // Check URL for preloaded units
     const urlUnits = getUnitsFromURL();
+    
+    // Also check sessionStorage for preloaded units (from unit-specific pages)
+    const preloadFrom = sessionStorage.getItem('preloadFromUnit');
+    const preloadTo = sessionStorage.getItem('preloadToUnit');
+    
+    let unitsToLoad = null;
     if (urlUnits && urlUnits.from && urlUnits.to) {
+      unitsToLoad = urlUnits;
       console.log(`Found units in URL: from=${urlUnits.from}, to=${urlUnits.to}`);
-      // Wait for options to be populated, then set the units
-      setTimeout(() => {
-        if (fromUnit && toUnit) {
-          // Set from unit
-          const fromOption = Array.from(fromUnit.options).find(opt => opt.value === urlUnits.from);
-          if (fromOption) {
-            fromUnit.value = urlUnits.from;
-            if (fromUnitSelect) {
-              fromUnitSelect.setValue(urlUnits.from);
-            }
-            updateUnitInfo('from');
-          }
-          
-          // Set to unit
-          const toOption = Array.from(toUnit.options).find(opt => opt.value === urlUnits.to);
-          if (toOption) {
-            toUnit.value = urlUnits.to;
-            if (toUnitSelect) {
-              toUnitSelect.setValue(urlUnits.to);
-            }
-            updateUnitInfo('to');
-          }
-          
-          // Perform conversion if from value is set
-          if (fromValue && fromValue.value) {
-            performConversion();
-          }
+    } else if (preloadFrom && preloadTo) {
+      unitsToLoad = { from: preloadFrom, to: preloadTo };
+      console.log(`Found units in sessionStorage: from=${preloadFrom}, to=${preloadTo}`);
+      // Clear sessionStorage after reading
+      sessionStorage.removeItem('preloadFromUnit');
+      sessionStorage.removeItem('preloadToUnit');
+    }
+    
+    if (unitsToLoad) {
+      // Function to set units with retry logic
+      const setUnitsWithRetry = (retryCount = 0) => {
+        if (retryCount > 10) {
+          console.warn('Failed to set units after 10 retries');
+          return;
         }
-      }, 300);
+        
+        if (!fromUnit || !toUnit) {
+          setTimeout(() => setUnitsWithRetry(retryCount + 1), 100);
+          return;
+        }
+        
+        // Check if options are populated
+        if (fromUnit.options.length <= 1 || toUnit.options.length <= 1) {
+          setTimeout(() => setUnitsWithRetry(retryCount + 1), 100);
+          return;
+        }
+        
+        let fromSet = false;
+        let toSet = false;
+        
+        // Set from unit
+        const fromOption = Array.from(fromUnit.options).find(opt => opt.value === unitsToLoad.from);
+        if (fromOption) {
+          fromUnit.value = unitsToLoad.from;
+          if (fromUnitSelect) {
+            fromUnitSelect.setValue(unitsToLoad.from);
+          } else {
+            // If searchable select not ready, try again later
+            setTimeout(() => {
+              if (fromUnitSelect) {
+                fromUnitSelect.setValue(unitsToLoad.from);
+              }
+            }, 200);
+          }
+          updateUnitInfo('from');
+          fromSet = true;
+          console.log(`Set from unit: ${unitsToLoad.from}`);
+        } else {
+          console.warn(`From unit not found: ${unitsToLoad.from}, available options:`, Array.from(fromUnit.options).map(o => o.value));
+        }
+        
+        // Set to unit
+        const toOption = Array.from(toUnit.options).find(opt => opt.value === unitsToLoad.to);
+        if (toOption) {
+          toUnit.value = unitsToLoad.to;
+          if (toUnitSelect) {
+            toUnitSelect.setValue(unitsToLoad.to);
+          } else {
+            // If searchable select not ready, try again later
+            setTimeout(() => {
+              if (toUnitSelect) {
+                toUnitSelect.setValue(unitsToLoad.to);
+              }
+            }, 200);
+          }
+          updateUnitInfo('to');
+          toSet = true;
+          console.log(`Set to unit: ${unitsToLoad.to}`);
+        } else {
+          console.warn(`To unit not found: ${unitsToLoad.to}, available options:`, Array.from(toUnit.options).map(o => o.value));
+        }
+        
+        // If units weren't set, retry
+        if (!fromSet || !toSet) {
+          setTimeout(() => setUnitsWithRetry(retryCount + 1), 100);
+          return;
+        }
+        
+        // Perform conversion if from value is set
+        if (fromValue && fromValue.value) {
+          performConversion();
+        }
+      };
+      
+      // Start trying to set units
+      setUnitsWithRetry();
     }
     
     // Initialize searchable selects after options are populated
@@ -148,10 +223,18 @@ function updateURLWithUnits(fromUnitId, toUnitId) {
           placeholder: 'Search units...',
           onSelect: () => {
             updateUnitInfo('from');
-            updateURLWithUnits(fromUnit.value, toUnit.value);
+            if (fromUnit.value && toUnit.value) {
+              updateURLWithUnits(fromUnit.value, toUnit.value);
+            }
             performConversion();
           }
         });
+        
+        // If there's a preloaded value, set it now
+        const preloadFrom = sessionStorage.getItem('preloadFromUnit');
+        if (preloadFrom && fromUnit.value === preloadFrom) {
+          fromUnitSelect.setValue(preloadFrom);
+        }
       }
       
       if (toUnit && toUnit.options.length > 1 && !toUnitSelect) {
@@ -160,10 +243,18 @@ function updateURLWithUnits(fromUnitId, toUnitId) {
           placeholder: 'Search units...',
           onSelect: () => {
             updateUnitInfo('to');
-            updateURLWithUnits(fromUnit.value, toUnit.value);
+            if (fromUnit.value && toUnit.value) {
+              updateURLWithUnits(fromUnit.value, toUnit.value);
+            }
             performConversion();
           }
         });
+        
+        // If there's a preloaded value, set it now
+        const preloadTo = sessionStorage.getItem('preloadToUnit');
+        if (preloadTo && toUnit.value === preloadTo) {
+          toUnitSelect.setValue(preloadTo);
+        }
       }
     };
     
