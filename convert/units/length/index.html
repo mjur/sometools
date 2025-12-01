@@ -41,10 +41,6 @@
     </div>
     
     <div class="options">
-      <div class="option-group" style="flex: 1;">
-        <label for="unit-search">Search Units</label>
-        <input type="text" id="unit-search" placeholder="Search by name or symbol...">
-      </div>
       <div class="option-group">
         <label for="precision">Precision</label>
         <select id="precision">
@@ -63,9 +59,11 @@
         <label for="from-value">From</label>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
           <input type="number" id="from-value" step="any" placeholder="Enter value" style="flex: 1; font-size: 1.25rem; padding: 0.75rem;">
-          <select id="from-unit" style="min-width: 200px; font-size: 1rem; padding: 0.75rem;">
-            <option value="">Select unit...</option>
-          </select>
+          <div style="min-width: 250px; position: relative;">
+            <select id="from-unit" style="min-width: 250px; font-size: 1rem; padding: 0.75rem;">
+              <option value="">Select unit...</option>
+            </select>
+          </div>
         </div>
         <div id="from-unit-info" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-subtle);"></div>
       </div>
@@ -80,9 +78,11 @@
         <label for="to-value">To</label>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
           <input type="number" id="to-value" step="any" placeholder="Result" readonly style="flex: 1; font-size: 1.25rem; padding: 0.75rem; background-color: var(--bg-elev);">
-          <select id="to-unit" style="min-width: 200px; font-size: 1rem; padding: 0.75rem;">
-            <option value="">Select unit...</option>
-          </select>
+          <div style="min-width: 250px; position: relative;">
+            <select id="to-unit" style="min-width: 250px; font-size: 1rem; padding: 0.75rem;">
+              <option value="">Select unit...</option>
+            </select>
+          </div>
         </div>
         <div id="to-unit-info" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-subtle);"></div>
       </div>

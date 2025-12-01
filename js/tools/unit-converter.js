@@ -4,10 +4,10 @@
 console.log('🚀 unit-converter.js script loading...');
 
 import { toast, on, qs } from '/js/ui.js';
+import { createSearchableSelect } from '/js/utils/searchable-select.js';
 
 // DOM elements
 const categorySelect = qs('#category-select');
-const unitSearch = qs('#unit-search');
 const precisionSelect = qs('#precision');
 const fromValue = qs('#from-value');
 const fromUnit = qs('#from-unit');
@@ -22,12 +22,16 @@ const formulaText = qs('#formula-text');
 // Unit definitions will be loaded from a separate module
 let unitDefinitions = {};
 let categories = [];
+let fromUnitSelect = null;
+let toUnitSelect = null;
 
 // Get category from URL
 function getCategoryFromURL() {
   const path = window.location.pathname;
   const match = path.match(/\/convert\/units\/([^\/]+)/);
-  return match ? match[1] : null;
+  const category = match ? match[1] : null;
+  console.log(`getCategoryFromURL: path=${path}, category=${category}`);
+  return category;
 }
 
 // Initialize
@@ -71,6 +75,43 @@ function getCategoryFromURL() {
     // Populate unit selects (filtered by category if on category page)
     populateUnitSelects('', currentCategory);
     
+    // Initialize searchable selects after options are populated
+    // Use multiple attempts to ensure options are loaded
+    const initSearchableSelects = () => {
+      if (fromUnit && fromUnit.options.length > 1 && !fromUnitSelect) {
+        console.log(`Initializing from-unit searchable select with ${fromUnit.options.length} options`);
+        fromUnitSelect = createSearchableSelect(fromUnit, {
+          placeholder: 'Search units...',
+          onSelect: () => {
+            updateUnitInfo('from');
+            performConversion();
+          }
+        });
+      }
+      
+      if (toUnit && toUnit.options.length > 1 && !toUnitSelect) {
+        console.log(`Initializing to-unit searchable select with ${toUnit.options.length} options`);
+        toUnitSelect = createSearchableSelect(toUnit, {
+          placeholder: 'Search units...',
+          onSelect: () => {
+            updateUnitInfo('to');
+            performConversion();
+          }
+        });
+      }
+    };
+    
+    // Try immediately
+    requestAnimationFrame(() => {
+      initSearchableSelects();
+      // Try again after a short delay if still not initialized
+      if ((fromUnit && !fromUnitSelect) || (toUnit && !toUnitSelect)) {
+        setTimeout(() => {
+          initSearchableSelects();
+        }, 200);
+      }
+    });
+    
     // Set up event listeners
     setupEventListeners();
     
@@ -96,6 +137,8 @@ function populateCategories() {
 function populateUnitSelects(filter = '', categoryId = null) {
   const units = getFilteredUnits(filter, categoryId);
   
+  console.log(`populateUnitSelects: categoryId=${categoryId}, filter="${filter}", found ${units.length} units`);
+  
   // Populate from unit select
   if (fromUnit) {
     const currentFromValue = fromUnit.value;
@@ -111,6 +154,33 @@ function populateUnitSelects(filter = '', categoryId = null) {
       }
       fromUnit.appendChild(option);
     });
+    
+    console.log(`Populated from-unit with ${fromUnit.options.length} options`);
+    
+    // Update searchable select if it exists
+    if (fromUnitSelect) {
+      // Use setTimeout to ensure DOM is updated
+      setTimeout(() => {
+        fromUnitSelect.updateOptions();
+        if (currentFromValue) {
+          fromUnitSelect.setValue(currentFromValue);
+        }
+      }, 0);
+    } else if (fromUnit.options.length > 1) {
+      // Initialize if not already initialized and we have options
+      setTimeout(() => {
+        if (!fromUnitSelect && fromUnit.options.length > 1) {
+          console.log('Initializing from-unit searchable select');
+          fromUnitSelect = createSearchableSelect(fromUnit, {
+            placeholder: 'Search units...',
+            onSelect: () => {
+              updateUnitInfo('from');
+              performConversion();
+            }
+          });
+        }
+      }, 100);
+    }
   }
   
   // Populate to unit select
@@ -128,6 +198,33 @@ function populateUnitSelects(filter = '', categoryId = null) {
       }
       toUnit.appendChild(option);
     });
+    
+    console.log(`Populated to-unit with ${toUnit.options.length} options`);
+    
+    // Update searchable select if it exists
+    if (toUnitSelect) {
+      // Use setTimeout to ensure DOM is updated
+      setTimeout(() => {
+        toUnitSelect.updateOptions();
+        if (currentToValue) {
+          toUnitSelect.setValue(currentToValue);
+        }
+      }, 0);
+    } else if (toUnit.options.length > 1) {
+      // Initialize if not already initialized and we have options
+      setTimeout(() => {
+        if (!toUnitSelect && toUnit.options.length > 1) {
+          console.log('Initializing to-unit searchable select');
+          toUnitSelect = createSearchableSelect(toUnit, {
+            placeholder: 'Search units...',
+            onSelect: () => {
+              updateUnitInfo('to');
+              performConversion();
+            }
+          });
+        }
+      }, 100);
+    }
   }
 }
 
@@ -136,7 +233,9 @@ function getFilteredUnits(searchFilter = '', categoryId = null) {
   const categoryFilter = categoryId || categorySelect?.value || '';
   const searchLower = searchFilter.toLowerCase();
   
-  return Object.values(unitDefinitions).filter(unit => {
+  console.log(`getFilteredUnits: categoryFilter="${categoryFilter}", searchFilter="${searchFilter}", totalUnits=${Object.keys(unitDefinitions).length}`);
+  
+  const filtered = Object.values(unitDefinitions).filter(unit => {
     // Category filter
     if (categoryFilter && unit.category !== categoryFilter) {
       return false;
@@ -162,6 +261,13 @@ function getFilteredUnits(searchFilter = '', categoryId = null) {
     }
     return a.name.localeCompare(b.name);
   });
+  
+  console.log(`getFilteredUnits: returning ${filtered.length} units`);
+  if (filtered.length > 0) {
+    console.log(`First few units:`, filtered.slice(0, 3).map(u => `${u.name} (${u.category})`));
+  }
+  
+  return filtered;
 }
 
 function setupEventListeners() {
@@ -169,16 +275,7 @@ function setupEventListeners() {
   if (categorySelect) {
     on(categorySelect, 'change', () => {
       const currentCategory = getCategoryFromURL();
-      populateUnitSelects(unitSearch?.value || '', currentCategory);
-      performConversion();
-    });
-  }
-  
-  // Unit search
-  if (unitSearch) {
-    on(unitSearch, 'input', (e) => {
-      const currentCategory = getCategoryFromURL();
-      populateUnitSelects(e.target.value, currentCategory);
+      populateUnitSelects('', currentCategory);
       performConversion();
     });
   }
@@ -190,7 +287,7 @@ function setupEventListeners() {
     });
   }
   
-  // From unit change
+  // From unit change (handled by searchable select, but keep for compatibility)
   if (fromUnit) {
     on(fromUnit, 'change', () => {
       updateUnitInfo('from');
@@ -198,7 +295,7 @@ function setupEventListeners() {
     });
   }
   
-  // To unit change
+  // To unit change (handled by searchable select, but keep for compatibility)
   if (toUnit) {
     on(toUnit, 'change', () => {
       updateUnitInfo('to');
@@ -216,6 +313,16 @@ function setupEventListeners() {
       
       if (fromValue) fromValue.value = toVal || '';
       if (toValue) toValue.value = fromVal || '';
+      
+      // Swap using searchable selects
+      if (fromUnitVal && toUnitSelect) {
+        toUnitSelect.setValue(fromUnitVal);
+      }
+      if (toUnitVal && fromUnitSelect) {
+        fromUnitSelect.setValue(toUnitVal);
+      }
+      
+      // Fallback to direct select if searchable selects not available
       if (fromUnit) fromUnit.value = toUnitVal || '';
       if (toUnit) toUnit.value = fromUnitVal || '';
       
