@@ -8,6 +8,31 @@ const runBtn = qs('#run');
 const copyBtn = qs('#copy');
 const shareBtn = qs('#share');
 const liveMode = qs('#live-mode');
+const lineNumbers = qs('#line-numbers');
+
+// Update line numbers
+function updateLineNumbers() {
+  const text = input.value;
+  const lines = text.split('\n');
+  const lineCount = Math.max(lines.length, 1);
+  
+  // Generate line numbers
+  const numbers = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
+  lineNumbers.textContent = numbers;
+  
+  // Ensure line numbers container matches textarea height
+  lineNumbers.style.height = input.scrollHeight + 'px';
+  
+  // Sync scroll
+  lineNumbers.scrollTop = input.scrollTop;
+}
+
+// Sync scroll between textarea and line numbers
+function syncScroll() {
+  if (lineNumbers) {
+    lineNumbers.scrollTop = input.scrollTop;
+  }
+}
 
 // Load state from URL or localStorage
 const storageKey = 'json-validate-state';
@@ -17,6 +42,32 @@ if (state?.input) {
   if (state.liveMode !== undefined) {
     liveMode.checked = state.liveMode;
   }
+}
+
+// Initialize line numbers
+updateLineNumbers();
+
+// Update line numbers on input
+on(input, 'input', () => {
+  updateLineNumbers();
+  if (liveMode.checked) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      validate(input.value);
+    }, 300);
+  }
+});
+
+// Sync scroll
+on(input, 'scroll', syncScroll);
+
+// Update line numbers on resize (for textarea resize)
+let resizeObserver;
+if (window.ResizeObserver) {
+  resizeObserver = new ResizeObserver(() => {
+    updateLineNumbers();
+  });
+  resizeObserver.observe(input);
 }
 
 function validate(str) {
@@ -60,16 +111,8 @@ on(liveMode, 'change', (e) => {
   }
 });
 
-// Live validation on input (debounced)
+// Live validation on input (debounced) - moved to updateLineNumbers handler
 let debounceTimer;
-on(input, 'input', () => {
-  if (liveMode.checked) {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      validate(input.value);
-    }, 300);
-  }
-});
 
 // Copy button
 on(copyBtn, 'click', async () => {
@@ -100,12 +143,14 @@ if (window.location.hash) {
   const urlState = decodeState(window.location.hash.slice(1));
   if (urlState?.input) {
     input.value = urlState.input;
+    updateLineNumbers();
     validate(input.value);
   }
 }
 
 // Initial validation if there's content
 if (input.value) {
+  updateLineNumbers();
   validate(input.value);
 }
 

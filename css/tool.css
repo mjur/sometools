@@ -3,19 +3,21 @@
 /* Line numbers for textareas (optional enhancement) */
 .textarea-with-lines {
   position: relative;
+  display: flex;
 }
 
 .textarea-with-lines textarea {
-  padding-left: 3rem;
+  padding-left: 3.5rem !important;
+  flex: 1;
 }
 
 .line-numbers {
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 0;
-  width: 2.5rem;
+  width: 3rem;
   padding: 0.75rem 0.25rem;
+  margin: 0;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
   font-size: 0.875rem;
   line-height: 1.6;
@@ -25,6 +27,12 @@
   user-select: none;
   pointer-events: none;
   text-align: right;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 1;
+  box-sizing: border-box;
+  white-space: pre;
+  word-wrap: normal;
 }
 
 /* Error highlighting */
