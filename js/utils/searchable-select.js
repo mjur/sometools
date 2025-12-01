@@ -62,12 +62,19 @@ export function createSearchableSelect(selectElement, options = {}) {
   const dropdown = document.createElement('div');
   dropdown.className = 'searchable-select-dropdown';
   
-  // Function to position dropdown relative to button
+  // Function to position dropdown relative to input field (which is above the select)
   function positionDropdown() {
-    const buttonRect = button.getBoundingClientRect();
-    dropdown.style.top = `${buttonRect.bottom + window.scrollY + 4}px`;
-    dropdown.style.left = `${buttonRect.left + window.scrollX}px`;
-    dropdown.style.width = `${buttonRect.width}px`;
+    // Find the input field that's in the same container
+    const wrapper = button.closest('[style*="flex-direction: column"]') || button.parentElement;
+    const inputField = wrapper ? wrapper.querySelector('input[type="number"]') : null;
+    
+    // Use input field if found, otherwise use button
+    const referenceElement = inputField || button;
+    const rect = referenceElement.getBoundingClientRect();
+    
+    dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`;
+    dropdown.style.left = `${rect.left + window.scrollX}px`;
+    dropdown.style.width = `${rect.width}px`;
   }
   
   // Set initial styles - using fixed positioning to avoid overflow issues
