@@ -191,14 +191,35 @@
     }
     
     .calculator-btn.operator {
-      background: linear-gradient(145deg, #0066cc, #0052a3);
+      background: #4a4a4a;
       color: white;
-      box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+      font-weight: 600;
+      border: 1px solid #3a3a3a;
     }
     
     .calculator-btn.operator:hover {
-      background: linear-gradient(145deg, #0052a3, #004080);
-      box-shadow: 0 6px 16px rgba(0, 102, 204, 0.4);
+      background: #5a5a5a;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+    }
+    
+    .calculator-btn.operator:active {
+      background: #3a3a3a;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    [data-theme="light"] .calculator-btn.operator {
+      background: #c0c0c0;
+      color: #1a1a1a;
+      border: 1px solid #b0b0b0;
+    }
+    
+    [data-theme="light"] .calculator-btn.operator:hover {
+      background: #d0d0d0;
+    }
+    
+    [data-theme="light"] .calculator-btn.operator:active {
+      background: #a8a8a8;
     }
     
     .calculator-btn.function {
