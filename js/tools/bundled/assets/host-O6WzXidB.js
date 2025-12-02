@@ -690,12 +690,15 @@ class JanusProAdapter {
         return c.webgpu ? ['webgpu'] : [];
     }
     async load(options) {
+        console.log('[Janus] load() called with options:', { backendPreference: options.backendPreference, hasOnProgress: !!options.onProgress });
         const preferred = options.backendPreference;
         if (!preferred.includes('webgpu')) {
+            console.log('[Janus] WebGPU not in preferred backends, returning error');
             return { ok: false, reason: 'backend_unavailable', message: 'Janus requires WebGPU' };
         }
         // Dynamic import of Transformers.js (optional peer). Error clearly if missing.
         let hf = null;
+        console.log('[Janus] Attempting to load Transformers.js...');
         // First try a normal bare-specifier import (works when installed and bundled by Vite)
         try {
             hf = await import('./transformers_web-txt2img-R1QVQ2mR.js').catch(() => null);
@@ -718,9 +721,93 @@ class JanusProAdapter {
         if (!hf) {
             const g = globalThis;
             hf = g.transformers || g.HFTransformers || g.HuggingFaceTransformers || null;
+            console.log('[Janus] Using global transformers:', {
+                hasTransformers: !!g.transformers,
+                hasHFTransformers: !!g.HFTransformers,
+                hasHuggingFaceTransformers: !!g.HuggingFaceTransformers,
+                hf: !!hf,
+                hfType: typeof hf,
+                hfIsSameAsGlobal: hf === g.transformers,
+                hfKeys: hf ? Object.keys(hf).slice(0, 50) : [],
+                hfKeysWithAuto: hf ? Object.keys(hf).filter(k => k.includes('Auto') || k.includes('Multi') || k.includes('Processor')).slice(0, 20) : [],
+                hasAutoProcessor: !!(hf && hf.AutoProcessor),
+                AutoProcessorType: hf ? typeof hf.AutoProcessor : 'undefined',
+                // Check if it's on the prototype or somewhere else
+                hasAutoProcessorInProto: !!(hf && Object.getPrototypeOf(hf) && Object.getPrototypeOf(hf).AutoProcessor),
+                allPropertyNames: hf ? Object.getOwnPropertyNames(hf).filter(k => k.includes('Auto') || k.includes('Multi') || k.includes('Processor')).slice(0, 20) : [],
+                // Direct property access test
+                directAutoProcessor: hf ? hf['AutoProcessor'] : undefined,
+                directAutoProcessorType: hf ? typeof hf['AutoProcessor'] : 'undefined'
+            });
+            
+            // If AutoProcessor is missing, try to get it from the module directly
+            if (hf && !hf.AutoProcessor) {
+                console.log('[Janus] AutoProcessor missing from hf, checking globalThis directly...');
+                if (globalThis.AutoProcessor) {
+                    console.log('[Janus] Found AutoProcessor on globalThis, assigning to hf');
+                    hf.AutoProcessor = globalThis.AutoProcessor;
+                }
+                if (globalThis.MultiModalityCausalLM) {
+                    hf.MultiModalityCausalLM = globalThis.MultiModalityCausalLM;
+                }
+            }
         }
         if (!hf) {
             return { ok: false, reason: 'internal_error', message: 'Missing @huggingface/transformers. Install it (npm i @huggingface/transformers) or include it via a <script> to expose global "transformers".' };
+        }
+        // Debug: Verify hf has required classes before using them
+        console.log('[Janus] hf verification:', {
+            hf: !!hf,
+            hasAutoProcessor: !!(hf && hf.AutoProcessor),
+            AutoProcessorType: hf ? typeof hf.AutoProcessor : 'undefined',
+            hasFromPretrained: !!(hf && hf.AutoProcessor && typeof hf.AutoProcessor.from_pretrained === 'function'),
+            hasMultiModalityCausalLM: !!(hf && hf.MultiModalityCausalLM),
+            MultiModalityCausalLMType: hf ? typeof hf.MultiModalityCausalLM : 'undefined',
+            hfKeys: hf ? Object.keys(hf).filter(k => k.includes('Auto') || k.includes('Multi') || k.includes('Processor')).slice(0, 15) : [],
+            allHfKeys: hf ? Object.keys(hf).slice(0, 30) : [],
+            hfIsGlobalTransformers: hf === globalThis.transformers,
+            globalThisHasAutoProcessor: !!globalThis.AutoProcessor,
+            globalThisTransformersHasAutoProcessor: !!(globalThis.transformers && globalThis.transformers.AutoProcessor)
+        });
+        
+        // If AutoProcessor is missing, try to get it from globalThis directly
+        if (hf && !hf.AutoProcessor) {
+            console.log('[Janus] AutoProcessor missing from hf, checking globalThis directly...');
+            
+            // Try to get AutoProcessor from globalThis
+            let autoProcessor = globalThis.AutoProcessor;
+            let multiModalityCausalLM = globalThis.MultiModalityCausalLM;
+            
+            // Also check globalThis.transformers
+            if (!autoProcessor && globalThis.transformers && globalThis.transformers.AutoProcessor) {
+                autoProcessor = globalThis.transformers.AutoProcessor;
+            }
+            if (!multiModalityCausalLM && globalThis.transformers && globalThis.transformers.MultiModalityCausalLM) {
+                multiModalityCausalLM = globalThis.transformers.MultiModalityCausalLM;
+            }
+            
+            if (autoProcessor || multiModalityCausalLM) {
+                console.log('[Janus] Found classes on globalThis, creating new hf object...');
+                // Create a new object with all properties from hf plus the missing classes
+                const newHf = Object.assign({}, hf);
+                if (autoProcessor) {
+                    newHf.AutoProcessor = autoProcessor;
+                    console.log('[Janus] Added AutoProcessor to new hf object');
+                }
+                if (multiModalityCausalLM) {
+                    newHf.MultiModalityCausalLM = multiModalityCausalLM;
+                    console.log('[Janus] Added MultiModalityCausalLM to new hf object');
+                }
+                // Copy any other properties that might be missing
+                if (globalThis.transformers && globalThis.transformers !== hf) {
+                    Object.assign(newHf, globalThis.transformers);
+                }
+                hf = newHf;
+                console.log('[Janus] After creating new hf object:', {
+                    hasAutoProcessor: !!(hf && hf.AutoProcessor),
+                    hasMultiModalityCausalLM: !!(hf && hf.MultiModalityCausalLM)
+                });
+            }
         }
         // WebGPU adapter + shader-f16 capability check (for dtype selection)
         let fp16_supported = false;
@@ -774,7 +861,35 @@ class JanusProAdapter {
                     options.onProgress?.({ phase: 'loading', message: x?.status ?? 'loading…' });
                 }
             };
-            const processorP = hf.AutoProcessor.from_pretrained(model_id, { progress_callback });
+            // Debug: Check what hf contains
+            console.log('[Janus] hf check:', {
+                hfExists: !!hf,
+                hfType: typeof hf,
+                hasAutoProcessor: !!(hf && hf.AutoProcessor),
+                AutoProcessorType: hf ? typeof hf.AutoProcessor : 'undefined',
+                hasFromPretrained: !!(hf && hf.AutoProcessor && hf.AutoProcessor.from_pretrained),
+                hfKeys: hf ? Object.keys(hf).filter(k => k.includes('Auto') || k.includes('Multi') || k.includes('Processor')).slice(0, 10) : []
+            });
+            if (!hf || !hf.AutoProcessor) {
+                return { ok: false, reason: 'internal_error', message: `hf.AutoProcessor is undefined. hf=${!!hf}, hf.AutoProcessor=${!!(hf && hf.AutoProcessor)}` };
+            }
+            console.log('[Janus] Calling AutoProcessor.from_pretrained with model_id:', model_id);
+            console.log('[Janus] progress_callback type:', typeof progress_callback);
+            
+            // Enhanced progress callback with logging
+            const loggedProgressCallback = (progress) => {
+                console.log('[Janus] Processor progress:', progress);
+                if (progress_callback) {
+                    progress_callback(progress);
+                }
+            };
+            
+            const processorP = hf.AutoProcessor.from_pretrained(model_id, { progress_callback: loggedProgressCallback }).catch((error) => {
+                console.error('[Janus] AutoProcessor.from_pretrained error:', error);
+                console.error('[Janus] Error stack:', error.stack);
+                throw error;
+            });
+            
             const dtype = fp16_supported
                 ? { prepare_inputs_embeds: 'q4', language_model: 'q4f16', lm_head: 'fp16', gen_head: 'fp16', gen_img_embeds: 'fp16', image_decode: 'fp32' }
                 : { prepare_inputs_embeds: 'fp32', language_model: 'q4', lm_head: 'fp32', gen_head: 'fp32', gen_img_embeds: 'fp32', image_decode: 'fp32' };
@@ -788,8 +903,70 @@ class JanusProAdapter {
                 image_decode: 'webgpu',
             };
             options.onProgress?.({ phase: 'loading', message: 'Loading Janus-Pro-1B model…' });
-            const modelP = hf.MultiModalityCausalLM.from_pretrained(model_id, { dtype, device, progress_callback });
-            const [processor, model] = await Promise.all([processorP, modelP]);
+            
+            console.log('[Janus] Calling MultiModalityCausalLM.from_pretrained with model_id:', model_id);
+            console.log('[Janus] dtype:', dtype);
+            console.log('[Janus] device:', device);
+            
+            // Enhanced progress callback for model
+            const loggedModelProgressCallback = (progress) => {
+                console.log('[Janus] Model progress:', progress);
+                if (progress_callback) {
+                    progress_callback(progress);
+                }
+            };
+            
+            const modelP = hf.MultiModalityCausalLM.from_pretrained(model_id, { dtype, device, progress_callback: loggedModelProgressCallback }).catch((error) => {
+                console.error('[Janus] MultiModalityCausalLM.from_pretrained error:', error);
+                console.error('[Janus] Error stack:', error.stack);
+                throw error;
+            });
+            
+            // Add timeout and better error handling
+            console.log('[Janus] Starting processor and model loading...');
+            const processorStartTime = Date.now();
+            const modelStartTime = Date.now();
+            
+            // Add a timeout wrapper (30 minutes should be enough for large model downloads)
+            const TIMEOUT_MS = 30 * 60 * 1000;
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error(`Model loading timed out after ${TIMEOUT_MS / 1000 / 60} minutes`));
+                }, TIMEOUT_MS);
+            });
+            
+            // Wrap promises with timeout and logging
+            const processorWithLogging = Promise.race([
+                processorP.then(
+                    (result) => {
+                        console.log('[Janus] Processor loaded in', Date.now() - processorStartTime, 'ms');
+                        return result;
+                    },
+                    (error) => {
+                        console.error('[Janus] Processor load failed:', error);
+                        throw error;
+                    }
+                ),
+                timeoutPromise
+            ]);
+            
+            const modelWithLogging = Promise.race([
+                modelP.then(
+                    (result) => {
+                        console.log('[Janus] Model loaded in', Date.now() - modelStartTime, 'ms');
+                        return result;
+                    },
+                    (error) => {
+                        console.error('[Janus] Model load failed:', error);
+                        throw error;
+                    }
+                ),
+                timeoutPromise
+            ]);
+            
+            console.log('[Janus] Waiting for both processor and model to load...');
+            const [processor, model] = await Promise.all([processorWithLogging, modelWithLogging]);
+            console.log('[Janus] Both processor and model loaded successfully');
             // Ensure a final 100% event for UIs even if callbacks were cached/quick
             if (typeof TOTAL_BYTES_APPROX === 'number') {
                 lastBytes = Math.max(lastBytes, TOTAL_BYTES_APPROX);
@@ -1100,20 +1277,36 @@ function handleAbortTimeout() {
 }
 function onMessage(ev) {
     const msg = ev.data;
-    if (!msg || typeof msg !== 'object' || !('kind' in msg))
+    console.log('[Worker] Received message:', msg);
+    if (!msg || typeof msg !== 'object' || !('kind' in msg)) {
+        console.log('[Worker] Invalid message format, ignoring');
         return;
+    }
+    console.log('[Worker] Handling message kind:', msg.kind);
     switch (msg.kind) {
         case 'detect': {
+            console.log('[Worker] Handling detect request');
             detectCapabilities()
-                .then((v) => post({ id: msg.id, type: 'result', ok: true, data: v }))
-                .catch((e) => post({ id: msg.id, type: 'result', ok: false, reason: 'internal_error', message: String(e) }));
+                .then((v) => {
+                    console.log('[Worker] detectCapabilities result:', v);
+                    post({ id: msg.id, type: 'result', ok: true, data: v });
+                })
+                .catch((e) => {
+                    console.error('[Worker] detectCapabilities error:', e);
+                    post({ id: msg.id, type: 'result', ok: false, reason: 'internal_error', message: String(e) });
+                });
             break;
         }
         case 'listModels': {
+            console.log('[Worker] Handling listModels request');
             try {
-                post({ id: msg.id, type: 'result', ok: true, data: listSupportedModels() });
+                const models = listSupportedModels();
+                console.log('[Worker] listSupportedModels returned:', models);
+                post({ id: msg.id, type: 'result', ok: true, data: models });
+                console.log('[Worker] Sent listModels response');
             }
             catch (e) {
+                console.error('[Worker] listModels error:', e);
                 post({ id: msg.id, type: 'result', ok: false, reason: 'internal_error', message: String(e) });
             }
             break;

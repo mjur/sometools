@@ -104,8 +104,20 @@ class Txt2ImgWorkerClient {
     }
     send(req, onProgress) {
         return new Promise((resolve, reject) => {
+            console.log('[Client] Sending message to worker:', req);
             this.pending.set(req.id, { resolve, reject, onProgress });
-            this.worker.postMessage(req);
+            if (!this.worker) {
+                console.error('[Client] Worker is null! Cannot send message.');
+                reject(new Error('Worker is not initialized'));
+                return;
+            }
+            try {
+                this.worker.postMessage(req);
+                console.log('[Client] Message posted to worker, waiting for response...');
+            } catch (error) {
+                console.error('[Client] Failed to post message to worker:', error);
+                reject(error);
+            }
         });
     }
     async detect() {

@@ -336,9 +336,30 @@ async function initClient() {
     
     // Initialize the client using the worker-based API
     // Txt2ImgWorkerClient.createDefault() creates a worker automatically
+    console.log('[Main] Creating Txt2ImgWorkerClient...');
     try {
       client = Txt2ImgWorkerClient.createDefault();
+      console.log('[Main] Client created:', client);
+      console.log('[Main] Client worker:', client.worker);
+      console.log('[Main] Worker state:', client.worker ? 'exists' : 'missing');
+      
+      // Add error handler to worker
+      if (client.worker) {
+        client.worker.addEventListener('error', (error) => {
+          console.error('[Main] Worker error event:', error);
+          console.error('[Main] Worker error message:', error.message);
+          console.error('[Main] Worker error filename:', error.filename);
+          console.error('[Main] Worker error lineno:', error.lineno);
+          console.error('[Main] Worker error colno:', error.colno);
+          console.error('[Main] Worker error stack:', error.error?.stack);
+          console.error('[Main] Full error object:', error.error);
+        });
+        client.worker.addEventListener('messageerror', (error) => {
+          console.error('[Main] Worker message error:', error);
+        });
+      }
     } catch (workerError) {
+      console.error('[Main] Worker creation failed:', workerError);
       // If worker creation fails, restore original Worker and show error
       if (window.OriginalWorker) {
         window.Worker = window.OriginalWorker;
@@ -353,7 +374,9 @@ async function initClient() {
     // (Don't restore it, as workers may be created later)
     
     // Check WebGPU support
+    console.log('[Main] Calling client.detect()...');
     const caps = await client.detect();
+    console.log('[Main] client.detect() returned:', caps);
     if (!caps.webgpu) {
       webgpuCheck.style.display = 'block';
       generateBtn.disabled = true;
@@ -413,21 +436,72 @@ function setProgress(progress = {}) {
 
 // Load model
 async function loadModel() {
+  console.log('[Main] loadModel() called');
+  
   if (!client) {
+    console.log('[Main] Client not initialized, initializing...');
     client = await initClient();
-    if (!client) return;
+    if (!client) {
+      console.error('[Main] Failed to initialize client');
+      return;
+    }
   }
   
   const modelId = modelSelect.value;
+  console.log('[Main] Selected model:', modelId);
+  
+  // Check if generation is in progress - abort it first
+  if (isGenerating && currentAbort) {
+    console.log('[Main] Aborting ongoing generation...');
+    modelStatus.textContent = 'Aborting current generation...';
+    try {
+      currentAbort();
+      // Wait a bit for abort to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      isGenerating = false;
+      generateBtn.disabled = false;
+      abortBtn.disabled = true;
+    } catch (error) {
+      console.warn('Error aborting generation:', error);
+    }
+  }
   
   try {
     loadModelBtn.disabled = true;
     modelStatus.textContent = 'Loading model...';
     setProgress({ message: 'Loading model...', pct: 0 });
+    console.log('[Main] Starting model load process...');
+    
+    // If a different model is already loaded, unload it first
+    if (currentModel && currentModel !== modelId) {
+      console.log('[Main] Unloading previous model:', currentModel);
+      modelStatus.textContent = 'Unloading previous model...';
+      try {
+        await client.unload();
+        currentModel = null;
+        console.log('[Main] Previous model unloaded');
+        // Small delay to ensure cleanup completes
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (error) {
+        console.warn('[Main] Failed to unload previous model:', error);
+        // Continue anyway - the new load might work
+      }
+    }
     
     // Check if model is already loaded
-    const models = await client.listModels();
+    console.log('[Main] Listing available models...');
+    console.log('[Main] Calling client.listModels()...');
+    let models;
+    try {
+      models = await client.listModels();
+      console.log('[Main] client.listModels() returned:', models);
+      console.log('[Main] Available models:', models.map(m => m.id));
+    } catch (error) {
+      console.error('[Main] client.listModels() failed:', error);
+      throw error;
+    }
     const model = models.find(m => m.id === modelId);
+    console.log('[Main] Found model info:', model);
     
     if (model) {
       const sizeInfo = model.sizeGBApprox 
@@ -468,6 +542,10 @@ async function loadModel() {
       console.log('Configured ONNX Runtime wasmPaths:', wasmPathsConfig);
     }
     
+    console.log('[Main] Starting model load for:', modelId);
+    console.log('[Main] Client:', client);
+    console.log('[Main] Calling client.load()...');
+    
     try {
       result = await client.load(
         modelId,
@@ -478,6 +556,7 @@ async function loadModel() {
           wasmPaths: wasmPathsConfig
         },
         (progress) => {
+          console.log('[Main] Progress update:', progress);
           setProgress({
             message: progress.phase || 'Loading...',
             pct: progress.pct,
@@ -486,6 +565,8 @@ async function loadModel() {
           });
         }
       );
+      
+      console.log('[Main] client.load() returned:', result);
       
       // If WebGPU fails due to .mjs import issues, try WASM backend
       const actualResult = result.data || result;
@@ -556,13 +637,22 @@ async function loadModel() {
         seedGroup.style.display = 'none';
       }
     } else {
-      throw new Error(actualResult.reason || actualResult.message || 'Failed to load model');
+      // Get more detailed error information
+      const errorReason = actualResult.reason || 'unknown';
+      const errorMessage = actualResult.message || 'Failed to load model';
+      console.error('Model load failed:', {
+        reason: errorReason,
+        message: errorMessage,
+        result: actualResult
+      });
+      throw new Error(`${errorMessage} (${errorReason})`);
     }
   } catch (error) {
     console.error('Model load error:', error);
-    modelStatus.textContent = `Error: ${error.message}`;
+    const errorMsg = error.message || 'Unknown error';
+    modelStatus.textContent = `Error: ${errorMsg}`;
     setProgress();
-    toast(`Failed to load model: ${error.message}`, 'error');
+    toast(`Failed to load model: ${errorMsg}`, 'error');
   } finally {
     loadModelBtn.disabled = false;
   }
@@ -769,13 +859,17 @@ on(purgeAllCacheBtn, 'click', purgeAllCaches);
 
 // Model change handler
 on(modelSelect, 'change', () => {
-  if (currentModel && currentModel !== modelSelect.value) {
-    modelStatus.textContent = 'Model changed. Please unload current model first.';
-  }
+  // Update seed input visibility based on selected model
   if (modelSelect.value === 'sd-turbo') {
     seedGroup.style.display = 'flex';
   } else {
     seedGroup.style.display = 'none';
+  }
+  
+  // If a different model is loaded, show a message but allow loading
+  // The loadModel function will automatically unload the previous model
+  if (currentModel && currentModel !== modelSelect.value) {
+    modelStatus.textContent = 'Model changed. Click "Load Model" to switch.';
   }
 });
 
