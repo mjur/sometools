@@ -34,7 +34,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         'regex-generator-bundle': resolve(__dirname, 'js/tools/regex-generator-bundle.js'),
-        'webllm-bundle': resolve(__dirname, 'js/tools/webllm-bundle-entry.js')
+        'webllm-bundle': resolve(__dirname, 'js/tools/webllm-bundle-entry.js'),
+        'web-txt2img-bundle': resolve(__dirname, 'js/tools/web-txt2img-bundle-entry.js')
       },
       output: {
         format: 'es',
@@ -55,7 +56,10 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    exclude: ['@mlc-ai/web-llm']
+    exclude: ['@mlc-ai/web-llm', 'web-txt2img']
+  },
+  worker: {
+    format: 'es'
   }
 });
 
