@@ -211,8 +211,8 @@ export function initModelCacheWidget() {
       /* Model Cache Widget Styles */
       .model-cache-widget {
         position: fixed;
-        top: 80px;
-        right: 20px;
+        top: 20px;
+        right: 200px;
         z-index: 999;
       }
       
@@ -245,11 +245,11 @@ export function initModelCacheWidget() {
       
       .model-cache-widget-panel {
         position: fixed;
-        top: 140px;
-        right: 20px;
+        top: 80px;
+        right: 200px;
         width: 600px;
         max-width: calc(100vw - 40px);
-        max-height: calc(100vh - 200px);
+        max-height: calc(100vh - 120px);
         background: var(--bg);
         border: 1px solid var(--border);
         border-radius: 12px;
@@ -449,10 +449,15 @@ export function initModelCacheWidget() {
       }
       
       @media (max-width: 900px) {
+        .model-cache-widget {
+          right: 20px;
+          top: 80px;
+        }
+        
         .model-cache-widget-panel {
           width: calc(100vw - 40px);
           right: 20px;
-          left: 20px;
+          top: 140px;
         }
       }
     `;
