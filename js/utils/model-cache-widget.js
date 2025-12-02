@@ -108,75 +108,196 @@ async function deleteWebLLMModel(modelId) {
 // Get cached Transformers.js models from Cache API
 async function getCachedTransformersModels() {
   const models = [];
+  const modelMap = new Map(); // Key: modelId, Value: model info
   
+  // Try to get all cache names
+  let allCacheNames = [];
   try {
-    // Check for web-txt2img cache (image generation models)
-    const cacheName = 'web-txt2img-v1';
-    const cache = await caches.open(cacheName);
-    const keys = await cache.keys();
-    
-    console.log(`Found ${keys.length} entries in ${cacheName} cache`);
-    
-    // Group by model (extract model name from URL)
-    const modelMap = new Map();
-    
-    for (const request of keys) {
-      const url = request.url;
-      // Extract model name from URL (e.g., "https://huggingface.co/Xenova/sd-turbo/resolve/main/...")
-      let modelName = url;
-      const match = url.match(/\/(sd-turbo|janus-pro-1b|[\w-]+)\//);
-      if (match) {
-        modelName = match[1];
-      } else {
-        // Fallback: use last part of path
-        const parts = url.split('/');
-        modelName = parts[parts.length - 2] || parts[parts.length - 1] || 'unknown';
-      }
-      
-      if (!modelMap.has(modelName)) {
-        modelMap.set(modelName, {
-          id: modelName,
-          type: 'transformers',
-          name: modelName,
-          size: null, // Cache API doesn't provide size easily
-          timestamp: null,
-          url: url,
-          cacheName: cacheName
-        });
-      }
-    }
-    
-    models.push(...Array.from(modelMap.values()));
-    console.log('Transformers.js models found:', models.length);
+    allCacheNames = await caches.keys();
+    console.log('All available cache names:', allCacheNames);
   } catch (error) {
-    console.error('Failed to get Transformers.js models:', error);
+    console.warn('Could not list all cache names:', error);
+    return models;
   }
   
-  return models;
+  // Filter to only Transformers.js related caches
+  const transformersCacheNames = allCacheNames.filter(name => 
+    name.includes('transformers') || 
+    name.includes('hf-') || 
+    name.includes('xenova') ||
+    name.includes('huggingface') ||
+    name.includes('kokoro') ||
+    name.includes('sd-turbo') ||
+    name.includes('janus') ||
+    name.includes('web-txt2img')
+  );
+  
+  console.log('Transformers.js cache names found:', transformersCacheNames);
+  
+  // Check each cache
+  for (const cacheName of transformersCacheNames) {
+    try {
+      const cache = await caches.open(cacheName);
+      const keys = await cache.keys();
+      
+      if (keys.length === 0) {
+        continue; // Skip empty caches
+      }
+      
+      console.log(`Checking ${cacheName}: ${keys.length} entries`);
+      
+      // Group by model ID (deduplicate by actual model, not cache name)
+      for (const request of keys) {
+        const url = request.url;
+        
+        // Skip non-model files (config files, tokenizers, etc. are part of the model)
+        // Only count actual model files or verify the entry exists
+        try {
+          const response = await cache.match(request);
+          if (!response || !response.ok) {
+            continue; // Skip invalid entries
+          }
+        } catch (e) {
+          continue; // Skip entries we can't verify
+        }
+        
+        // Extract model ID from URL
+        let modelId = null;
+        let modelName = 'unknown';
+        
+        // Try to match Hugging Face model URLs
+        // Pattern: https://huggingface.co/{org}/{model}/resolve/main/...
+        const hfMatch = url.match(/huggingface\.co\/([^\/]+)\/([^\/]+)/);
+        if (hfMatch) {
+          modelId = `${hfMatch[1]}/${hfMatch[2]}`;
+          modelName = hfMatch[2];
+        } else {
+          // Try other patterns
+          const match = url.match(/\/(sd-turbo|janus-pro-1b|Kokoro-82M|kokoro|[\w-]+)\//i);
+          if (match) {
+            modelName = match[1];
+            // Try to construct model ID
+            if (url.includes('onnx-community')) {
+              modelId = `onnx-community/${modelName}`;
+            } else if (url.includes('Xenova')) {
+              modelId = `Xenova/${modelName}`;
+            } else {
+              modelId = modelName;
+            }
+          } else {
+            // Skip if we can't identify the model
+            continue;
+          }
+        }
+        
+        // Use modelId as unique key to avoid duplicates
+        if (modelId && !modelMap.has(modelId)) {
+          modelMap.set(modelId, {
+            id: modelId,
+            type: 'transformers',
+            name: modelName,
+            modelId: modelId,
+            size: null,
+            timestamp: null,
+            url: url,
+            cacheName: cacheName
+          });
+        }
+      }
+    } catch (error) {
+      // Cache might not exist or be accessible, skip it
+      console.debug(`Cache ${cacheName} not accessible:`, error.message);
+    }
+  }
+  
+  // Only include models that have actual cache entries
+  // Verify each model has at least one valid cache entry
+  const verifiedModels = [];
+  for (const [modelId, model] of modelMap.entries()) {
+    try {
+      const cache = await caches.open(model.cacheName);
+      const keys = await cache.keys();
+      
+      // Check if there are actual model files cached (not just config files)
+      let hasModelFiles = false;
+      for (const request of keys) {
+        if (request.url.includes(modelId) || request.url.includes(model.name)) {
+          try {
+            const response = await cache.match(request);
+            if (response && response.ok) {
+              // Check if it's a model file (usually larger files)
+              const contentType = response.headers.get('content-type') || '';
+              const contentLength = response.headers.get('content-length');
+              
+              // Model files are usually larger or have specific content types
+              if (contentLength && parseInt(contentLength) > 1000) { // At least 1KB
+                hasModelFiles = true;
+                break;
+              } else if (contentType.includes('octet-stream') || 
+                         contentType.includes('application') ||
+                         request.url.match(/\.(onnx|bin|safetensors|pt|pth)$/i)) {
+                hasModelFiles = true;
+                break;
+              }
+            }
+          } catch (e) {
+            // Skip this entry
+          }
+        }
+      }
+      
+      if (hasModelFiles) {
+        verifiedModels.push(model);
+      }
+    } catch (error) {
+      console.debug(`Could not verify model ${modelId}:`, error);
+    }
+  }
+  
+  console.log('Transformers.js models found (verified):', verifiedModels.length);
+  
+  return verifiedModels;
 }
 
 // Delete a Transformers.js model from Cache API
 async function deleteTransformersModel(model) {
   try {
-    const cache = await caches.open(model.cacheName || 'web-txt2img-v1');
+    const cacheName = model.cacheName || 'web-txt2img-v1';
+    const cache = await caches.open(cacheName);
     const keys = await cache.keys();
     
+    // Extract model name from the unique key (format: "cacheName:modelName")
+    const modelName = model.id.includes(':') ? model.id.split(':')[1] : model.id;
+    const modelId = model.modelId || modelName;
+    
     // Delete all entries for this model
-    const modelPattern = new RegExp(`/${model.id}/`);
+    // Match by model name or model ID in URL
     let deleted = 0;
     
     for (const request of keys) {
-      if (modelPattern.test(request.url)) {
+      const url = request.url;
+      // Check if URL contains the model name or model ID
+      const matchesModel = url.includes(modelName) || 
+                          (modelId && url.includes(modelId)) ||
+                          url.includes(model.id);
+      
+      if (matchesModel) {
         await cache.delete(request);
         deleted++;
       }
     }
     
     if (deleted === 0) {
+      // Try deleting the entire cache if it's small or model-specific
+      if (cacheName.includes(modelName.toLowerCase()) || cacheName.includes('kokoro')) {
+        await caches.delete(cacheName);
+        console.log(`Deleted entire cache: ${cacheName}`);
+        return;
+      }
       throw new Error('No cache entries found for this model');
     }
     
-    console.log(`Deleted ${deleted} cache entries for ${model.id}`);
+    console.log(`Deleted ${deleted} cache entries for ${modelName} from ${cacheName}`);
   } catch (error) {
     console.error('Failed to delete Transformers.js model:', error);
     throw error;
