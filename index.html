@@ -176,6 +176,12 @@
       </a>
     </div>
     
+    <section class="faq" aria-labelledby="cache-h" style="margin-top: 2rem;">
+      <h2 id="cache-h">Cached Models</h2>
+      <p style="margin-bottom: 1rem; color: var(--muted);">Manage AI models cached in your browser across all tools.</p>
+      <div id="model-cache-widget" style="margin-top: 1rem;"></div>
+    </section>
+    
     <section class="faq" aria-labelledby="faq-h">
       <h2 id="faq-h">Frequently Asked Questions</h2>
       <details>
@@ -251,6 +257,13 @@
           searchInput.focus();
         }
       });
+    }
+  </script>
+  <script type="module">
+    import { initModelCacheWidget } from '/js/utils/model-cache-widget.js';
+    const container = document.getElementById('model-cache-widget');
+    if (container) {
+      initModelCacheWidget(container);
     }
   </script>
 </body>

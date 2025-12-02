@@ -26,6 +26,7 @@ const TOOLS = [
   { url: '/utils/shuffler', name: 'List Shuffler', category: 'utils', description: 'Shuffle lists of items with customizable delimiters' },
   { url: '/utils/notes', name: 'Notes', category: 'utils', description: 'Create and manage notes saved locally' },
   { url: '/utils/text-to-speech', name: 'Text to Speech', category: 'utils', description: 'Convert text to speech with various voices and download audio files' },
+  { url: '/utils/model-cache', name: 'Model Cache Manager', category: 'utils', description: 'View and manage all cached AI models across tools' },
   { url: '/diff/text', name: 'Text Diff', category: 'text', description: 'Compare two texts side-by-side with word/char granularity' },
   { url: '/regex/tester', name: 'Regex Tester', category: 'text', description: 'Test regular expressions with match highlighting and groups' }
 ];

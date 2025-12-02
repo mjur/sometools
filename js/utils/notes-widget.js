@@ -445,6 +445,15 @@ export function initNotesWidget() {
 
   // Initialize widget functionality
   initWidgetFunctionality();
+  
+  // Also initialize model cache widget
+  import('/js/utils/model-cache-widget.js').then(module => {
+    if (module && module.initModelCacheWidget) {
+      module.initModelCacheWidget();
+    }
+  }).catch(err => {
+    console.log('Model cache widget not available:', err);
+  });
 }
 
 // Initialize widget functionality
