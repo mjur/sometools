@@ -2,7 +2,7 @@
 // Can be imported and initialized on any page
 
 import { toast, on, qs } from '/js/ui.js';
-import { getCacheStats, deleteCachedModel, formatBytes } from '/js/utils/model-cache.js';
+import { getCacheStats, deleteCachedModel, clearCache, formatBytes } from '/js/utils/model-cache.js';
 
 let webllmApi = null;
 
@@ -402,6 +402,7 @@ export function initModelCacheWidget() {
           </div>
           <div class="model-cache-widget-actions">
             <button id="model-cache-widget-refresh" class="model-cache-widget-btn">🔄 Refresh</button>
+            <button id="model-cache-widget-clear-all" class="model-cache-widget-btn model-cache-widget-btn-danger">🗑️ Clear All</button>
           </div>
           <div id="model-cache-widget-list" class="model-cache-widget-list">
             <div class="model-cache-loading">Loading...</div>
@@ -540,9 +541,6 @@ export function initModelCacheWidget() {
         color: var(--text);
       }
       
-      .model-cache-widget-actions {
-        margin-bottom: 1rem;
-      }
       
       .model-cache-widget-btn {
         padding: 0.6rem 1.2rem;
@@ -557,6 +555,23 @@ export function initModelCacheWidget() {
       
       .model-cache-widget-btn:hover {
         background: var(--bg-hover);
+      }
+      
+      .model-cache-widget-btn-danger {
+        background: var(--error-bg, #fee);
+        border-color: var(--error);
+        color: var(--error);
+      }
+      
+      .model-cache-widget-btn-danger:hover {
+        background: var(--error);
+        color: white;
+      }
+      
+      .model-cache-widget-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
       }
       
       .model-cache-widget-list {
@@ -685,6 +700,7 @@ function initWidgetFunctionality() {
   const panel = qs('#model-cache-widget-panel');
   const close = qs('#model-cache-widget-close');
   const refreshBtn = qs('#model-cache-widget-refresh');
+  const clearAllBtn = qs('#model-cache-widget-clear-all');
   const listContainer = qs('#model-cache-widget-list');
 
   if (!toggle || !panel || !close) return;
@@ -729,6 +745,86 @@ function initWidgetFunctionality() {
   // Refresh button
   if (refreshBtn) {
     on(refreshBtn, 'click', refreshModelList);
+  }
+
+  // Clear all button
+  if (clearAllBtn) {
+    on(clearAllBtn, 'click', async () => {
+      const models = await getAllCachedModels();
+      const totalModels = models.onnx.length + models.webllm.length + (models.transformers?.length || 0);
+      
+      if (totalModels === 0) {
+        toast('No models to clear', 'info');
+        return;
+      }
+      
+      const confirmMessage = `Are you sure you want to delete ALL ${totalModels} cached models?\n\nThis action cannot be undone.`;
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+      
+      clearAllBtn.disabled = true;
+      clearAllBtn.textContent = 'Clearing...';
+      
+      try {
+        let deletedCount = 0;
+        const errors = [];
+        
+        // Clear ONNX models (use clearCache for efficiency)
+        if (models.onnx.length > 0) {
+          try {
+            await clearCache();
+            deletedCount += models.onnx.length;
+          } catch (error) {
+            // Fallback to individual deletion
+            for (const model of models.onnx) {
+              try {
+                await deleteCachedModel(model.id);
+                deletedCount++;
+              } catch (err) {
+                errors.push(`ONNX ${model.name}: ${err.message}`);
+              }
+            }
+          }
+        }
+        
+        // Clear WebLLM models
+        for (const model of models.webllm) {
+          try {
+            await deleteWebLLMModel(model.id);
+            deletedCount++;
+          } catch (error) {
+            errors.push(`WebLLM ${model.name}: ${error.message}`);
+          }
+        }
+        
+        // Clear Transformers.js models
+        for (const model of models.transformers || []) {
+          try {
+            await deleteTransformersModel(model);
+            deletedCount++;
+          } catch (error) {
+            errors.push(`Transformers ${model.name}: ${error.message}`);
+          }
+        }
+        
+        if (errors.length > 0) {
+          console.warn('Some models failed to delete:', errors);
+          toast(`Cleared ${deletedCount} of ${totalModels} models. Some errors occurred.`, 'warning');
+        } else {
+          toast(`Successfully cleared all ${deletedCount} models`, 'success');
+        }
+        
+        // Refresh the list
+        await refreshModelList();
+      } catch (error) {
+        console.error('Failed to clear all models:', error);
+        toast(`Failed to clear all models: ${error.message}`, 'error');
+      } finally {
+        clearAllBtn.disabled = false;
+        clearAllBtn.textContent = '🗑️ Clear All';
+      }
+    });
   }
 
   // Render model list
