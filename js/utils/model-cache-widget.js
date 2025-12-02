@@ -705,6 +705,27 @@ function initWidgetFunctionality() {
     panel.classList.remove('expanded');
   });
 
+  // Close when clicking outside the widget
+  document.addEventListener('click', (e) => {
+    // Only close if panel is expanded
+    if (!panel.classList.contains('expanded')) {
+      return;
+    }
+    
+    // Don't close if clicking on the toggle button (it handles its own toggle)
+    if (toggle.contains(e.target) || toggle === e.target) {
+      return;
+    }
+    
+    // Don't close if clicking inside the panel or any of its children
+    if (panel.contains(e.target) || panel === e.target) {
+      return;
+    }
+    
+    // Close if clicking outside both toggle and panel
+    panel.classList.remove('expanded');
+  });
+
   // Refresh button
   if (refreshBtn) {
     on(refreshBtn, 'click', refreshModelList);
