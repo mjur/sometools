@@ -100,7 +100,14 @@ def create_unit_page(category_id, category_name, from_unit, to_unit, base_path):
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/tool.css">
   <link rel="preload" href="/css/base.css" as="style">
-  <link rel="icon" href="/favicon.ico">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
   <link rel="manifest" href="/manifest.webmanifest">
   <script type="module" src="/js/analytics.js"></script>
   <meta property="og:title" content="{from_name} to {to_name} Converter">

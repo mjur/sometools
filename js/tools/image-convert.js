@@ -30,6 +30,7 @@ const ico256 = qs('#ico-256');
 let currentFile = null;
 let currentImageData = null;
 let convertedBlob = null;
+let convertedIcoFiles = null; // Array of {size, blob} for multiple ICO files
 
 // Update quality display
 on(jpegQualitySlider, 'input', (e) => {
@@ -142,69 +143,52 @@ on(fileInput, 'change', (e) => {
   }
 });
 
-// Convert image to ICO format
-async function createICO(imageData, sizes) {
+// Convert image to ICO format (single size)
+async function createSingleICO(imageData, size) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
-  // ICO file structure
-  const icoEntries = [];
-  const icoData = [];
+  canvas.width = size;
+  canvas.height = size;
   
-  for (const size of sizes) {
-    canvas.width = size;
-    canvas.height = size;
-    
-    // Draw image scaled to size
-    const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = imageData;
-    });
-    
-    ctx.clearRect(0, 0, size, size);
-    ctx.drawImage(img, 0, 0, size, size);
-    
-    // Get PNG data
-    const pngData = canvas.toDataURL('image/png').split(',')[1];
-    const pngBytes = Uint8Array.from(atob(pngData), c => c.charCodeAt(0));
-    
-    // ICO entry header (16 bytes)
-    const entry = new ArrayBuffer(16);
-    const entryView = new DataView(entry);
-    entryView.setUint8(0, size === 256 ? 0 : size); // Width (0 = 256)
-    entryView.setUint8(1, size === 256 ? 0 : size); // Height (0 = 256)
-    entryView.setUint8(2, 0); // Color palette (0 = no palette)
-    entryView.setUint8(3, 0); // Reserved
-    entryView.setUint16(4, 1, true); // Color planes (little-endian)
-    entryView.setUint16(6, 32, true); // Bits per pixel (little-endian)
-    entryView.setUint32(8, pngBytes.length, true); // Image data size (little-endian)
-    entryView.setUint32(12, 0, true); // Offset (will be set later)
-    
-    icoEntries.push(new Uint8Array(entry));
-    icoData.push(pngBytes);
-  }
+  // Draw image scaled to size
+  const img = new Image();
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = reject;
+    img.src = imageData;
+  });
   
-  // Calculate offsets
-  let offset = 6 + (icoEntries.length * 16); // ICO header + all entry headers
-  for (let i = 0; i < icoEntries.length; i++) {
-    const view = new DataView(icoEntries[i].buffer);
-    view.setUint32(12, offset, true);
-    offset += icoData[i].length;
-  }
+  ctx.clearRect(0, 0, size, size);
+  ctx.drawImage(img, 0, 0, size, size);
+  
+  // Get PNG data
+  const pngData = canvas.toDataURL('image/png').split(',')[1];
+  const pngBytes = Uint8Array.from(atob(pngData), c => c.charCodeAt(0));
+  
+  // ICO entry header (16 bytes)
+  const entry = new ArrayBuffer(16);
+  const entryView = new DataView(entry);
+  entryView.setUint8(0, size === 256 ? 0 : size); // Width (0 = 256)
+  entryView.setUint8(1, size === 256 ? 0 : size); // Height (0 = 256)
+  entryView.setUint8(2, 0); // Color palette (0 = no palette)
+  entryView.setUint8(3, 0); // Reserved
+  entryView.setUint16(4, 1, true); // Color planes (little-endian)
+  entryView.setUint16(6, 32, true); // Bits per pixel (little-endian)
+  entryView.setUint32(8, pngBytes.length, true); // Image data size (little-endian)
+  entryView.setUint32(12, 22, true); // Offset (6 header + 16 entry)
   
   // Build ICO file
   const icoHeader = new ArrayBuffer(6);
   const headerView = new DataView(icoHeader);
   headerView.setUint16(0, 0, true); // Reserved (must be 0)
   headerView.setUint16(2, 1, true); // Type (1 = ICO)
-  headerView.setUint16(4, icoEntries.length, true); // Number of images
+  headerView.setUint16(4, 1, true); // Number of images (1 for single size)
   
   const parts = [
     new Uint8Array(icoHeader),
-    ...icoEntries,
-    ...icoData
+    new Uint8Array(entry),
+    pngBytes
   ];
   
   const totalLength = parts.reduce((sum, part) => sum + part.length, 0);
@@ -313,7 +297,15 @@ async function convert() {
         return;
       }
       
-      blob = await createICO(currentImageData, sizes);
+      // Create separate ICO file for each size
+      convertedIcoFiles = [];
+      for (const size of sizes) {
+        const icoBlob = await createSingleICO(currentImageData, size);
+        convertedIcoFiles.push({ size, blob: icoBlob });
+      }
+      
+      // For preview, use the first/largest ICO file
+      blob = convertedIcoFiles[convertedIcoFiles.length - 1].blob; // Use last (largest) for preview
     } else if (outputFormat === 'svg') {
       const width = parseInt(svgWidth.value) || 800;
       const height = parseInt(svgHeight.value) || 600;
@@ -327,18 +319,23 @@ async function convert() {
         : undefined;
       
       blob = await convertImage(currentImageData, outputFormat, quality);
+      convertedIcoFiles = null; // Clear ICO files for non-ICO formats
     }
     
     convertedBlob = blob;
     
     // Show preview inline
     const url = URL.createObjectURL(blob);
+    const infoText = outputFormat === 'ico' && convertedIcoFiles && convertedIcoFiles.length > 1
+      ? `${convertedIcoFiles.length} sizes (${convertedIcoFiles.map(f => `${f.size}×${f.size}`).join(', ')}) • ${((blob.size * convertedIcoFiles.length) / 1024).toFixed(1)} KB total`
+      : `${(blob.size / 1024).toFixed(1)} KB • ${outputFormat.toUpperCase()}`;
+    
     outputArea.innerHTML = `
       <img src="${url}" alt="Converted image" style="max-width: 100%; max-height: calc(100% - 3rem); border-radius: 6px; object-fit: contain;">
       <div style="position: absolute; bottom: 0.75rem; left: 0; right: 0; text-align: center;">
         <p style="color: var(--ok); font-weight: 500; margin: 0; font-size: 0.875rem;">✓ Converted successfully</p>
         <p class="text-sm text-muted" style="margin: 0.25rem 0 0 0; font-size: 0.75rem;">
-          ${(blob.size / 1024).toFixed(1)} KB • ${outputFormat.toUpperCase()}
+          ${infoText}
         </p>
       </div>
     `;
@@ -363,13 +360,53 @@ async function convert() {
 on(convertBtn, 'click', convert);
 
 // Download button
-on(downloadBtn, 'click', () => {
+on(downloadBtn, 'click', async () => {
   if (!convertedBlob) {
     toast('No converted image to download. Please convert first.', 'error');
     return;
   }
   
   const format = outputFormatSelect.value;
+  
+  // Handle ICO with multiple sizes - create zip file
+  if (format === 'ico' && convertedIcoFiles && convertedIcoFiles.length > 1) {
+    try {
+      if (typeof JSZip === 'undefined') {
+        toast('JSZip library not loaded. Please refresh the page.', 'error');
+        return;
+      }
+      const zip = new JSZip();
+      const baseFilename = currentFile 
+        ? currentFile.name.replace(/\.[^/.]+$/, '')
+        : 'converted';
+      
+      // Add each ICO file to the zip
+      for (const { size, blob } of convertedIcoFiles) {
+        const arrayBuffer = await blob.arrayBuffer();
+        zip.file(`${baseFilename}-${size}x${size}.ico`, arrayBuffer);
+      }
+      
+      // Generate zip file
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${baseFilename}-icons.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast(`Downloaded ${convertedIcoFiles.length} ICO files in zip`, 'success');
+      return;
+    } catch (error) {
+      console.error('Zip creation error:', error);
+      toast('Failed to create zip file', 'error');
+      return;
+    }
+  }
+  
+  // Single file download (non-ICO or single ICO size)
   const extension = {
     'png': 'png',
     'jpeg': 'jpg',
@@ -399,6 +436,7 @@ on(clearBtn, 'click', () => {
   currentFile = null;
   currentImageData = null;
   convertedBlob = null;
+  convertedIcoFiles = null;
   fileInput.value = '';
   imagePreview.style.display = 'none';
   
