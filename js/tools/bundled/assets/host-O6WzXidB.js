@@ -264,16 +264,17 @@ class SDTurboAdapter {
             
             // If all cached, load and create sessions in parallel for speed
             if (allCached) {
+                // Minimal progress reporting for cached models to reduce choppiness
                 options.onProgress?.({
                     phase: 'loading',
                     message: 'Loading models from cache...',
                     bytesDownloaded: 0,
                     totalBytesExpected: GRAND_APPROX,
-                    pct: 0,
+                    pct: 10,
                     accuracy: 'exact',
                 });
                 
-                // Load all model buffers in parallel
+                // Load all model buffers in parallel (instant for cached)
                 const loadPromises = Object.keys(models).map(async (key) => {
                     const model = models[key];
                     const expectedTotal = model.sizeMB * 1024 * 1024;
@@ -284,38 +285,45 @@ class SDTurboAdapter {
                 const loaded = await Promise.all(loadPromises);
                 bytesDownloaded = loaded.reduce((sum, item) => sum + item.buf.byteLength, 0);
                 
+                // Single progress update before session creation
                 options.onProgress?.({
                     phase: 'loading',
                     message: 'Initializing models...',
                     bytesDownloaded,
                     totalBytesExpected: GRAND_APPROX,
-                    pct: 50,
+                    pct: 20,
                     accuracy: 'exact',
                 });
                 
                 // Create sessions sequentially (WebGPU doesn't support parallel session creation)
-                // But we can still load the buffers in parallel for speed
+                // Reduce progress updates to avoid choppiness - only update every other session or at key points
                 const sessions = [];
-                for (const { key, model, buf } of loaded) {
+                const totalSessions = loaded.length;
+                for (let i = 0; i < loaded.length; i++) {
+                    const { key, model, buf } = loaded[i];
                     const start = performance.now();
                     const sess = await ort.InferenceSession.create(buf, { ...opt, ...model.opt });
                     const ms = performance.now() - start;
                     this.sessions[key] = sess;
                     sessions.push({ key, sess, ms, model });
                     
-                    // Update progress as each session is created
-                    const sessionIndex = sessions.length;
-                    const pct = 50 + Math.round((sessionIndex / loaded.length) * 50);
-                    options.onProgress?.({
-                        phase: 'loading',
-                        message: `Initialized ${model.url} (${sessionIndex}/${loaded.length})`,
-                        bytesDownloaded,
-                        totalBytesExpected: GRAND_APPROX,
-                        pct,
-                        accuracy: 'exact',
-                    });
+                    // Only update progress at key milestones to reduce choppiness
+                    // Update at 1/3, 2/3, and completion
+                    const sessionIndex = i + 1;
+                    if (sessionIndex === totalSessions || sessionIndex === Math.ceil(totalSessions / 3) || sessionIndex === Math.ceil(totalSessions * 2 / 3)) {
+                        const pct = 20 + Math.round((sessionIndex / totalSessions) * 75);
+                        options.onProgress?.({
+                            phase: 'loading',
+                            message: sessionIndex === totalSessions ? 'Models ready' : `Initializing models... (${sessionIndex}/${totalSessions})`,
+                            bytesDownloaded,
+                            totalBytesExpected: GRAND_APPROX,
+                            pct,
+                            accuracy: 'exact',
+                        });
+                    }
                 }
                 
+                // Final progress update
                 options.onProgress?.({
                     phase: 'loading',
                     message: 'Models ready',

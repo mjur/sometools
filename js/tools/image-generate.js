@@ -1,6 +1,26 @@
 import { encodeState, decodeState, loadStateWithStorage, saveStateWithStorage } from '/js/url-state.js';
 import { toast, on, qs } from '/js/ui.js';
 
+// Suppress noisy ONNX Runtime warnings that don't affect functionality
+(function() {
+  const originalWarn = console.warn;
+  console.warn = function(...args) {
+    const message = args.join(' ');
+    // Filter out ONNX Runtime warnings that are just informational
+    if (
+      message.includes('Unknown CPU vendor') ||
+      message.includes('Some nodes were not assigned to the preferred execution providers') ||
+      message.includes('Rerunning with verbose output') ||
+      message.includes('cpuid_info.cc')
+    ) {
+      // Suppress these warnings
+      return;
+    }
+    // Pass through all other warnings
+    originalWarn.apply(console, args);
+  };
+})();
+
 const promptInput = qs('#prompt');
 const generateBtn = qs('#generate');
 const abortBtn = qs('#abort');
