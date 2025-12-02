@@ -31,7 +31,9 @@ async function fetchArrayBufferWithCacheProgress(url, modelId, onProgress, expec
         const cache = await caches.open(CACHE_NAME);
         const cached = await cache.match(req);
         if (cached) {
+            // Skip progress reporting for cached files - they load instantly
             const buf = await cached.arrayBuffer();
+            // Only report progress once at the end for cached files
             onProgress?.(buf.byteLength, buf.byteLength);
             if (modelId)
                 noteModelUrl(modelId, req.url);
@@ -244,35 +246,116 @@ class SDTurboAdapter {
                 pct: 0,
                 accuracy: 'exact',
             });
-            for (const key of Object.keys(models)) {
-                const model = models[key];
-                options.onProgress?.({ phase: 'loading', message: `downloading ${model.url}...`, bytesDownloaded });
-                const expectedTotal = model.sizeMB * 1024 * 1024;
-                const buf = await fetchArrayBufferWithCacheProgress(`${base}/${model.url}`, this.id, (loaded, total) => {
-                    const pct = Math.min(100, Math.round(((bytesDownloaded + loaded) / GRAND_APPROX) * 100));
+            // Check if all models are cached to optimize loading
+            let allCached = true;
+            if (typeof caches !== 'undefined') {
+                const cache = await caches.open(CACHE_NAME);
+                for (const key of Object.keys(models)) {
+                    const model = models[key];
+                    const cached = await cache.match(new Request(`${base}/${model.url}`));
+                    if (!cached) {
+                        allCached = false;
+                        break;
+                    }
+                }
+            } else {
+                allCached = false;
+            }
+            
+            // If all cached, load and create sessions in parallel for speed
+            if (allCached) {
+                options.onProgress?.({
+                    phase: 'loading',
+                    message: 'Loading models from cache...',
+                    bytesDownloaded: 0,
+                    totalBytesExpected: GRAND_APPROX,
+                    pct: 0,
+                    accuracy: 'exact',
+                });
+                
+                // Load all model buffers in parallel
+                const loadPromises = Object.keys(models).map(async (key) => {
+                    const model = models[key];
+                    const expectedTotal = model.sizeMB * 1024 * 1024;
+                    const buf = await fetchArrayBufferWithCacheProgress(`${base}/${model.url}`, this.id, null, expectedTotal);
+                    return { key, model, buf };
+                });
+                
+                const loaded = await Promise.all(loadPromises);
+                bytesDownloaded = loaded.reduce((sum, item) => sum + item.buf.byteLength, 0);
+                
+                options.onProgress?.({
+                    phase: 'loading',
+                    message: 'Initializing models...',
+                    bytesDownloaded,
+                    totalBytesExpected: GRAND_APPROX,
+                    pct: 50,
+                    accuracy: 'exact',
+                });
+                
+                // Create sessions sequentially (WebGPU doesn't support parallel session creation)
+                // But we can still load the buffers in parallel for speed
+                const sessions = [];
+                for (const { key, model, buf } of loaded) {
+                    const start = performance.now();
+                    const sess = await ort.InferenceSession.create(buf, { ...opt, ...model.opt });
+                    const ms = performance.now() - start;
+                    this.sessions[key] = sess;
+                    sessions.push({ key, sess, ms, model });
+                    
+                    // Update progress as each session is created
+                    const sessionIndex = sessions.length;
+                    const pct = 50 + Math.round((sessionIndex / loaded.length) * 50);
                     options.onProgress?.({
                         phase: 'loading',
-                        message: `downloading ${model.url}...`,
+                        message: `Initialized ${model.url} (${sessionIndex}/${loaded.length})`,
+                        bytesDownloaded,
+                        totalBytesExpected: GRAND_APPROX,
                         pct,
-                        bytesDownloaded: bytesDownloaded + loaded,
+                        accuracy: 'exact',
+                    });
+                }
+                
+                options.onProgress?.({
+                    phase: 'loading',
+                    message: 'Models ready',
+                    bytesDownloaded,
+                    totalBytesExpected: GRAND_APPROX,
+                    pct: 100,
+                    accuracy: 'exact',
+                });
+            } else {
+                // Sequential loading for non-cached models (with progress reporting)
+                for (const key of Object.keys(models)) {
+                    const model = models[key];
+                    options.onProgress?.({ phase: 'loading', message: `loading ${model.url}...`, bytesDownloaded });
+                    const expectedTotal = model.sizeMB * 1024 * 1024;
+                    const buf = await fetchArrayBufferWithCacheProgress(`${base}/${model.url}`, this.id, (loaded, total) => {
+                        const pct = Math.min(100, Math.round(((bytesDownloaded + loaded) / GRAND_APPROX) * 100));
+                        options.onProgress?.({
+                            phase: 'loading',
+                            message: `loading ${model.url}...`,
+                            pct,
+                            bytesDownloaded: bytesDownloaded + loaded,
+                            totalBytesExpected: GRAND_APPROX,
+                            asset: model.url,
+                            accuracy: 'exact',
+                        });
+                    }, expectedTotal);
+                    bytesDownloaded += buf.byteLength;
+                    const start = performance.now();
+                    const sess = await ort.InferenceSession.create(buf, { ...opt, ...model.opt });
+                    const ms = performance.now() - start;
+                    options.onProgress?.({
+                        phase: 'loading',
+                        message: `${model.url} ready in ${ms.toFixed(1)}ms`,
+                        bytesDownloaded,
                         totalBytesExpected: GRAND_APPROX,
                         asset: model.url,
                         accuracy: 'exact',
                     });
-                }, expectedTotal);
-                bytesDownloaded += buf.byteLength;
-                const start = performance.now();
-                const sess = await ort.InferenceSession.create(buf, { ...opt, ...model.opt });
-                const ms = performance.now() - start;
-                options.onProgress?.({
-                    phase: 'loading',
-                    message: `${model.url} ready in ${ms.toFixed(1)}ms`,
-                    bytesDownloaded,
-                    totalBytesExpected: GRAND_APPROX,
-                    asset: model.url,
-                    accuracy: 'exact',
-                });
-                this.sessions[key] = sess;
+                    this.sessions[key] = sess;
+                }
             }
             this.loaded = true;
             return { ok: true, backendUsed: chosen, bytesDownloaded };
