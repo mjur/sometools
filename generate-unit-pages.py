@@ -82,7 +82,7 @@ def create_unit_page(category_id, category_name, from_unit, to_unit, base_path):
     from_unit_id = from_unit['id']
     to_unit_id = to_unit['id']
     
-    page_title = f"{from_name} to {to_name} Converter | {category_name} | BunchOfTools"
+    page_title = f"{from_name} to {to_name} Converter | {category_name} | SomeTools"
     meta_description = f"Convert {from_name} ({from_symbol}) to {to_name} ({to_symbol}) and other {category_name.lower()} units. Free online unit converter."
     
     # Escape single quotes in strings for JavaScript
@@ -122,7 +122,7 @@ def create_unit_page(category_id, category_name, from_unit, to_unit, base_path):
   <a href="#main" class="skip-link">Skip to main content</a>
   <header>
     <a href="/">
-      <h1>BunchOfTools</h1>
+      <h1>SomeTools</h1>
     </a>
     <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
       <span id="theme-icon">🌙</span>

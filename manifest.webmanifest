@@ -1,6 +1,6 @@
 {
-  "name": "BunchOfTools - Client-Side Developer Tools",
-  "short_name": "BunchOfTools",
+  "name": "SomeTools - Client-Side Developer Tools",
+  "short_name": "SomeTools",
   "description": "Fast developer tools that run entirely in your browser",
   "start_url": "/",
   "display": "standalone",

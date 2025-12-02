@@ -101,7 +101,7 @@ function updateURLWithUnits(fromUnitId, toUnitId) {
         if (titleEl) titleEl.textContent = category.name;
         if (descEl) descEl.textContent = `Convert between units in the ${category.name} category.`;
         if (breadcrumbEl) breadcrumbEl.textContent = category.name;
-        if (pageTitleEl) pageTitleEl.textContent = `${category.name} Converter | BunchOfTools`;
+        if (pageTitleEl) pageTitleEl.textContent = `${category.name} Converter | SomeTools`;
         
         // Update meta description
         const metaDesc = document.querySelector('meta[name="description"]');
@@ -581,7 +581,7 @@ function updatePageTitle() {
       const categoryName = fromUnitData.categoryName || 'Unit Converter';
       
       // Update page title
-      const pageTitle = `${fromName} to ${toName} Converter | ${categoryName} | BunchOfTools`;
+      const pageTitle = `${fromName} to ${toName} Converter | ${categoryName} | SomeTools`;
       document.title = pageTitle;
       
       // Update h1 if it exists (always update, regardless of id)
