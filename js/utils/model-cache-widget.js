@@ -105,23 +105,106 @@ async function deleteWebLLMModel(modelId) {
   await api.deleteModelAllInfoInCache(modelId);
 }
 
+// Get cached Transformers.js models from Cache API
+async function getCachedTransformersModels() {
+  const models = [];
+  
+  try {
+    // Check for web-txt2img cache (image generation models)
+    const cacheName = 'web-txt2img-v1';
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    
+    console.log(`Found ${keys.length} entries in ${cacheName} cache`);
+    
+    // Group by model (extract model name from URL)
+    const modelMap = new Map();
+    
+    for (const request of keys) {
+      const url = request.url;
+      // Extract model name from URL (e.g., "https://huggingface.co/Xenova/sd-turbo/resolve/main/...")
+      let modelName = url;
+      const match = url.match(/\/(sd-turbo|janus-pro-1b|[\w-]+)\//);
+      if (match) {
+        modelName = match[1];
+      } else {
+        // Fallback: use last part of path
+        const parts = url.split('/');
+        modelName = parts[parts.length - 2] || parts[parts.length - 1] || 'unknown';
+      }
+      
+      if (!modelMap.has(modelName)) {
+        modelMap.set(modelName, {
+          id: modelName,
+          type: 'transformers',
+          name: modelName,
+          size: null, // Cache API doesn't provide size easily
+          timestamp: null,
+          url: url,
+          cacheName: cacheName
+        });
+      }
+    }
+    
+    models.push(...Array.from(modelMap.values()));
+    console.log('Transformers.js models found:', models.length);
+  } catch (error) {
+    console.error('Failed to get Transformers.js models:', error);
+  }
+  
+  return models;
+}
+
+// Delete a Transformers.js model from Cache API
+async function deleteTransformersModel(model) {
+  try {
+    const cache = await caches.open(model.cacheName || 'web-txt2img-v1');
+    const keys = await cache.keys();
+    
+    // Delete all entries for this model
+    const modelPattern = new RegExp(`/${model.id}/`);
+    let deleted = 0;
+    
+    for (const request of keys) {
+      if (modelPattern.test(request.url)) {
+        await cache.delete(request);
+        deleted++;
+      }
+    }
+    
+    if (deleted === 0) {
+      throw new Error('No cache entries found for this model');
+    }
+    
+    console.log(`Deleted ${deleted} cache entries for ${model.id}`);
+  } catch (error) {
+    console.error('Failed to delete Transformers.js model:', error);
+    throw error;
+  }
+}
+
 // Get all cached models
 async function getAllCachedModels() {
   const models = {
     onnx: [],
-    webllm: []
+    webllm: [],
+    transformers: []
   };
   
   try {
-    const stats = await getCacheStats();
-    models.onnx = stats.models.map(m => ({
-      id: m.key,
-      type: 'onnx',
-      name: m.key,
-      size: m.size,
-      timestamp: m.timestamp,
-      url: m.url
-    }));
+    // Try direct IndexedDB access as fallback
+    let stats = await getCacheStats();
+    
+    if (stats && stats.models && Array.isArray(stats.models)) {
+      models.onnx = stats.models.map(m => ({
+        id: m.key,
+        type: 'onnx',
+        name: m.key,
+        size: m.size,
+        timestamp: m.timestamp,
+        url: m.url
+      }));
+    }
   } catch (error) {
     console.error('Failed to get ONNX models:', error);
   }
@@ -132,6 +215,13 @@ async function getAllCachedModels() {
     console.error('Failed to get WebLLM models:', error);
   }
   
+  try {
+    models.transformers = await getCachedTransformersModels();
+  } catch (error) {
+    console.error('Failed to get Transformers.js models:', error);
+  }
+  
+  console.log('All cached models:', models);
   return models;
 }
 
@@ -519,7 +609,9 @@ function initWidgetFunctionality() {
   function renderModelList(models) {
     if (!listContainer) return;
 
-    const totalModels = models.onnx.length + models.webllm.length;
+    console.log('Rendering model list:', models);
+    const totalModels = models.onnx.length + models.webllm.length + (models.transformers?.length || 0);
+    console.log('Total models to render:', totalModels, 'ONNX:', models.onnx.length, 'WebLLM:', models.webllm.length, 'Transformers:', models.transformers?.length || 0);
 
     if (totalModels === 0) {
       listContainer.innerHTML = `
@@ -534,7 +626,8 @@ function initWidgetFunctionality() {
     let html = '';
 
     // ONNX Models
-    if (models.onnx.length > 0) {
+    if (models.onnx && models.onnx.length > 0) {
+      console.log('Rendering ONNX models:', models.onnx);
       html += `
         <div class="model-cache-category">
           <div class="model-cache-category-title">ONNX Models (${models.onnx.length})</div>
@@ -542,7 +635,7 @@ function initWidgetFunctionality() {
             <div class="model-cache-item">
               <div class="model-cache-item-info">
                 <div class="model-cache-item-name">${escapeHtml(model.name)}</div>
-                <div class="model-cache-item-details">${formatBytes(model.size)} • ${formatTimestamp(model.timestamp)}</div>
+                <div class="model-cache-item-details">${formatBytes(model.size || 0)} • ${formatTimestamp(model.timestamp)}</div>
               </div>
               <button class="model-cache-item-delete" data-model-id="${escapeHtml(model.id)}" data-model-type="onnx">
                 Delete
@@ -554,7 +647,8 @@ function initWidgetFunctionality() {
     }
 
     // WebLLM Models
-    if (models.webllm.length > 0) {
+    if (models.webllm && models.webllm.length > 0) {
+      console.log('Rendering WebLLM models:', models.webllm);
       html += `
         <div class="model-cache-category">
           <div class="model-cache-category-title">WebLLM Models (${models.webllm.length})</div>
@@ -573,20 +667,53 @@ function initWidgetFunctionality() {
       `;
     }
 
+    // Transformers.js Models (Image Generation)
+    if (models.transformers && models.transformers.length > 0) {
+      console.log('Rendering Transformers.js models:', models.transformers);
+      html += `
+        <div class="model-cache-category">
+          <div class="model-cache-category-title">Transformers.js Models (${models.transformers.length})</div>
+          <div class="model-cache-item-details" style="font-size: 0.7rem; color: var(--text-subtle); margin-bottom: 0.5rem; padding: 0.5rem;">
+            Used by: Image Generator (SD-Turbo, Janus-Pro)
+          </div>
+          ${models.transformers.map(model => `
+            <div class="model-cache-item">
+              <div class="model-cache-item-info">
+                <div class="model-cache-item-name">${escapeHtml(model.name)}</div>
+                <div class="model-cache-item-details">Size not available</div>
+              </div>
+              <button class="model-cache-item-delete" data-model-id="${escapeHtml(model.id)}" data-model-type="transformers" data-cache-name="${escapeHtml(model.cacheName || 'web-txt2img-v1')}">
+                Delete
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    console.log('Generated HTML length:', html.length);
     listContainer.innerHTML = html;
 
-    // Attach delete handlers
+    // Attach delete handlers - need to re-fetch models for delete
     listContainer.querySelectorAll('.model-cache-item-delete').forEach(btn => {
       on(btn, 'click', async () => {
         const modelId = btn.getAttribute('data-model-id');
         const modelType = btn.getAttribute('data-model-type');
 
+        // Re-fetch models to get current state
+        const currentModels = await getAllCachedModels();
+        
         // Find the model
         let model = null;
         if (modelType === 'onnx') {
-          model = models.onnx.find(m => m.id === modelId);
+          model = currentModels.onnx.find(m => m.id === modelId);
         } else if (modelType === 'webllm') {
-          model = models.webllm.find(m => m.id === modelId);
+          model = currentModels.webllm.find(m => m.id === modelId);
+        } else if (modelType === 'transformers') {
+          model = currentModels.transformers.find(m => m.id === modelId);
+          if (model) {
+            model.cacheName = btn.getAttribute('data-cache-name') || 'web-txt2img-v1';
+          }
         }
 
         if (!model) {
@@ -610,6 +737,9 @@ function initWidgetFunctionality() {
           } else if (model.type === 'webllm') {
             await deleteWebLLMModel(model.id);
             toast(`Deleted: ${model.name}`, 'success');
+          } else if (model.type === 'transformers') {
+            await deleteTransformersModel(model);
+            toast(`Deleted: ${model.name}`, 'success');
           }
           await refreshModelList();
         } catch (error) {
@@ -624,7 +754,7 @@ function initWidgetFunctionality() {
 
   // Update stats
   function updateStats(models) {
-    const totalModels = models.onnx.length + models.webllm.length;
+    const totalModels = models.onnx.length + models.webllm.length + (models.transformers?.length || 0);
     const totalSize = models.onnx.reduce((sum, m) => sum + (m.size || 0), 0);
 
     const totalModelsEl = qs('#widget-total-models');
