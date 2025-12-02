@@ -157,6 +157,26 @@ on(document, 'keydown', (e) => {
   }
 });
 
+// Ensure Cmd/Ctrl+A selects only textarea content
+on(input, 'keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+    e.preventDefault();
+    input.select();
+  }
+});
+
+// Ensure Cmd/Ctrl+A selects only output content
+on(output, 'keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+    e.preventDefault();
+    const range = document.createRange();
+    range.selectNodeContents(output);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+});
+
 // Load from URL fragment on load
 if (window.location.hash) {
   const urlState = decodeState(window.location.hash.slice(1));
