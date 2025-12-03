@@ -10,7 +10,7 @@ let isModelLoading = false;
 let messages = [];
 let currentChatId = null;
 
-const STORAGE_KEY = 'webllm-chat-widget-saved-chats';
+const STORAGE_KEY = 'webllm-chat-saved-chats';
 
 // Speech recognition variables
 let voskModel = null;
@@ -576,6 +576,34 @@ function displayChatList() {
   });
 }
 
+// Escape HTML (needs to be accessible to appendMessage)
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Append message to chat log (needs to be accessible to loadChat)
+function appendMessage(role, content) {
+  const chatLog = qs('#chatbot-log');
+  if (!chatLog) return;
+  
+  // Remove placeholder if exists
+  const placeholder = chatLog.querySelector('.chatbot-widget-placeholder');
+  if (placeholder) {
+    placeholder.remove();
+  }
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chatbot-message';
+  messageDiv.innerHTML = `
+    <div class="chatbot-message-role">${role === 'user' ? 'You' : 'Assistant'}</div>
+    <div class="chatbot-message-content">${escapeHtml(content)}</div>
+  `;
+  chatLog.appendChild(messageDiv);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
 function loadChat(chatId) {
   const chats = loadChats();
   const chat = chats[chatId];
@@ -742,6 +770,13 @@ function initWidgetFunctionality() {
     }
   }
 
+  // Get latest chat ID
+  function getLatestChatId() {
+    const chats = loadChats();
+    const chatEntries = Object.values(chats).sort((a, b) => (b.updated || b.created || 0) - (a.updated || a.created || 0));
+    return chatEntries.length > 0 ? chatEntries[0].id : null;
+  }
+
   // Toggle panel
   on(toggle, 'click', () => {
     const isExpanded = panel.classList.contains('expanded');
@@ -752,6 +787,12 @@ function initWidgetFunctionality() {
       if (modelSelect && modelSelect.options.length <= 1) {
         loadModelList();
       }
+      // Load the latest chat when opening
+      const latestChatId = getLatestChatId();
+      if (latestChatId) {
+        loadChat(latestChatId);
+      }
+      displayChatList();
     }
   });
 
@@ -777,32 +818,7 @@ function initWidgetFunctionality() {
     panel.classList.remove('expanded');
   });
 
-  // Append message to chat log
-  function appendMessage(role, content) {
-    if (!chatLog) return;
-    
-    // Remove placeholder if exists
-    const placeholder = chatLog.querySelector('.chatbot-widget-placeholder');
-    if (placeholder) {
-      placeholder.remove();
-    }
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chatbot-message';
-    messageDiv.innerHTML = `
-      <div class="chatbot-message-role">${role === 'user' ? 'You' : 'Assistant'}</div>
-      <div class="chatbot-message-content">${escapeHtml(content)}</div>
-    `;
-    chatLog.appendChild(messageDiv);
-    chatLog.scrollTop = chatLog.scrollHeight;
-  }
-
-  // Escape HTML
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
+  // appendMessage and escapeHtml are now defined outside this function scope so they can be used by loadChat
 
   // Check model status
   async function checkModelStatus() {
