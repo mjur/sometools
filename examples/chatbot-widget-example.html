@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Chatbot Widget Example</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/css/base.css">
+  <style>
+    body {
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+    .info {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chatbot Widget Example</h1>
+  
+  <div class="info">
+    <h2>How to Include the Chatbot Widget</h2>
+    <p>This page demonstrates how to include the chatbot widget on any page.</p>
+    <h3>Method 1: ES Module Import (Recommended)</h3>
+    <pre><code>&lt;script type="module"&gt;
+  // Load WebLLM bundle first (required)
+  try {
+    await import('/js/tools/bundled/webllm-bundle.js');
+  } catch (e) {
+    console.log('WebLLM bundle not found');
+  }
+  
+  // Initialize the widget
+  import { initChatbotWidget } from '/js/utils/chatbot-widget.js';
+  initChatbotWidget();
+&lt;/script&gt;</code></pre>
+    
+    <h3>Method 2: Using Script Tags</h3>
+    <pre><code>&lt;!-- Load WebLLM bundle first --&gt;
+&lt;script type="module" src="/js/tools/bundled/webllm-bundle.js"&gt;&lt;/script&gt;
+
+&lt;!-- Load and initialize widget --&gt;
+&lt;script type="module"&gt;
+  import { initChatbotWidget } from '/js/utils/chatbot-widget.js';
+  initChatbotWidget();
+&lt;/script&gt;</code></pre>
+    
+    <h3>Requirements</h3>
+    <ul>
+      <li>The WebLLM bundle must be loaded before initializing the widget</li>
+      <li>The widget requires WebGPU support in the browser</li>
+      <li>All dependencies (CSS, UI utilities) are automatically included</li>
+    </ul>
+  </div>
+  
+  <p>Look for the chat bubble icon in the bottom right corner of this page!</p>
+  
+  <!-- Load WebLLM bundle first -->
+  <script type="module">
+    try {
+      await import('/js/tools/bundled/webllm-bundle.js');
+    } catch (e) {
+      console.log('WebLLM bundle not found for chatbot widget');
+    }
+  </script>
+  
+  <!-- Initialize the widget -->
+  <script type="module">
+    import { initChatbotWidget } from '/js/utils/chatbot-widget.js';
+    initChatbotWidget();
+  </script>
+</body>
+</html>
+

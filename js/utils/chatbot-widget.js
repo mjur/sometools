@@ -1,5 +1,32 @@
-// Chatbot Widget - Floating widget for WebLLM chat
-// Can be used on any page, especially the main page
+/**
+ * Chatbot Widget - Standalone Component
+ * 
+ * A floating chatbot widget that can be included on any page.
+ * Provides WebLLM-powered chat functionality with model management.
+ * 
+ * Usage:
+ * ```html
+ * <!-- Load WebLLM bundle first -->
+ * <script type="module">
+ *   try {
+ *     await import('/js/tools/bundled/webllm-bundle.js');
+ *   } catch (e) {
+ *     console.log('WebLLM bundle not found');
+ *   }
+ * </script>
+ * 
+ * <!-- Initialize the widget -->
+ * <script type="module">
+ *   import { initChatbotWidget } from '/js/utils/chatbot-widget.js';
+ *   initChatbotWidget();
+ * </script>
+ * ```
+ * 
+ * Requirements:
+ * - WebLLM bundle must be loaded before initialization
+ * - WebGPU support in browser (Chrome 113+, Edge 113+, Safari 18+)
+ * - CSS base styles (/css/base.css) should be included
+ */
 
 import { toast, on, qs } from '/js/ui.js';
 
