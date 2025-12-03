@@ -8,6 +8,18 @@ let webllmApi = null;
 let chatEngine = null;
 let isModelLoading = false;
 let messages = [];
+let currentChatId = null;
+
+const STORAGE_KEY = 'webllm-chat-widget-saved-chats';
+
+// Speech recognition variables
+let voskModel = null;
+let voskRecognizer = null;
+let useLocalRecognition = false;
+let isListening = false;
+let mediaStream = null;
+let audioContext = null;
+let processor = null;
 
 // Get WebLLM model list
 async function getWebLLMModelList() {
@@ -111,13 +123,32 @@ export function initChatbotWidget() {
           </div>
           
           <div class="chatbot-widget-chat-section">
+            <div class="chatbot-widget-chat-header">
+              <button id="chatbot-new-chat" class="chatbot-widget-btn-small" title="New Chat">+ New</button>
+              <div id="chatbot-chat-list-container" style="display: none;">
+                <select id="chatbot-chat-list" class="chatbot-widget-select" style="font-size: 0.75rem; padding: 0.3rem;">
+                  <option value="">Select a saved chat...</option>
+                </select>
+              </div>
+            </div>
             <div id="chatbot-log" class="chatbot-widget-log">
               <div class="chatbot-widget-placeholder">
                 Select a model and download it to start chatting. All conversations stay in your browser.
               </div>
             </div>
             <div class="chatbot-widget-input-section">
-              <textarea id="chatbot-input" class="chatbot-widget-input" placeholder="Type your message..." rows="1"></textarea>
+              <div id="chatbot-mic-status" style="display: none; font-size: 0.75rem; color: var(--text-subtle); margin-bottom: 0.25rem; min-height: 1rem;"></div>
+              <div class="chatbot-widget-input-row">
+                <textarea id="chatbot-input" class="chatbot-widget-input" placeholder="Type your message..." rows="1"></textarea>
+                <button id="chatbot-mic-btn" class="chatbot-widget-mic-btn" title="Voice input">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                </button>
+              </div>
               <div class="chatbot-widget-input-actions">
                 <button id="chatbot-clear" class="chatbot-widget-btn-small">Clear</button>
                 <button id="chatbot-send" class="chatbot-widget-btn-primary">Send</button>
@@ -340,8 +371,24 @@ export function initChatbotWidget() {
         background: var(--bg-elev);
       }
       
+      .chatbot-widget-chat-header {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-elev);
+        align-items: center;
+      }
+      
+      .chatbot-widget-input-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        margin-bottom: 0.5rem;
+      }
+      
       .chatbot-widget-input {
-        width: 100%;
+        flex: 1;
         padding: 0.5rem;
         border: 1px solid var(--border);
         border-radius: 6px;
@@ -350,10 +397,34 @@ export function initChatbotWidget() {
         font-family: inherit;
         font-size: 0.875rem;
         resize: none;
-        margin-bottom: 0.5rem;
         min-height: 2.5rem;
         max-height: 6rem;
         line-height: 1.4;
+      }
+      
+      .chatbot-widget-mic-btn {
+        padding: 0.5rem;
+        min-width: 2.5rem;
+        height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--text);
+        flex-shrink: 0;
+      }
+      
+      .chatbot-widget-mic-btn:hover {
+        background: var(--bg-hover);
+      }
+      
+      .chatbot-widget-mic-btn svg {
+        width: 18px;
+        height: 18px;
       }
       
       .chatbot-widget-input:focus {
@@ -408,6 +479,136 @@ export function initChatbotWidget() {
   initWidgetFunctionality();
 }
 
+// Chat saving functions
+function loadChats() {
+  try {
+    const chatsJson = localStorage.getItem(STORAGE_KEY);
+    return chatsJson ? JSON.parse(chatsJson) : {};
+  } catch (e) {
+    console.error('Error loading chats:', e);
+    return {};
+  }
+}
+
+function saveChats(chats) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    return true;
+  } catch (e) {
+    console.error('Error saving chats:', e);
+    toast('Error saving chat. Storage may be full.', 'error');
+    return false;
+  }
+}
+
+function generateChatId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function generateChatTitle(messages) {
+  if (!messages || messages.length === 0) {
+    return 'New Chat';
+  }
+  const firstUserMessage = messages.find(m => m.role === 'user');
+  if (firstUserMessage) {
+    const content = firstUserMessage.content.trim();
+    if (content.length <= 50) {
+      return content;
+    }
+    return content.substring(0, 50) + '...';
+  }
+  return 'New Chat';
+}
+
+function saveCurrentChat() {
+  if (messages.length === 0) {
+    return; // Don't save empty chats
+  }
+
+  const chats = loadChats();
+  const now = Date.now();
+  const title = generateChatTitle(messages);
+  const modelSelect = qs('#chatbot-model-select');
+
+  if (currentChatId && chats[currentChatId]) {
+    // Update existing chat
+    chats[currentChatId].title = title;
+    chats[currentChatId].messages = messages;
+    chats[currentChatId].updated = now;
+  } else {
+    // Create new chat
+    currentChatId = generateChatId();
+    chats[currentChatId] = {
+      id: currentChatId,
+      title: title,
+      messages: messages,
+      created: now,
+      updated: now,
+      model: modelSelect ? modelSelect.value : null
+    };
+  }
+
+  saveChats(chats);
+  displayChatList();
+}
+
+function displayChatList() {
+  const chatList = qs('#chatbot-chat-list');
+  const chatListContainer = qs('#chatbot-chat-list-container');
+  if (!chatList || !chatListContainer) return;
+
+  const chats = loadChats();
+  const chatEntries = Object.values(chats).sort((a, b) => (b.updated || 0) - (a.updated || 0));
+
+  if (chatEntries.length === 0) {
+    chatListContainer.style.display = 'none';
+    return;
+  }
+
+  chatListContainer.style.display = 'block';
+  chatList.innerHTML = '<option value="">Select a saved chat...</option>';
+  
+  chatEntries.forEach(chat => {
+    const option = document.createElement('option');
+    option.value = chat.id;
+    option.textContent = chat.title || 'Untitled Chat';
+    chatList.appendChild(option);
+  });
+}
+
+function loadChat(chatId) {
+  const chats = loadChats();
+  const chat = chats[chatId];
+  if (!chat) return false;
+
+  currentChatId = chatId;
+  messages = chat.messages || [];
+  
+  const chatLog = qs('#chatbot-log');
+  if (chatLog) {
+    chatLog.innerHTML = '';
+    messages.forEach(msg => {
+      appendMessage(msg.role, msg.content);
+    });
+  }
+
+  const modelSelect = qs('#chatbot-model-select');
+  if (modelSelect && chat.model) {
+    modelSelect.value = chat.model;
+  }
+
+  return true;
+}
+
+function newChat() {
+  currentChatId = null;
+  messages = [];
+  const chatLog = qs('#chatbot-log');
+  if (chatLog) {
+    chatLog.innerHTML = '<div class="chatbot-widget-placeholder">Select a model and download it to start chatting. All conversations stay in your browser.</div>';
+  }
+}
+
 // Initialize widget functionality
 function initWidgetFunctionality() {
   const toggle = qs('#chatbot-widget-toggle');
@@ -421,6 +622,10 @@ function initWidgetFunctionality() {
   const chatInput = qs('#chatbot-input');
   const chatSendBtn = qs('#chatbot-send');
   const chatClearBtn = qs('#chatbot-clear');
+  const chatNewChatBtn = qs('#chatbot-new-chat');
+  const chatList = qs('#chatbot-chat-list');
+  const chatMicBtn = qs('#chatbot-mic-btn');
+  const chatMicStatus = qs('#chatbot-mic-status');
 
   if (!toggle || !panel || !close) return;
 
@@ -712,8 +917,10 @@ function initWidgetFunctionality() {
     }
 
     chatInput.value = '';
+    chatInput.style.height = 'auto';
     appendMessage('user', content);
     messages.push({ role: 'user', content });
+    saveCurrentChat();
 
     try {
       chatSendBtn.disabled = true;
@@ -774,6 +981,7 @@ function initWidgetFunctionality() {
       reply = reply.trim();
       appendMessage('assistant', reply);
       messages.push({ role: 'assistant', content: reply });
+      saveCurrentChat();
     } catch (e) {
       const errorMsg = e.message || 'Unknown error';
       toast(`Chat failed: ${errorMsg}`, 'error');
@@ -788,10 +996,13 @@ function initWidgetFunctionality() {
 
   // Clear conversation
   function clearConversation() {
+    saveCurrentChat();
     messages = [];
+    currentChatId = null;
     if (chatLog) {
       chatLog.innerHTML = '<div class="chatbot-widget-placeholder">Select a model and download it to start chatting. All conversations stay in your browser.</div>';
     }
+    displayChatList();
   }
 
   // Event listeners
@@ -821,7 +1032,237 @@ function initWidgetFunctionality() {
     });
   }
 
+  // Speech recognition functions
+  async function initLocalSpeechRecognition() {
+    // Load Vosk.js if not available
+    if (typeof window.Vosk === 'undefined' && typeof Vosk === 'undefined') {
+      try {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/vosk-browser@0.0.3/dist/vosk.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      } catch (e) {
+        console.error('Failed to load Vosk.js:', e);
+        return false;
+      }
+    }
+    
+    const VoskLib = window.Vosk || (typeof Vosk !== 'undefined' ? Vosk : null);
+    
+    if (!VoskLib) {
+      console.log('Vosk.js not available');
+      return false;
+    }
+
+    try {
+      if (chatMicStatus) {
+        chatMicStatus.style.display = 'block';
+        chatMicStatus.textContent = '📥 Loading local speech recognition model (first time only, ~40MB)...';
+        chatMicStatus.style.color = 'var(--muted)';
+      }
+
+      const modelUrl = '/models/vosk-model-small-en-us-0.15.zip';
+      
+      // Verify model is accessible
+      try {
+        const testResponse = await fetch(modelUrl, { method: 'HEAD' });
+        if (!testResponse.ok) {
+          throw new Error(`Model file not accessible: ${testResponse.status}`);
+        }
+      } catch (fetchError) {
+        throw new Error(`Cannot access model at ${modelUrl}. Make sure the server is running and the model zip file is in the correct location.`);
+      }
+      
+      let model = null;
+      
+      // Use Vosk.createModel API
+      if (typeof VoskLib.createModel === 'function') {
+        const loadPromise = VoskLib.createModel(modelUrl);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Model loading timed out')), 120000)
+        );
+        model = await Promise.race([loadPromise, timeoutPromise]);
+      } else if (typeof VoskLib.Model === 'function') {
+        model = new VoskLib.Model(modelUrl);
+        if (model.ready) await model.ready();
+      } else {
+        throw new Error('Vosk API not available');
+      }
+      
+      if (!model) {
+        throw new Error('Could not load Vosk model');
+      }
+      
+      // Create KaldiRecognizer
+      if (model.worker && typeof model.KaldiRecognizer === 'function') {
+        voskRecognizer = new model.KaldiRecognizer(model, 16000);
+        
+        // Set up event listeners
+        voskRecognizer.on('result', (message) => {
+          const result = message.result || message;
+          if (result.text && chatInput) {
+            const currentText = chatInput.value.trim();
+            chatInput.value = currentText + (currentText ? ' ' : '') + result.text + ' ';
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+          }
+          if (chatMicStatus) {
+            chatMicStatus.textContent = `🎤 Got: ${result.text || ''}`;
+            chatMicStatus.style.color = 'var(--ok)';
+          }
+        });
+        
+        voskRecognizer.on('partialresult', (message) => {
+          const partial = message.result || message;
+          if (partial.partial && chatMicStatus) {
+            chatMicStatus.textContent = `🎤 Listening: ${partial.partial}`;
+            chatMicStatus.style.color = 'var(--accent)';
+          }
+        });
+        
+        voskModel = model;
+        useLocalRecognition = true;
+        
+        if (chatMicStatus) {
+          chatMicStatus.style.display = 'none';
+        }
+        
+        return true;
+      } else {
+        throw new Error('KaldiRecognizer not available');
+      }
+    } catch (error) {
+      console.error('Failed to initialize Vosk:', error);
+      useLocalRecognition = false;
+      if (chatMicStatus) {
+        chatMicStatus.textContent = `Local speech recognition unavailable: ${error.message}`;
+        chatMicStatus.style.color = 'var(--muted)';
+        setTimeout(() => {
+          if (chatMicStatus) chatMicStatus.style.display = 'none';
+        }, 5000);
+      }
+      return false;
+    }
+  }
+
+  async function startLocalRecognition() {
+    if (!voskRecognizer) {
+      const loaded = await initLocalSpeechRecognition();
+      if (!loaded) {
+        toast('Failed to load local speech recognition', 'error');
+        return;
+      }
+    }
+
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: 16000
+      });
+      
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      processor = audioContext.createScriptProcessor(4096, 1, 1);
+      
+      processor.onaudioprocess = (e) => {
+        if (!isListening || !voskRecognizer) return;
+        
+        if (voskRecognizer && typeof voskRecognizer.acceptWaveform === 'function') {
+          voskRecognizer.acceptWaveform(e.inputBuffer);
+        }
+      };
+      
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+      
+      isListening = true;
+      
+      if (chatMicBtn) {
+        chatMicBtn.style.background = 'var(--error)';
+        chatMicBtn.style.color = 'white';
+        chatMicBtn.title = 'Stop listening';
+      }
+      
+      if (chatMicStatus) {
+        chatMicStatus.style.display = 'block';
+        chatMicStatus.textContent = '🎤 Listening...';
+        chatMicStatus.style.color = 'var(--accent)';
+      }
+    } catch (error) {
+      console.error('Failed to start local recognition:', error);
+      toast(`Failed to start microphone: ${error.message}`, 'error');
+      return false;
+    }
+  }
+
+  function stopLocalRecognition() {
+    isListening = false;
+    
+    if (processor) {
+      processor.disconnect();
+      processor = null;
+    }
+    
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+    
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      mediaStream = null;
+    }
+    
+    if (chatMicBtn) {
+      chatMicBtn.style.background = '';
+      chatMicBtn.style.color = '';
+      chatMicBtn.title = 'Start voice input';
+    }
+    
+    if (chatMicStatus) {
+      chatMicStatus.textContent = '✅ Done listening';
+      chatMicStatus.style.color = 'var(--ok)';
+      setTimeout(() => {
+        if (chatMicStatus) chatMicStatus.style.display = 'none';
+      }, 2000);
+    }
+  }
+
+  async function toggleSpeechRecognition() {
+    if (isListening) {
+      stopLocalRecognition();
+    } else {
+      await startLocalRecognition();
+    }
+  }
+
+  // Event listeners for new features
+  if (chatNewChatBtn) {
+    on(chatNewChatBtn, 'click', () => {
+      saveCurrentChat();
+      newChat();
+    });
+  }
+
+  if (chatList) {
+    on(chatList, 'change', (e) => {
+      const chatId = e.target.value;
+      if (chatId) {
+        saveCurrentChat();
+        loadChat(chatId);
+      }
+    });
+  }
+
+  if (chatMicBtn) {
+    on(chatMicBtn, 'click', toggleSpeechRecognition);
+  }
+
   // Load model list on init
   loadModelList();
+  displayChatList();
 }
 
