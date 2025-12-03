@@ -11,7 +11,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const assetsDir = path.join(__dirname, '../js/tools/bundled/assets');
+// Use dist directory if it exists (for production builds), otherwise use the original location
+const distDir = path.join(__dirname, '../dist');
+const assetsDir = fs.existsSync(path.join(distDir, 'js/tools/bundled/assets'))
+  ? path.join(distDir, 'js/tools/bundled/assets')
+  : path.join(__dirname, '../js/tools/bundled/assets');
 const onnxDistDir = path.join(__dirname, '../node_modules/onnxruntime-web/dist');
 
 // WASM files that need to be copied with expected names

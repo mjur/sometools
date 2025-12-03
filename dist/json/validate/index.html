@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>JSON Validator | Fast, Client-Side | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Validate JSON locally in your browser with line and column error pointers.">
+  <link rel="canonical" href="https://example.com/json/validate">
+  <link rel="stylesheet" href="/css/base.css?v=3">
+  <link rel="stylesheet" href="/css/tool.css?v=3">
+  <link rel="preload" href="/css/base.css?v=3" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="JSON Validator">
+  <meta property="og:description" content="Fast, client-side JSON validation with error pointers.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is my JSON sent to a server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. All processing happens locally in your browser."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What happens if my JSON is invalid?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The validator will show you the exact error message with line and column information when available."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "JSON Validator",
+        "item": "https://example.com/json/validate"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/json/validate">JSON Validator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>JSON Validator</h1>
+    <p>Validate JSON locally with instant feedback.</p>
+    
+    <section class="tool json-tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label for="input">Input JSON</label>
+          <div class="actions" style="margin: 0;">
+            <button id="run" class="primary">Validate</button>
+            <button id="copy">Copy</button>
+            <button id="share">Share</button>
+            <label style="margin: 0;">
+              <input type="checkbox" id="live-mode">
+              Live validation
+            </label>
+          </div>
+        </div>
+        <div class="textarea-with-lines" style="position: relative;">
+          <div id="line-numbers" class="line-numbers" aria-hidden="true"></div>
+          <textarea id="input" placeholder='{"foo":"bar"}'></textarea>
+        </div>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="output">Result</label>
+        </div>
+        <pre id="output" aria-live="polite"></pre>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my JSON sent to a server?</summary>
+        <p>No. All processing happens locally.</p>
+      </details>
+      <details>
+        <summary>What happens if my JSON is invalid?</summary>
+        <p>The validator will show you the exact error message with line and column information when available.</p>
+      </details>
+      <details>
+        <summary>Can I validate JSON Schema?</summary>
+        <p>Basic JSON Schema validation is coming soon. For now, this tool validates JSON syntax only.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/json/format">JSON Formatter</a></li>
+        <li><a href="/text/base64">Base64 Encode/Decode</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/json-validate.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

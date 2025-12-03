@@ -31,6 +31,8 @@ export default defineConfig({
     }
   ],
   build: {
+    outDir: 'dist',
+    emptyOutDir: false, // We'll handle copying files manually
     rollupOptions: {
       input: {
         'regex-generator-bundle': resolve(__dirname, 'js/tools/regex-generator-bundle.js'),
@@ -39,8 +41,7 @@ export default defineConfig({
       },
       output: {
         format: 'es',
-        entryFileNames: '[name].js',
-        dir: 'js/tools/bundled'
+        entryFileNames: 'js/tools/bundled/[name].js'
       }
     },
     // Don't minify for easier debugging

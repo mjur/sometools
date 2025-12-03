@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Image Format Converter | PNG, JPEG, WebP, SVG, ICO | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Convert images between formats: PNG, JPEG, WebP, SVG, ICO. All processing happens locally in your browser.">
+  <link rel="canonical" href="https://example.com/convert/image">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Image Format Converter">
+  <meta property="og:description" content="Convert images between PNG, JPEG, WebP, SVG, and ICO formats locally.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is my image sent to a server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. All processing happens locally in your browser."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What image formats are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We support PNG, JPEG, WebP, SVG, and ICO formats. You can convert between these formats."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I convert SVG to raster formats?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, you can convert SVG to PNG, JPEG, or WebP. The SVG will be rendered at the specified resolution."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Image Format Converter",
+        "item": "https://example.com/convert/image"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/image">Image Format Converter</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Image Format Converter</h1>
+    <p>Convert images between different formats: PNG, JPEG, WebP, SVG, and ICO. All processing happens locally in your browser.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="output-format">Convert to</label>
+        <select id="output-format">
+          <option value="png">PNG</option>
+          <option value="jpeg">JPEG</option>
+          <option value="webp">WebP</option>
+          <option value="svg">SVG</option>
+          <option value="ico">ICO</option>
+        </select>
+      </div>
+      <div class="option-group" id="jpeg-quality-group">
+        <label for="jpeg-quality">JPEG Quality</label>
+        <input type="range" id="jpeg-quality" min="0.1" max="1" step="0.1" value="0.92">
+        <span id="jpeg-quality-value">92%</span>
+      </div>
+      <div class="option-group" id="webp-quality-group">
+        <label for="webp-quality">WebP Quality</label>
+        <input type="range" id="webp-quality" min="0.1" max="1" step="0.1" value="0.92">
+        <span id="webp-quality-value">92%</span>
+      </div>
+      <div class="option-group" id="svg-size-group" style="display: none;">
+        <label for="svg-width">SVG Width</label>
+        <input type="number" id="svg-width" value="800" min="1" step="1">
+        <label for="svg-height">SVG Height</label>
+        <input type="number" id="svg-height" value="600" min="1" step="1">
+      </div>
+      <div class="option-group" id="ico-sizes-group" style="display: none;">
+        <label>
+          <input type="checkbox" id="ico-16" checked> 16×16
+        </label>
+        <label>
+          <input type="checkbox" id="ico-32" checked> 32×32
+        </label>
+        <label>
+          <input type="checkbox" id="ico-48" checked> 48×48
+        </label>
+        <label>
+          <input type="checkbox" id="ico-64" checked> 64×64
+        </label>
+        <label>
+          <input type="checkbox" id="ico-128" checked> 128×128
+        </label>
+        <label>
+          <input type="checkbox" id="ico-256" checked> 256×256
+        </label>
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label for="file-input">Upload Image</label>
+        <div class="drop-zone" id="drop-zone" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0;">
+          <p>Drag and drop an image here, or click to select</p>
+          <p class="text-sm text-muted">Supported: PNG, JPEG, WebP, SVG, ICO</p>
+          <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon" style="display: none;">
+        </div>
+        <div id="image-preview" style="display: none; height: 400px; flex: 0 0 400px; flex-direction: column; margin: 0; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-elev); padding: 0.75rem; overflow: hidden;">
+          <img id="preview-img" alt="Preview" style="max-width: 100%; max-height: calc(100% - 2rem); border-radius: 6px; object-fit: contain;">
+          <p id="image-info" class="text-sm text-muted" style="margin-top: 0.5rem; text-align: center;"></p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="clear" class="secondary">Clear</button>
+          <button id="convert" class="primary" disabled>Convert</button>
+        </div>
+      </div>
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label>Converted Image</label>
+        <div id="output-area" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--muted); overflow: auto; margin: 0; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-elev); padding: 0.75rem; position: relative;">
+          <p>Upload an image to convert</p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="download" class="secondary" disabled>Download</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my image sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+      <details>
+        <summary>What image formats are supported?</summary>
+        <p>We support PNG, JPEG, WebP, SVG, and ICO formats. You can convert between these formats.</p>
+      </details>
+      <details>
+        <summary>Can I convert SVG to raster formats?</summary>
+        <p>Yes, you can convert SVG to PNG, JPEG, or WebP. The SVG will be rendered at the specified resolution.</p>
+      </details>
+      <details>
+        <summary>What is ICO format?</summary>
+        <p>ICO is a container format for icons that can contain multiple sizes. When converting to ICO, you can select which sizes to include.</p>
+      </details>
+      <details>
+        <summary>Can I adjust the quality of JPEG/WebP output?</summary>
+        <p>Yes, use the quality sliders to adjust compression. Higher quality means larger file size but better image quality.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/convert/image-pdf">Image to PDF</a></li>
+        <li><a href="/text/base64">Base64 Encode/Decode</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/image-convert.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
+
+

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/copy-wasm-files.js",
+    "build": "vite build && node scripts/copy-wasm-files.js && node scripts/build-for-pages.js",
+    "build:pages": "npm run build",
     "preview": "vite preview"
   },
   "dependencies": {

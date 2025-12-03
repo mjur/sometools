@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Text Diff | Compare Two Texts | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Compare two texts side-by-side with word or character-level granularity. Find differences instantly.">
+  <link rel="canonical" href="https://example.com/diff/text">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Text Diff">
+  <meta property="og:description" content="Compare two texts side-by-side with detailed diff highlighting.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What diff granularity options are available?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You can choose to compare texts at the line, word, or character level."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I ignore whitespace?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, enable the 'Ignore whitespace' option to compare texts without considering whitespace differences."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Text Diff",
+        "item": "https://example.com/diff/text"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/diff/text">Text Diff</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Text Diff</h1>
+    <p>Compare two texts side-by-side with detailed diff highlighting. Find differences instantly.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="granularity">Granularity:</label>
+        <select id="granularity">
+          <option value="line">Line</option>
+          <option value="word" selected>Word</option>
+          <option value="char">Character</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="ignore-whitespace">
+          Ignore whitespace
+        </label>
+      </div>
+    </div>
+    
+    <section class="tool diff-tool">
+      <div class="split-view">
+        <div class="pane">
+          <label for="old-text">Old Text</label>
+          <div class="textarea-wrapper">
+            <textarea id="old-text" placeholder="Enter old text"></textarea>
+            <div id="old-text-highlight" class="highlight-overlay" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="pane">
+          <label for="new-text">New Text</label>
+          <div class="textarea-wrapper">
+            <textarea id="new-text" placeholder="Enter new text"></textarea>
+            <div id="new-text-highlight" class="highlight-overlay" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+      <div class="actions diff-actions">
+        <button id="compare" class="primary">Compare</button>
+        <button id="copy-diff">Copy Diff</button>
+        <button id="swap">Swap Texts</button>
+      </div>
+      <div class="pane" style="margin-top: 1.5rem;">
+        <label for="diff-output">Diff Result</label>
+        <pre id="diff-output" aria-live="polite"></pre>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What diff granularity options are available?</summary>
+        <p>You can choose to compare texts at the line, word, or character level.</p>
+      </details>
+      <details>
+        <summary>Can I ignore whitespace?</summary>
+        <p>Yes, enable the 'Ignore whitespace' option to compare texts without considering whitespace differences.</p>
+      </details>
+      <details>
+        <summary>Can I export the diff?</summary>
+        <p>Yes, use the 'Copy Diff' button to copy the unified diff format to your clipboard.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/json/validate">JSON Validator</a></li>
+        <li><a href="/regex/tester">Regex Tester</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/text-diff.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

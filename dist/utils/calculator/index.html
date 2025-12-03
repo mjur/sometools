@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Calculator | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Simple, advanced, and scientific calculator with history and memory functions. All calculations run in your browser.">
+  <link rel="canonical" href="https://example.com/utils/calculator">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Calculator">
+  <meta property="og:description" content="Simple, advanced, and scientific calculator with history and memory functions.">
+  <style>
+    .calculator-container {
+      max-width: 420px;
+      margin: 0 auto;
+      background: #1a1a1a;
+      border-radius: 4px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      border: 1px solid #0a0a0a;
+    }
+    
+    .calculator-container:has(#scientific-calculator[style*="flex"]) {
+      max-width: 680px;
+    }
+    
+    [data-theme="light"] .calculator-container {
+      background: #f5f5f5;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      border: 1px solid #e0e0e0;
+    }
+    
+    .mode-selector {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .mode-btn {
+      flex: 1;
+      min-width: 120px;
+      padding: 0.875rem 1.25rem;
+      border: 1px solid #3a3a3a;
+      background: #2a2a2a;
+      color: #ffffff;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .mode-btn:hover {
+      border-color: #4a4a4a;
+      background: #3a3a3a;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+    }
+    
+    .mode-btn.active {
+      background: #4a4a4a;
+      color: white;
+      border-color: #5a5a5a;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+    
+    [data-theme="light"] .mode-btn {
+      border: 1px solid #c0c0c0;
+      background: #e8e8e8;
+      color: #1a1a1a;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    [data-theme="light"] .mode-btn:hover {
+      border-color: #b0b0b0;
+      background: #d8d8d8;
+    }
+    
+    [data-theme="light"] .mode-btn.active {
+      background: #c0c0c0;
+      border-color: #a0a0a0;
+    }
+    
+    .calculator-display {
+      background: #0a0a0a;
+      border: 1px solid #000000;
+      border-radius: 2px;
+      padding: 32px 24px;
+      margin-bottom: 20px;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    [data-theme="light"] .calculator-display {
+      background: #ffffff;
+      border: 1px solid #d0d0d0;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .calculator-history {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+      min-height: 1.5rem;
+      text-align: right;
+    }
+    
+    .calculator-input {
+      font-size: 3rem;
+      font-weight: 200;
+      text-align: right;
+      color: #ffffff;
+      background: transparent;
+      border: none;
+      outline: none;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      letter-spacing: -1px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    [data-theme="light"] .calculator-input {
+      color: #1a1a1a;
+      text-shadow: none;
+    }
+    
+    .calculator-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+    
+    .calculator-btn {
+      padding: 0;
+      border: none;
+      background: #2a2a2a;
+      color: #ffffff;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 1.25rem;
+      font-weight: 500;
+      transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+      border: 1px solid #1a1a1a;
+    }
+    
+    [data-theme="light"] .calculator-btn {
+      background: #e8e8e8;
+      color: #1a1a1a;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border: 1px solid #d0d0d0;
+    }
+    
+    .calculator-btn:hover {
+      background: #3a3a3a;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+    }
+    
+    [data-theme="light"] .calculator-btn:hover {
+      background: #d8d8d8;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    }
+    
+    .calculator-btn:active {
+      background: #1a1a1a;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    [data-theme="light"] .calculator-btn:active {
+      background: #c0c0c0;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .calculator-btn.operator {
+      background: #4a4a4a;
+      color: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+      font-weight: 600;
+      border: 1px solid #3a3a3a;
+    }
+    
+    .calculator-btn.operator:hover {
+      background: #5a5a5a;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+    }
+    
+    .calculator-btn.operator:active {
+      background: #3a3a3a;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    [data-theme="light"] .calculator-btn.operator {
+      background: #c0c0c0;
+      color: #1a1a1a;
+      border: 1px solid #b0b0b0;
+    }
+    
+    [data-theme="light"] .calculator-btn.operator:hover {
+      background: #d0d0d0;
+    }
+    
+    [data-theme="light"] .calculator-btn.operator:active {
+      background: #a8a8a8;
+    }
+    
+    .calculator-btn.function {
+      background: #3a3a3a;
+      font-size: 1.25rem;
+      font-weight: 500;
+      min-height: 56px;
+      border: 1px solid #2a2a2a;
+    }
+    
+    .calculator-btn.function:hover {
+      background: #4a4a4a;
+    }
+    
+    .calculator-btn.function:active {
+      background: #2a2a2a;
+    }
+    
+    [data-theme="light"] .calculator-btn.function {
+      background: #d8d8d8;
+      border: 1px solid #c8c8c8;
+    }
+    
+    [data-theme="light"] .calculator-btn.function:hover {
+      background: #e8e8e8;
+    }
+    
+    [data-theme="light"] .calculator-btn.function:active {
+      background: #c8c8c8;
+    }
+    
+    .calculator-btn.equals {
+      background: #4a4a4a;
+      color: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+      font-weight: 600;
+      font-size: 1.25rem;
+      border: 1px solid #3a3a3a;
+    }
+    
+    .calculator-btn.equals:hover {
+      background: #5a5a5a;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+    }
+    
+    .calculator-btn.equals:active {
+      background: #3a3a3a;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    [data-theme="light"] .calculator-btn.equals {
+      background: #c0c0c0;
+      color: #1a1a1a;
+      border: 1px solid #b0b0b0;
+    }
+    
+    [data-theme="light"] .calculator-btn.equals:hover {
+      background: #d0d0d0;
+    }
+    
+    [data-theme="light"] .calculator-btn.equals:active {
+      background: #a8a8a8;
+    }
+    
+    .calculator-btn.clear {
+      background: #2a2a2a;
+      color: #ffffff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+      font-weight: 500;
+      border: 1px solid #1a1a1a;
+    }
+    
+    .calculator-btn.clear:hover {
+      background: #3a3a3a;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+    }
+    
+    .calculator-btn.clear:active {
+      background: #1a1a1a;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    [data-theme="light"] .calculator-btn.clear {
+      background: #e8e8e8;
+      color: #1a1a1a;
+      border: 1px solid #d0d0d0;
+    }
+    
+    [data-theme="light"] .calculator-btn.clear:hover {
+      background: #d8d8d8;
+    }
+    
+    [data-theme="light"] .calculator-btn.clear:active {
+      background: #c0c0c0;
+    }
+    
+    .calculator-btn.zero {
+      grid-column: span 2;
+    }
+    
+    .memory-display {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .memory-info {
+      padding: 0.5rem 1rem;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    
+    .memory-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .memory-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+    
+    .memory-btn:hover {
+      background: var(--bg-elev);
+      border-color: var(--accent);
+    }
+    
+    .history-panel {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .history-panel h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    
+    .history-item {
+      padding: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      font-size: 0.875rem;
+    }
+    
+    .history-item:hover {
+      background: var(--bg);
+    }
+    
+    .history-item:last-child {
+      border-bottom: none;
+    }
+    
+    .history-expression {
+      color: var(--muted);
+    }
+    
+    .history-result {
+      color: var(--text);
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+    
+    #scientific-calculator {
+      display: flex !important;
+      flex-direction: row !important;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    
+    .scientific-buttons-wrapper {
+      width: 200px;
+      flex-shrink: 0;
+      display: block !important;
+    }
+    
+    .scientific-buttons {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr) !important;
+      gap: 12px;
+      width: 100%;
+    }
+    
+    .scientific-main-buttons {
+      flex: 1;
+      min-width: 0;
+      display: block !important;
+    }
+    
+    .scientific-main-buttons .calculator-buttons {
+      margin-bottom: 0;
+    }
+    
+    @media (max-width: 768px) {
+      .calculator-buttons {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      
+      #scientific-calculator {
+        flex-direction: column;
+      }
+      
+      .scientific-buttons {
+        width: 100%;
+        grid-template-columns: repeat(4, 1fr);
+      }
+      
+      .calculator-input {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/calculator">Calculator</a>
+  </nav>
+
+  <main id="main">
+    <h1>Calculator</h1>
+    <p>Simple, advanced, and scientific calculator with history and memory functions. All calculations run in your browser.</p>
+
+    <div class="calculator-container">
+      <div class="mode-selector">
+        <button class="mode-btn active" data-mode="simple">Simple</button>
+        <button class="mode-btn" data-mode="advanced">Advanced</button>
+        <button class="mode-btn" data-mode="scientific">Scientific</button>
+      </div>
+
+      <div class="calculator-display">
+        <div class="calculator-history" id="history-display"></div>
+        <input type="text" class="calculator-input" id="calculator-input" readonly value="0" aria-label="Calculator display">
+      </div>
+
+      <div class="memory-display" id="memory-display" style="display: none;">
+        <div class="memory-info">
+          Memory: <span id="memory-value">0</span>
+        </div>
+        <div class="memory-buttons">
+          <button class="memory-btn" data-action="mc">MC</button>
+          <button class="memory-btn" data-action="mr">MR</button>
+          <button class="memory-btn" data-action="ms">MS</button>
+          <button class="memory-btn" data-action="m+">M+</button>
+          <button class="memory-btn" data-action="m-">M-</button>
+        </div>
+      </div>
+
+      <div id="simple-calculator" class="calculator-mode">
+        <div class="calculator-buttons" id="simple-buttons">
+          <!-- Buttons will be generated by JavaScript -->
+        </div>
+      </div>
+
+      <div id="advanced-calculator" class="calculator-mode" style="display: none;">
+        <div class="calculator-buttons" id="advanced-buttons">
+          <!-- Buttons will be generated by JavaScript -->
+        </div>
+      </div>
+
+      <div id="scientific-calculator" class="calculator-mode" style="display: none;">
+        <div class="scientific-buttons-wrapper">
+          <div class="scientific-buttons" id="scientific-buttons">
+            <!-- Buttons will be generated by JavaScript -->
+          </div>
+        </div>
+        <div class="scientific-main-buttons">
+          <div class="calculator-buttons" id="scientific-main-buttons">
+            <!-- Buttons will be generated by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <div class="history-panel" id="history-panel" style="display: none;">
+        <h3>History</h3>
+        <div id="history-list"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/calculator.js"></script>
+</body>
+</html>
+

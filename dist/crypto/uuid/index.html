@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>UUID Generator | v1, v2, v3, v4, v5 | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate UUIDs (Universally Unique Identifiers) in versions 1, 2, 3, 4, and 5. All processing happens locally in your browser.">
+  <link rel="canonical" href="https://example.com/crypto/uuid">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="UUID Generator">
+  <meta property="og:description" content="Generate UUIDs in all versions (v1-v5).">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What UUID versions are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "All UUID versions are supported: v1 (time-based), v2 (DCE Security), v3 (name-based MD5), v4 (random), and v5 (name-based SHA-1)."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the difference between UUID versions?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "v1 uses timestamp and MAC address, v2 is DCE Security variant, v3 uses MD5 hashing with namespace and name, v4 is completely random (most common), and v5 uses SHA-1 hashing with namespace and name."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "UUID Generator",
+        "item": "https://example.com/crypto/uuid"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/crypto/uuid">UUID Generator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>UUID Generator</h1>
+    <p>Generate UUIDs (Universally Unique Identifiers) in versions 1, 2, 3, 4, and 5. All processing happens locally.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="version">Version:</label>
+        <select id="version">
+          <option value="v1">v1 (Time-based)</option>
+          <option value="v2">v2 (DCE Security)</option>
+          <option value="v3">v3 (Name-based MD5)</option>
+          <option value="v4" selected>v4 (Random)</option>
+          <option value="v5">v5 (Name-based SHA-1)</option>
+        </select>
+      </div>
+      <div class="option-group" id="namespace-group" style="display: none;">
+        <label for="namespace">Namespace:</label>
+        <select id="namespace">
+          <option value="DNS">DNS</option>
+          <option value="URL">URL</option>
+          <option value="OID">OID</option>
+          <option value="X500">X500</option>
+          <option value="custom">Custom UUID</option>
+        </select>
+      </div>
+      <div class="option-group" id="namespace-custom-group" style="display: none;">
+        <label for="namespace-custom">Custom Namespace UUID:</label>
+        <input type="text" id="namespace-custom" placeholder="6ba7b810-9dad-11d1-80b4-00c04fd430c8">
+      </div>
+      <div class="option-group" id="name-group" style="display: none;">
+        <label for="name">Name:</label>
+        <input type="text" id="name" placeholder="example.com">
+      </div>
+      <div class="option-group">
+        <label for="count">Count:</label>
+        <input type="number" id="count" min="1" max="100" value="1">
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="output">Generated UUIDs</label>
+        <textarea id="output" readonly placeholder="Generated UUIDs will appear here"></textarea>
+        <div class="actions">
+          <button id="generate" class="primary">Generate</button>
+          <button id="copy">Copy</button>
+          <button id="clear">Clear</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What UUID versions are supported?</summary>
+        <p>All UUID versions are supported: v1 (time-based), v2 (DCE Security), v3 (name-based MD5), v4 (random), and v5 (name-based SHA-1).</p>
+      </details>
+      <details>
+        <summary>What is the difference between UUID versions?</summary>
+        <p><strong>v1:</strong> Time-based UUID using timestamp and random node identifier.<br>
+        <strong>v2:</strong> DCE Security variant (rarely used).<br>
+        <strong>v3:</strong> Name-based UUID using MD5 hashing with namespace and name.<br>
+        <strong>v4:</strong> Random UUID (most common, default).<br>
+        <strong>v5:</strong> Name-based UUID using SHA-1 hashing with namespace and name.</p>
+      </details>
+      <details>
+        <summary>When should I use which version?</summary>
+        <p><strong>v4:</strong> Use for most cases when you need a random unique identifier.<br>
+        <strong>v3/v5:</strong> Use when you need deterministic UUIDs from the same input (e.g., generating UUIDs for URLs or domain names).<br>
+        <strong>v1:</strong> Use when you need time-ordered UUIDs.</p>
+      </details>
+      <details>
+        <summary>What namespaces are available for v3 and v5?</summary>
+        <p>Standard namespaces: DNS, URL, OID, and X500. You can also provide a custom namespace UUID.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/crypto/hash">Hash Generator</a></li>
+        <li><a href="/text/base64">Base64 Encode/Decode</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/uuid.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

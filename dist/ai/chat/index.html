@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WebLLM Chatbot | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Chat with local AI models in your browser using WebLLM. Download, cache, and clear models directly from this page.">
+  <link rel="canonical" href="https://example.com/ai/chat">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="WebLLM Chatbot">
+  <meta property="og:description" content="Chat with WebLLM models locally in your browser.">
+  <style>
+    details.info-box summary {
+      list-style: none;
+    }
+    details.info-box summary::-webkit-details-marker {
+      display: none;
+    }
+    details.info-box summary::marker {
+      display: none;
+    }
+    details.info-box summary:hover {
+      opacity: 0.8;
+    }
+    .chat-item:hover {
+      background: var(--bg-hover) !important;
+      border-color: var(--accent) !important;
+    }
+    .chat-delete-btn:hover {
+      opacity: 1 !important;
+      background: var(--error) !important;
+      border-color: var(--error) !important;
+      color: white !important;
+    }
+    /* Model selection above chat, collapsible */
+    section.tool {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    #model-selection-pane {
+      position: relative;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+    }
+    #model-selection-pane.collapsed {
+      max-height: 60px;
+      overflow: hidden;
+    }
+    #model-selection-content {
+      transition: opacity 0.3s ease, max-height 0.3s ease;
+      overflow: hidden;
+    }
+    #model-selection-pane.collapsed #model-selection-content {
+      max-height: 0;
+      opacity: 0;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    /* Toggle button */
+    #model-selection-toggle {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    #model-selection-toggle:hover {
+      background: var(--bg-hover);
+    }
+    @media (max-width: 1023px) {
+      section.tool {
+        grid-template-columns: 1fr !important;
+      }
+      .pane > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+      }
+      .pane > div[style*="grid-template-columns"] > div:first-child {
+        max-height: 200px;
+        margin-bottom: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/ai/chat">WebLLM Chatbot</a>
+  </nav>
+
+  <main id="main">
+    <h1>WebLLM Chatbot</h1>
+    <p>Chat with AI models that run entirely in your browser using WebLLM. Download models once, cache them locally, and clear them any time.</p>
+
+    <details class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600; list-style: none; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <span>⚠️ WebLLM Requirements</span>
+          <span style="font-size: 0.875rem; color: var(--muted); font-weight: normal;">(click to expand)</span>
+        </span>
+      </summary>
+      <div style="margin-top: 1rem;">
+        <p><strong>WebLLM requires WebGPU support in your browser.</strong></p>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          <li><strong>WebGPU Support:</strong> Required for model execution. Check support at <a href="https://webgpureport.org/" target="_blank" rel="noreferrer">webgpureport.org</a></li>
+          <li><strong>Browser Requirements:</strong> Chrome 113+, Edge 113+, or Safari 18+ (with WebGPU enabled)</li>
+          <li><strong>Models:</strong> Large files that are downloaded once and cached in your browser's IndexedDB</li>
+          <li>You can clear individual models or all WebLLM cache from this page.</li>
+        </ul>
+      </div>
+    </details>
+
+    <section class="tool" style="position: relative; display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="pane" id="model-selection-pane" style="position: relative;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="chat-model-select" style="margin: 0;">AI Model</label>
+          <button id="model-selection-toggle" class="secondary" style="font-size: 1.2rem; padding: 0.3rem 0.6rem; min-width: 32px;">−</button>
+        </div>
+        <div id="model-selection-content">
+        <select id="chat-model-select">
+          <optgroup label="Smallest Models (Recommended for Quick Start)">
+            <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5 0.5B Instruct (~300MB)</option>
+            <option value="Qwen2-0.5B-Instruct-q4f16_1-MLC">Qwen2 0.5B Instruct (~300MB)</option>
+            <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B Instruct (~600MB)</option>
+            <option value="TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC">TinyLlama 1.1B Chat v1.0 (~600MB)</option>
+            <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M Instruct (~200MB)</option>
+          </optgroup>
+
+          <optgroup label="Small Models (Good Balance)">
+            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B Instruct (~850MB)</option>
+            <option value="Qwen2-1.5B-Instruct-q4f16_1-MLC">Qwen2 1.5B Instruct (~850MB)</option>
+            <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B Instruct (~1.8GB)</option>
+            <option value="Hermes-3-Llama-3.2-3B-q4f16_1-MLC">Hermes 3 Llama 3.2 3B (~1.8GB)</option>
+            <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5 Mini Instruct (~2.3GB)</option>
+            <option value="Phi-3-mini-4k-instruct-q4f16_1-MLC">Phi-3 Mini 4K Instruct (~2.3GB)</option>
+          </optgroup>
+
+          <optgroup label="Medium Models (Better Quality)">
+            <option value="Llama-3.1-8B-Instruct-q4f16_1-MLC">Llama 3.1 8B Instruct (~4.6GB)</option>
+            <option value="Llama-3-8B-Instruct-q4f16_1-MLC">Llama 3 8B Instruct (~4.6GB)</option>
+            <option value="Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC">Hermes 2 Pro Llama 3 8B (~4.6GB)</option>
+            <option value="Hermes-3-Llama-3.1-8B-q4f16_1-MLC">Hermes 3 Llama 3.1 8B (~4.6GB)</option>
+            <option value="Qwen2.5-7B-Instruct-q4f16_1-MLC">Qwen2.5 7B Instruct (~3.8GB)</option>
+            <option value="Qwen2-7B-Instruct-q4f16_1-MLC">Qwen2 7B Instruct (~3.8GB)</option>
+            <option value="Mistral-7B-Instruct-v0.3-q4f16_1-MLC">Mistral 7B Instruct v0.3 (~3.8GB)</option>
+            <option value="Hermes-2-Pro-Mistral-7B-q4f16_1-MLC">Hermes 2 Pro Mistral 7B (~3.8GB)</option>
+          </optgroup>
+
+          <optgroup label="Large Models (Best Quality, Requires More Storage)">
+            <option value="Llama-3-70B-Instruct-q3f16_1-MLC">Llama 3 70B Instruct (~39GB)</option>
+            <option value="Llama-3.1-70B-Instruct-q3f16_1-MLC">Llama 3.1 70B Instruct (~39GB)</option>
+          </optgroup>
+
+          <optgroup label="Specialized Models">
+            <option value="Qwen2.5-Math-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 Math 1.5B Instruct (~850MB)</option>
+            <option value="Qwen2-Math-7B-Instruct-q4f16_1-MLC">Qwen2 Math 7B Instruct (~3.8GB)</option>
+            <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5 Coder 7B Instruct (~3.8GB)</option>
+            <option value="WizardMath-7B-V1.1-q4f16_1-MLC">WizardMath 7B V1.1 (~3.8GB)</option>
+            <option value="DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC">DeepSeek R1 Distill Qwen 7B (~3.8GB)</option>
+            <option value="DeepSeek-R1-Distill-Llama-8B-q4f16_1-MLC">DeepSeek R1 Distill Llama 8B (~4.6GB)</option>
+          </optgroup>
+        </select>
+
+        <div class="actions" style="margin-top: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <button id="chat-download-model" class="primary">Download & Cache Model</button>
+          <button id="chat-check-model">Check Model Status</button>
+          <button id="chat-clear-model" class="secondary">Clear Selected Model</button>
+        </div>
+
+        <div id="chat-model-status" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.875rem; color: var(--muted); white-space: pre-wrap; min-height: 3rem; max-height: 20rem; overflow-y: auto;"></div>
+        <div id="chat-model-list" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.8rem; color: var(--muted); max-height: 10rem; overflow-y: auto;"></div>
+        </div>
+      </div>
+
+      <div class="pane" style="display: flex; flex-direction: column; height: 100%; flex: 1;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="chat-log" style="margin: 0;">Chat</label>
+          <button id="chat-new-chat" class="secondary" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">+ New Chat</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; flex: 1; min-height: 0;">
+          <div style="border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elev); display: flex; flex-direction: column; overflow: hidden;">
+            <div style="padding: 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.875rem; font-weight: 600;">Saved Chats</div>
+            <div id="chat-list" style="flex: 1; overflow-y: auto; padding: 0.5rem;">
+              <p class="text-sm text-muted" style="padding: 1rem; text-align: center; margin: 0;">No saved chats yet</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; min-height: 0;">
+            <div id="chat-log" style="flex: 1; min-height: 320px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elev); padding: 0.75rem; overflow-y: auto; font-size: 0.9rem;">
+              <p class="text-sm text-muted">Select a model, download it if needed, then start chatting. Your messages and responses stay in your browser.</p>
+            </div>
+            <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+              <div style="position: relative; display: flex; align-items: flex-end; gap: 0.5rem;">
+                <textarea id="chat-input" rows="1" placeholder="Ask a question or start a conversation..." style="resize: vertical; padding: 0.5rem; padding-right: 2.5rem; min-height: 2.5rem; max-height: 6rem; line-height: 1.4; flex: 1;"></textarea>
+                <button id="chat-mic-btn" class="secondary" style="padding: 0.5rem; min-width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Start voice input">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                </button>
+              </div>
+              <div class="actions" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                <div class="text-sm text-muted">Press <kbd>Enter</kbd> to send, <kbd>Shift+Enter</kbd> for new line</div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button id="chat-clear-conversation" class="secondary">Clear conversation</button>
+                  <button id="chat-send" class="primary">Send</button>
+                </div>
+              </div>
+              <div id="chat-mic-status" style="display: none; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.875rem; color: var(--muted); text-align: center;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Where are models stored?</summary>
+        <p>WebLLM stores models in your browser's IndexedDB under the <code>webllm</code> database. You can clear individual models or all models using the buttons above.</p>
+      </details>
+      <details>
+        <summary>Can I use this offline?</summary>
+        <p>Yes. After a model has been downloaded and cached, you can chat offline. The model runs entirely in your browser.</p>
+      </details>
+      <details>
+        <summary>Is my chat data sent to a server?</summary>
+        <p>No. All prompts and responses are processed locally by WebLLM in your browser.</p>
+      </details>
+    </section>
+  </main>
+
+  <script type="module" src="/js/header.js"></script>
+  <!-- Load bundled WebLLM (shared with regex generator) -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <!-- Vosk.js for offline speech recognition -->
+  <script src="https://cdn.jsdelivr.net/npm/vosk-browser@0.0.3/dist/vosk.js"></script>
+  <script type="module">
+    try {
+      await import('/js/tools/bundled/webllm-bundle.js');
+    } catch (e) {
+      console.log('Bundled WebLLM not found. Run \"npm install && npm run build\" to create it.');
+    }
+  </script>
+  <script type="module" src="/js/tools/webllm-chat.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
+

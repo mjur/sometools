@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AI Image Generator | Text to Image | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate images from text prompts using AI models (SD-Turbo, Janus-Pro-1B) directly in your browser with WebGPU acceleration.">
+  <link rel="canonical" href="https://example.com/ai/image-generate">
+  <link rel="stylesheet" href="/css/base.css?v=3">
+  <link rel="stylesheet" href="/css/tool.css?v=3">
+  <link rel="preload" href="/css/base.css?v=3" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="importmap">
+  {
+    "imports": {
+      "@huggingface/transformers": "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.x/dist/transformers.min.js"
+    }
+  }
+  </script>
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="AI Image Generator">
+  <meta property="og:description" content="Generate images from text prompts using AI models in your browser.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What models are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "SD-Turbo and Janus-Pro-1B are supported. Both use WebGPU for acceleration."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Do I need WebGPU?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, WebGPU is required. Chrome/Edge 113+, Safari Technology Preview, or Firefox Nightly with WebGPU enabled."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is my data sent to a server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. All processing happens locally in your browser. Models are downloaded once and cached."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "AI Image Generator",
+        "item": "https://example.com/ai/image-generate"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/ai/image-generate">AI Image Generator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>AI Image Generator</h1>
+    <p>Generate images from text prompts using AI models (SD-Turbo, Janus-Pro-1B) directly in your browser with WebGPU acceleration.</p>
+    
+    <div id="webgpu-check" style="display: none; padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1rem;">
+      <p style="color: var(--error); margin: 0;">⚠️ WebGPU is not supported in this browser. Please use Chrome/Edge 113+, Safari Technology Preview, or Firefox Nightly with WebGPU enabled.</p>
+    </div>
+    
+    <div id="library-error" style="display: none; padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1rem;">
+      <p style="color: var(--error); margin: 0;">
+        ⚠️ <strong>Library not loaded:</strong> The web-txt2img library may need to be installed. 
+        If CDN loading fails, try: <code>npm install web-txt2img</code> and rebuild.
+      </p>
+    </div>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="model-select">Model:</label>
+        <select id="model-select">
+          <option value="sd-turbo">SD-Turbo (512×512, seeded)</option>
+          <option value="janus-pro-1b">Janus-Pro-1B (WebGPU-only)</option>
+        </select>
+      </div>
+      <div class="option-group" id="seed-group">
+        <label for="seed">Seed (optional):</label>
+        <input type="number" id="seed" placeholder="Random" min="0" step="1">
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label for="prompt">Text Prompt</label>
+          <div class="actions" style="margin: 0;">
+            <button id="generate" class="primary">Generate</button>
+            <button id="abort" disabled>Abort</button>
+            <button id="load-model">Load Model</button>
+            <button id="unload-model" disabled>Unload Model</button>
+          </div>
+        </div>
+        <textarea id="prompt" placeholder="Enter a description of the image you want to generate..." rows="4"></textarea>
+        <div id="model-status" class="text-sm text-muted" style="margin-top: 0.5rem;"></div>
+        <div id="progress-container" style="display: none; margin-top: 0.5rem;">
+          <progress id="progress-bar" max="100" value="0" style="width: 100%;"></progress>
+          <div id="progress-text" class="text-sm text-muted" style="margin-top: 0.25rem;"></div>
+        </div>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="output">Generated Image</label>
+          <div class="actions">
+            <button id="download" disabled>Download</button>
+            <button id="clear-output">Clear</button>
+          </div>
+        </div>
+        <div id="output" style="min-height: 400px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elev); display: flex; align-items: center; justify-content: center; padding: 1rem;">
+          <p class="text-muted">Generated image will appear here</p>
+        </div>
+      </div>
+    </section>
+    
+    <div class="options" style="margin-top: 1rem;">
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="auto-load">
+          Auto-load model on page load
+        </label>
+      </div>
+      <div class="option-group">
+        <button id="purge-cache">Purge Model Cache</button>
+      </div>
+      <div class="option-group">
+        <button id="purge-all-cache">Purge All Caches</button>
+      </div>
+    </div>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What models are supported?</summary>
+        <p>SD-Turbo (512×512 with seed support) and Janus-Pro-1B (WebGPU-only) are supported. Models are downloaded on first use and cached locally.</p>
+      </details>
+      <details>
+        <summary>Do I need WebGPU?</summary>
+        <p>Yes, WebGPU is required. Use Chrome/Edge 113+, Safari Technology Preview, or Firefox Nightly with WebGPU enabled. The tool will check for WebGPU support on load.</p>
+      </details>
+      <details>
+        <summary>How long does generation take?</summary>
+        <p>Generation time varies by model and hardware. SD-Turbo typically takes 10-30 seconds on modern GPUs. Janus-Pro-1B may take longer.</p>
+      </details>
+      <details>
+        <summary>Can I use seeds for reproducible results?</summary>
+        <p>Yes, SD-Turbo supports seeds for deterministic generation. Enter a number in the seed field. Janus-Pro-1B does not support seeds.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens locally in your browser. Models are downloaded once and cached in browser storage.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/convert/image">Image Format Converter</a></li>
+        <li><a href="/ai/chat">WebLLM Chatbot</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js?v=2"></script>
+  <script type="module" src="/js/tools/image-generate.js?v=1"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

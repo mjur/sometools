@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text to Speech - SomeTools</title>
+  <meta name="description" content="Convert text to speech with AI-powered natural voices. Generate and download audio files directly in your browser.">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <style>
+    .inline-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    
+    .inline-controls select {
+      min-width: 200px;
+      flex: 0 0 auto;
+    }
+    
+    .inline-controls .button-group {
+      display: flex;
+      gap: 0.5rem;
+      flex: 0 0 auto;
+    }
+    
+    .inline-controls #audio-container {
+      flex: 1 1 auto;
+      min-width: 200px;
+    }
+    
+    .inline-controls #audio-player {
+      width: 100%;
+    }
+    
+    @media (max-width: 768px) {
+      .inline-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .inline-controls select,
+      .inline-controls .button-group,
+      .inline-controls #audio-container {
+        width: 100%;
+      }
+      
+      .inline-controls .button-group {
+        justify-content: stretch;
+      }
+      
+      .inline-controls .button-group button {
+        flex: 1;
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.min.js"></script>
+  <!-- kokoro-js will be loaded dynamically -->
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+
+  <main id="main">
+    <div class="tool-container">
+      <div class="tool-header">
+        <h1>Text to Speech (AI-Powered)</h1>
+        <p>Convert your text into natural-sounding speech using AI models. Choose from various voices and download the audio file.</p>
+      </div>
+
+      <div class="tool-content">
+        <div class="input-section">
+          <label for="text-input">Enter text to convert:</label>
+          <textarea 
+            id="text-input" 
+            rows="10" 
+            placeholder="Type or paste your text here..."
+            aria-label="Text input for speech synthesis"
+          ></textarea>
+          
+          <div class="control-group" id="voice-select-group" style="display: none; margin-top: 1rem;">
+            <label for="voice-select-kokoro">Voice:</label>
+          </div>
+          
+          <div class="inline-controls">
+            <select id="voice-select-kokoro" aria-label="Select Kokoro voice" style="display: none;">
+              <option value="">Loading voices...</option>
+            </select>
+            
+            <div class="button-group">
+              <button id="generate-btn" class="primary-btn">Generate & Play</button>
+              <button id="download-btn" class="secondary-btn" disabled>Download Audio</button>
+              <button id="clear-btn" class="secondary-btn">Clear</button>
+            </div>
+            
+            <div id="audio-container" style="display: none;">
+              <audio id="audio-player" controls></audio>
+            </div>
+          </div>
+        </div>
+
+        <div class="output-section">
+          <div id="status" class="status-message" aria-live="polite"></div>
+          <div id="progress-container" style="display: none; margin-top: 1rem; padding: 1rem; background-color: var(--bg-elev); border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+              <span id="progress-text">Processing...</span>
+              <span id="progress-percent">0%</span>
+            </div>
+            <div style="width: 100%; height: 8px; background-color: var(--border); border-radius: 4px; overflow: hidden;">
+              <div id="progress-bar" style="width: 0%; height: 100%; background-color: var(--accent); transition: width 0.3s;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/text-to-speech.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

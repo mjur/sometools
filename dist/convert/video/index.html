@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Video Format Converter | MP4, WebM, AVI, MOV | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Convert videos between formats: MP4, WebM, AVI, MOV, MKV. All processing happens locally in your browser.">
+  <link rel="canonical" href="https://example.com/convert/video">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Video Format Converter">
+  <meta property="og:description" content="Convert videos between MP4, WebM, AVI, MOV, and MKV formats locally.">
+  <style>
+    details.info-box summary {
+      list-style: none;
+    }
+    details.info-box summary::-webkit-details-marker {
+      display: none;
+    }
+    details.info-box summary::marker {
+      display: none;
+    }
+    details.info-box summary:hover {
+      opacity: 0.8;
+    }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is my video sent to a server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. All processing happens locally in your browser using FFmpeg.wasm."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What video formats are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We support MP4, WebM, AVI, MOV, and MKV formats. You can convert between these formats."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How long does conversion take?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Conversion time depends on video length and your device's performance. Processing happens entirely in your browser, so it may take longer than server-based converters."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Video Format Converter",
+        "item": "https://example.com/convert/video"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/video">Video Format Converter</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Video Format Converter</h1>
+    <p>Convert videos between different formats: MP4, WebM, AVI, MOV, and MKV. All processing happens locally in your browser using FFmpeg.wasm.</p>
+    
+    <details class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600; list-style: none; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <span>⚠️ Important Notes</span>
+          <span style="font-size: 0.875rem; color: var(--muted); font-weight: normal;">(click to expand)</span>
+        </span>
+      </summary>
+      <div style="margin-top: 1rem;">
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          <li><strong>Server Requirements:</strong> This tool requires a server with CORS headers configured. Use <code>npm run dev</code> (Vite) which includes the necessary headers, or configure your server with <code>Cross-Origin-Opener-Policy: same-origin</code> and <code>Cross-Origin-Embedder-Policy: require-corp</code>.</li>
+          <li><strong>First Load:</strong> FFmpeg.wasm needs to download core files (~30MB) on first use. This is a one-time download.</li>
+          <li><strong>Processing Time:</strong> Video conversion is CPU-intensive and may take several minutes depending on video length and your device.</li>
+          <li><strong>Browser Support:</strong> Requires a modern browser with WebAssembly support (Chrome, Firefox, Safari, Edge).</li>
+          <li><strong>File Size:</strong> Large video files may cause memory issues. Recommended maximum: 500MB per file.</li>
+        </ul>
+      </div>
+    </details>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="output-format">Convert to</label>
+        <select id="output-format">
+          <optgroup label="Common Formats">
+            <option value="mp4">MP4 (H.264)</option>
+            <option value="webm">WebM (VP9)</option>
+            <option value="mov">MOV</option>
+            <option value="mkv">MKV</option>
+            <option value="avi">AVI</option>
+          </optgroup>
+          <optgroup label="Other Formats">
+            <option value="m4v">M4V</option>
+            <option value="flv">FLV</option>
+            <option value="3gp">3GP</option>
+            <option value="ogv">OGV (OGG)</option>
+            <option value="mpeg">MPEG</option>
+            <option value="mpg">MPG</option>
+            <option value="wmv">WMV</option>
+            <option value="asf">ASF</option>
+          </optgroup>
+          <optgroup label="Audio Only">
+            <option value="mp3">MP3</option>
+            <option value="aac">AAC</option>
+            <option value="wav">WAV</option>
+            <option value="ogg">OGG (Audio)</option>
+            <option value="m4a">M4A</option>
+            <option value="flac">FLAC</option>
+            <option value="opus">Opus</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="option-group">
+        <label for="video-quality">Video Quality</label>
+        <select id="video-quality">
+          <option value="high">High (Best Quality)</option>
+          <option value="medium" selected>Medium (Balanced)</option>
+          <option value="low">Low (Smaller File)</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label for="file-input">Upload Video</label>
+        <div class="drop-zone" id="drop-zone" style="height: 300px; flex: 0 0 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0;">
+          <p>Drag and drop a video here, or click to select</p>
+          <p class="text-sm text-muted">Supported: MP4, WebM, AVI, MOV, MKV, M4V, FLV, 3GP, OGV, MPEG, WMV, and more</p>
+          <input type="file" id="file-input" accept="video/*,audio/*" style="display: none;">
+        </div>
+        <div id="video-preview" style="display: none; height: 300px; flex: 0 0 300px; flex-direction: column; margin: 0; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-elev); padding: 0.75rem; overflow: hidden; align-items: center; justify-content: center;">
+          <video id="preview-video" controls style="max-width: 100%; max-height: calc(100% - 2rem); border-radius: 6px; object-fit: contain; background: #000;"></video>
+          <p id="video-info" class="text-sm text-muted" style="margin-top: 0.5rem; text-align: center;"></p>
+        </div>
+        <div id="progress-container" style="display: none; margin-top: 1rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span class="text-sm">Processing...</span>
+            <span id="progress-percent" class="text-sm">0%</span>
+          </div>
+          <progress id="progress-bar" value="0" max="100" style="width: 100%; height: 1.5rem;"></progress>
+          <p id="progress-text" class="text-sm text-muted" style="margin-top: 0.5rem;"></p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="clear" class="secondary">Clear</button>
+          <button id="convert" class="primary" disabled>Convert</button>
+        </div>
+      </div>
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label>Converted Video</label>
+        <div id="output-area" style="height: 300px; flex: 0 0 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--muted); overflow: auto; margin: 0; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-elev); padding: 0.75rem; position: relative;">
+          <p>Upload a video to convert</p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="download" class="secondary" disabled>Download</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my video sent to a server?</summary>
+        <p>No. All processing happens locally in your browser using FFmpeg.wasm.</p>
+      </details>
+      <details>
+        <summary>What video formats are supported?</summary>
+        <p>We support many formats including MP4, WebM, AVI, MOV, MKV, M4V, FLV, 3GP, OGV, MPEG, WMV, ASF, and audio formats like MP3, AAC, WAV, OGG, M4A, FLAC, and Opus. You can convert between these formats.</p>
+      </details>
+      <details>
+        <summary>How long does conversion take?</summary>
+        <p>Conversion time depends on video length and your device's performance. Processing happens entirely in your browser, so it may take longer than server-based converters. A 1-minute video typically takes 2-5 minutes to convert.</p>
+      </details>
+      <details>
+        <summary>What is the maximum file size?</summary>
+        <p>There's no hard limit, but very large files (over 500MB) may cause memory issues. For best results, keep files under 500MB.</p>
+      </details>
+      <details>
+        <summary>Can I convert audio-only files?</summary>
+        <p>Yes, you can convert audio files (MP3, WAV, etc.) by selecting them as video files. The converter will handle them appropriately.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/convert/image">Image Format Converter</a></li>
+        <li><a href="/convert/image-pdf">Image to PDF</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/video-convert.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

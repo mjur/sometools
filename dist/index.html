@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+    <title>SomeTools | Fast, Client-Side Developer Tools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Collection of fast developer tools that run entirely in your browser.">
+  <link rel="canonical" href="https://example.com/">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+    <meta property="og:title" content="SomeTools | Fast, Client-Side Developer Tools">
+  <meta property="og:description" content="Collection of fast developer tools that run entirely in your browser.">
+  <meta property="og:type" content="website">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+      "name": "SomeTools",
+    "description": "Fast, client-side developer tools",
+    "url": "https://example.com"
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Search tools..." aria-label="Search tools">
+    </div>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <main id="main">
+    <p>Fast tools that run entirely in your browser.</p>
+    
+    <div class="tool-grid" id="tool-grid" data-sortable="true">
+      <a href="/ai/chat" class="tool-card" data-category="ai" data-name="webllm chatbot local ai chat">
+        <h2>WebLLM Chatbot</h2>
+        <p>Chat with local AI models in your browser using WebLLM, with model download and cache controls</p>
+      </a>
+      
+      <a href="/regex/generator" class="tool-card" data-category="ai" data-name="regex generator">
+        <h2>Regex Generator</h2>
+        <p>Generate regular expressions from natural language using AI (WebLLM)</p>
+      </a>
+      
+      <a href="/utils/grammar-check" class="tool-card" data-category="ai" data-name="grammar checker spelling checker ai">
+        <h2>Grammar & Spelling Checker</h2>
+        <p>Check spelling and grammar using AI, with highlighting and auto-fix</p>
+      </a>
+      
+      <a href="/utils/ai-detector" class="tool-card" data-category="ai" data-name="ai detector ai text detection modernbert">
+        <h2>AI Text Detector</h2>
+        <p>Detect AI-generated text using ModernBERT ONNX model</p>
+      </a>
+      
+      <a href="/ai/image-generate" class="tool-card" data-category="ai" data-name="ai image generator text to image stable diffusion webgpu">
+        <h2>AI Image Generator</h2>
+        <p>Generate images from text prompts using SD-Turbo and Janus-Pro-1B models with WebGPU</p>
+      </a>
+      
+      <a href="/json/validate" class="tool-card" data-category="json" data-name="json validator">
+        <h2>JSON Validator</h2>
+        <p>Validate JSON with instant feedback and error pointers</p>
+      </a>
+      
+      <a href="/json/format" class="tool-card" data-category="json" data-name="json formatter">
+        <h2>JSON Formatter</h2>
+        <p>Format and beautify JSON with customizable indentation</p>
+      </a>
+      
+      <a href="/json/yaml" class="tool-card" data-category="json" data-name="json yaml converter">
+        <h2>JSON ↔ YAML Converter</h2>
+        <p>Convert between JSON and YAML formats</p>
+      </a>
+      
+      <a href="/sql/format" class="tool-card" data-category="sql" data-name="sql formatter">
+        <h2>SQL Formatter</h2>
+        <p>Format and beautify SQL queries with customizable indentation</p>
+      </a>
+      
+      <a href="/yaml/validate" class="tool-card" data-category="yaml" data-name="yaml validator">
+        <h2>YAML Validator</h2>
+        <p>Validate YAML syntax with instant feedback</p>
+      </a>
+      
+      <a href="/text/base64" class="tool-card" data-category="text" data-name="base64 encoder decoder">
+        <h2>Base64 Encode/Decode</h2>
+        <p>Encode and decode Base64 strings with URL-safe option</p>
+      </a>
+      
+      <a href="/convert/image-pdf" class="tool-card" data-category="convert" data-name="image to pdf converter">
+        <h2>Image to PDF</h2>
+        <p>Convert images (JPG, PNG, GIF, WebP) to PDF files with customizable page settings</p>
+      </a>
+      
+      <a href="/convert/image" class="tool-card" data-category="convert" data-name="image format converter png jpeg webp svg ico">
+        <h2>Image Format Converter</h2>
+        <p>Convert images between PNG, JPEG, WebP, SVG, and ICO formats</p>
+      </a>
+      
+      <a href="/convert/video" class="tool-card" data-category="convert" data-name="video format converter mp4 webm avi mov mkv">
+        <h2>Video Format Converter</h2>
+        <p>Convert videos between MP4, WebM, AVI, MOV, and MKV formats</p>
+      </a>
+      
+      <a href="/convert/time" class="tool-card" data-category="time" data-name="time timezone parser converter">
+        <h2>Time & Timezone Parser</h2>
+        <p>Parse times, normalize to UTC, and convert across common time zones</p>
+      </a>
+      
+      <a href="/convert/units" class="tool-card" data-category="convert" data-name="unit converter measurement converter length area volume mass temperature speed energy power">
+        <h2>Unit Converter</h2>
+        <p>Convert between hundreds of units across length, area, volume, mass, time, temperature, speed, energy, and more</p>
+      </a>
+      
+      <a href="/crypto/hash" class="tool-card" data-category="crypto" data-name="hash generator">
+        <h2>Hash Generator</h2>
+        <p>Generate SHA-1, SHA-256, SHA-384, SHA-512 hashes</p>
+      </a>
+      
+      <a href="/crypto/uuid" class="tool-card" data-category="crypto" data-name="uuid generator">
+        <h2>UUID Generator</h2>
+        <p>Generate UUIDs in versions 1, 2, 3, 4, and 5</p>
+      </a>
+      
+      <a href="/utils/random" class="tool-card" data-category="utils" data-name="random number generator">
+        <h2>Random Number Generator</h2>
+        <p>Generate random numbers with customizable range and count</p>
+      </a>
+      
+      <a href="/utils/shuffler" class="tool-card" data-category="utils" data-name="list shuffler">
+        <h2>List Shuffler</h2>
+        <p>Shuffle lists of items with customizable delimiters</p>
+      </a>
+      
+      <a href="/utils/calculator" class="tool-card" data-category="utils" data-name="calculator simple advanced scientific">
+        <h2>Calculator</h2>
+        <p>Simple, advanced, and scientific calculator with history and memory functions</p>
+      </a>
+      
+      <a href="/utils/notes" class="tool-card" data-category="utils" data-name="notes">
+        <h2>Notes</h2>
+        <p>Create and manage notes saved locally. Download individual notes or all as ZIP</p>
+      </a>
+      
+      <a href="/utils/text-to-speech" class="tool-card" data-category="utils" data-name="text to speech tts audio">
+        <h2>Text to Speech</h2>
+        <p>Convert text to speech with various voices and download audio files</p>
+      </a>
+      
+      <a href="/diff/text" class="tool-card" data-category="text" data-name="text diff">
+        <h2>Text Diff</h2>
+        <p>Compare two texts side-by-side with word/char granularity</p>
+      </a>
+      
+      <a href="/regex/tester" class="tool-card" data-category="text" data-name="regex tester">
+        <h2>Regex Tester</h2>
+        <p>Test regular expressions with match highlighting and groups</p>
+      </a>
+    </div>
+    
+    <section class="faq" aria-labelledby="cache-h" style="margin-top: 2rem;">
+      <h2 id="cache-h">Cached Models</h2>
+      <p style="margin-bottom: 1rem; color: var(--muted);">Manage AI models cached in your browser across all tools.</p>
+      <div id="model-cache-widget" style="margin-top: 1rem;"></div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">Frequently Asked Questions</h2>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens entirely in your browser.</p>
+      </details>
+      <details>
+        <summary>Do I need to create an account?</summary>
+        <p>No. All tools work without any registration or login.</p>
+      </details>
+      <details>
+        <summary>Can I use these tools offline?</summary>
+        <p>Yes, once loaded, most tools work offline. We're working on full PWA support.</p>
+      </details>
+      <details>
+        <summary>Are these tools free?</summary>
+        <p>Yes, all tools are completely free and open source.</p>
+      </details>
+    </section>
+  </main>
+  
+  <script type="module">
+    import { on, toggleTheme, qs } from '/js/ui.js';
+    import { initToolCardSorting } from '/js/tool-sort.js';
+    
+    // Initialize drag and drop for tool cards
+    initToolCardSorting();
+    
+    // Theme toggle
+    const themeToggle = qs('#theme-toggle');
+    const themeIcon = qs('#theme-icon');
+    
+    if (themeToggle) {
+      on(themeToggle, 'click', () => {
+        const newTheme = toggleTheme();
+        themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+      });
+      
+      // Update icon on load
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      themeIcon.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+    }
+    
+    // Search functionality
+    const searchInput = qs('#search');
+    const toolGrid = qs('#tool-grid');
+    
+    if (searchInput && toolGrid) {
+      on(searchInput, 'input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const cards = Array.from(toolGrid.querySelectorAll('.tool-card'));
+        
+        cards.forEach(card => {
+          const name = card.getAttribute('data-name') || '';
+          const category = card.getAttribute('data-category') || '';
+          const text = (card.querySelector('h2')?.textContent || '').toLowerCase();
+          const desc = (card.querySelector('p')?.textContent || '').toLowerCase();
+          
+          const matches = query === '' || 
+            name.includes(query) ||
+            category.includes(query) ||
+            text.includes(query) ||
+            desc.includes(query);
+          
+          card.style.display = matches ? '' : 'none';
+        });
+      });
+      
+      // Keyboard shortcut for search
+      on(document, 'keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+          e.preventDefault();
+          searchInput.focus();
+        }
+      });
+    }
+  </script>
+  <script type="module">
+    import { initModelCacheWidget } from '/js/utils/model-cache-widget.js';
+    const container = document.getElementById('model-cache-widget');
+    if (container) {
+      initModelCacheWidget(container);
+    }
+  </script>
+  <script type="module" src="/js/header.js"></script>
+</body>
+</html>
+

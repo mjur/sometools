@@ -1,0 +1,48 @@
+{
+  "name": "SomeTools - Client-Side Developer Tools",
+  "short_name": "SomeTools",
+  "description": "Fast developer tools that run entirely in your browser",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0066cc",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/assets/download-16x16.ico",
+      "sizes": "16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/assets/download-32x32.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/assets/download-48x48.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/assets/download-64x64.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/assets/download-128x128.ico",
+      "sizes": "128x128",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/assets/download-256x256.ico",
+      "sizes": "256x256",
+      "type": "image/x-icon"
+    }
+  ]
+}
+

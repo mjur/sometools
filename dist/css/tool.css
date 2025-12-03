@@ -1,0 +1,510 @@
+/* Tool-specific shared styles */
+
+/* Line numbers for textareas (optional enhancement) */
+.textarea-with-lines {
+  position: relative;
+  display: flex;
+}
+
+.textarea-with-lines textarea {
+  padding-left: 3.5rem !important;
+  flex: 1;
+}
+
+.line-numbers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3rem;
+  padding: 0.75rem 0.25rem;
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted);
+  background-color: var(--bg-elev);
+  border-right: 1px solid var(--border);
+  user-select: none;
+  pointer-events: none;
+  text-align: right;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 1;
+  box-sizing: border-box;
+  white-space: pre;
+  word-wrap: normal;
+}
+
+/* Error highlighting */
+.error-line {
+  background-color: rgba(211, 47, 47, 0.1);
+  border-left: 3px solid var(--error);
+  padding-left: 0.5rem;
+}
+
+/* Diff specific */
+.diff-added {
+  background-color: rgba(46, 125, 50, 0.1);
+  color: var(--ok);
+}
+
+.diff-removed {
+  background-color: rgba(211, 47, 47, 0.1);
+  color: var(--error);
+}
+
+.diff-context {
+  color: var(--muted);
+}
+
+/* Regex match highlighting */
+.regex-match {
+  background-color: rgba(74, 158, 255, 0.4);
+  padding: 1px 0;
+  border-radius: 2px;
+}
+
+.highlight-overlay .regex-match {
+  background-color: rgba(74, 158, 255, 0.4) !important;
+  color: transparent !important;
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+/* Regex tester - fix matches output height */
+.regex-tester-tool #matches,
+.pane #matches {
+  min-height: 400px !important;
+  max-height: 600px !important;
+  height: 400px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  resize: none !important;
+}
+
+/* Regex tester - make textareas taller and side by side */
+.regex-tester-tool {
+  max-width: 100% !important;
+  width: 100% !important;
+  grid-template-columns: 1fr !important;
+  display: grid !important;
+}
+
+.regex-tester-tool .pane {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.regex-tester-tool .textarea-wrapper {
+  min-height: 400px !important;
+  max-height: 600px !important;
+  height: 400px !important;
+}
+
+.regex-tester-tool .textarea-wrapper textarea {
+  min-height: 400px !important;
+  max-height: 600px !important;
+  height: 400px !important;
+}
+
+.regex-tester-tool .split-view {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 1rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.regex-tester-tool .split-view > div {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 1023px) {
+  .regex-tester-tool .split-view {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.regex-group {
+  background-color: rgba(74, 158, 255, 0.1);
+  border: 1px dashed var(--accent);
+}
+
+/* File drop zone */
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.drop-zone.dragover {
+  border-color: var(--accent);
+  background-color: rgba(74, 158, 255, 0.05);
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 4px;
+  background-color: var(--bg-elev);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.badge.success {
+  background-color: rgba(46, 125, 50, 0.1);
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.badge.error {
+  background-color: rgba(211, 47, 47, 0.1);
+  color: var(--error);
+  border-color: var(--error);
+}
+
+/* Options panel */
+.options {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+  background-color: var(--bg-elev);
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+/* Reduce options panel size for JSON tools */
+.json-tool ~ .options,
+main:has(.json-tool) .options,
+.yaml-validator-tool ~ .options,
+main:has(.yaml-validator-tool) .options {
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.option-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.option-group label {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Related tools */
+.related-tools {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.related-tools h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.related-tools ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.related-tools a {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: inline-block;
+  transition: background-color 0.2s;
+}
+
+.related-tools a:hover {
+  background-color: var(--bg-elev);
+}
+
+/* Binary output - wrap for display but keep as one line when copied */
+pre.binary-output {
+  word-break: break-all !important;
+  overflow-wrap: break-word !important;
+  white-space: pre-wrap !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  word-wrap: break-word !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure pane container doesn't overflow */
+.pane pre.binary-output {
+  min-width: 0 !important;
+  flex-shrink: 1 !important;
+}
+
+/* JSON/YAML converter - larger textareas */
+.json-yaml-tool {
+  min-height: calc(100vh - 300px);
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display: block !important;
+}
+
+.json-yaml-tool .split-view {
+  min-height: calc(100vh - 400px);
+  margin-bottom: 1rem;
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: 1.5rem;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+}
+
+.json-yaml-tool .pane {
+  width: 100% !important;
+  flex: 1;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding: 0;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.json-yaml-tool textarea {
+  min-height: calc(100vh - 400px) !important;
+  height: calc(100vh - 400px) !important;
+  resize: vertical !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  flex: 1 !important;
+}
+
+/* On mobile, adjust height */
+@media (max-width: 1023px) {
+  .json-yaml-tool .split-view {
+    min-height: calc(100vh - 450px);
+  }
+
+  .json-yaml-tool textarea {
+    min-height: calc(100vh - 450px) !important;
+    height: calc(100vh - 450px) !important;
+  }
+}
+
+/* Text diff tool - larger textareas */
+.diff-tool {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 300px);
+}
+
+.diff-tool .split-view {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  min-height: calc(100vh - 450px);
+  margin-bottom: 1rem;
+  flex: 1;
+}
+
+@media (max-width: 1023px) {
+  .diff-tool .split-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+.diff-tool textarea {
+  min-height: calc(100vh - 450px) !important;
+  height: calc(100vh - 450px) !important;
+  resize: vertical !important;
+}
+
+/* Ensure actions are beneath the split-view */
+.diff-actions {
+  width: 100%;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Textarea wrapper for highlighting overlay */
+.textarea-wrapper {
+  position: relative;
+  flex: 0 0 300px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  align-self: stretch !important;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 200px !important;
+  max-height: 600px !important;
+  height: 300px !important;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+
+.textarea-wrapper textarea {
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+  color: inherit;
+  caret-color: var(--text);
+  border: none !important;
+  box-shadow: none !important;
+  resize: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: 200px !important;
+  max-height: 600px !important;
+  height: 300px !important;
+  flex: 0 0 300px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+
+.highlight-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  padding: 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  color: transparent;
+  box-sizing: border-box;
+  margin: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.highlight-overlay .diff-removed {
+  background-color: rgba(211, 47, 47, 0.4) !important;
+  color: transparent !important;
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+.highlight-overlay .diff-added {
+  background-color: rgba(46, 125, 50, 0.4) !important;
+  color: transparent !important;
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+.highlight-overlay .diff-context {
+  background-color: transparent;
+  color: transparent;
+}
+
+/* On mobile, adjust height */
+@media (max-width: 1023px) {
+  .diff-tool {
+    min-height: calc(100vh - 350px);
+  }
+
+  .diff-tool .split-view {
+    min-height: calc(100vh - 450px);
+  }
+
+  .diff-tool textarea {
+    min-height: calc(100vh - 450px) !important;
+    height: calc(100vh - 450px) !important;
+  }
+}
+
+/* Large textareas for JSON tools - empty ruleset removed */
+
+/* JSON formatter and validator - large textareas */
+.json-tool {
+  display: grid !important;
+  min-height: calc(100vh - 180px) !important;
+  height: calc(100vh - 180px) !important;
+  align-items: start !important;
+}
+
+/* YAML validator - large textareas */
+.yaml-validator-tool {
+  display: grid !important;
+  min-height: calc(100vh - 180px) !important;
+  height: calc(100vh - 180px) !important;
+  align-items: start !important;
+}
+
+.json-tool .pane,
+.yaml-validator-tool .pane {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: calc(100vh - 180px) !important;
+  flex: 1 !important;
+  align-items: stretch !important;
+}
+
+.json-tool .pane > div:first-child,
+.yaml-validator-tool .pane > div:first-child {
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.json-tool textarea,
+.json-tool pre,
+.yaml-validator-tool textarea,
+.yaml-validator-tool pre {
+  flex: 1 1 auto !important;
+  min-height: calc(100vh - 240px) !important;
+  height: calc(100vh - 240px) !important;
+  max-height: none !important;
+  resize: vertical !important;
+  margin-top: 0 !important;
+}
+
+
+/* On mobile, adjust height */
+@media (max-width: 1023px) {
+  .json-tool .pane,
+  .yaml-validator-tool .pane {
+    min-height: calc(100vh - 300px);
+  }
+  
+  .json-tool textarea,
+  .json-tool pre,
+  .yaml-validator-tool textarea,
+  .yaml-validator-tool pre {
+    min-height: calc(100vh - 320px);
+    height: calc(100vh - 320px);
+  }
+}
+

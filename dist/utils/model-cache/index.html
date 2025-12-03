@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Model Cache Manager | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="View and manage all cached AI models across tools. Delete individual models to free up storage space.">
+  <link rel="canonical" href="https://example.com/utils/model-cache">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Model Cache Manager">
+  <meta property="og:description" content="View and manage all cached AI models across tools.">
+  <style>
+    .cache-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      padding: 1rem;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+    }
+    
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-subtle);
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    .model-category {
+      margin-bottom: 2rem;
+    }
+    
+    .category-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border);
+    }
+    
+    .category-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    .category-count {
+      font-size: 0.875rem;
+      color: var(--text-subtle);
+    }
+    
+    .model-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .model-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      transition: all 0.2s;
+    }
+    
+    .model-item:hover {
+      border-color: var(--accent);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .model-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .model-name {
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+      word-break: break-word;
+    }
+    
+    .model-details {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.875rem;
+      color: var(--text-subtle);
+    }
+    
+    .model-size {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    .model-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-left: 1rem;
+    }
+    
+    .delete-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--error);
+      background: var(--bg);
+      color: var(--error);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    
+    .delete-btn:hover {
+      background: var(--error);
+      color: white;
+    }
+    
+    .delete-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-subtle);
+    }
+    
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    
+    .refresh-btn {
+      padding: 0.75rem 1.5rem;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+      margin-bottom: 1rem;
+    }
+    
+    .refresh-btn:hover {
+      background: var(--bg-elev);
+      border-color: var(--accent);
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-subtle);
+    }
+    
+    .error-message {
+      padding: 1rem;
+      background: var(--error-bg);
+      border: 1px solid var(--error);
+      border-radius: 0.5rem;
+      color: var(--error);
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/model-cache">Model Cache Manager</a>
+  </nav>
+
+  <main id="main">
+    <h1>Model Cache Manager</h1>
+    <p>View and manage all cached AI models across tools. Delete individual models to free up storage space.</p>
+
+    <div class="cache-stats" id="cache-stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Models</div>
+        <div class="stat-value" id="total-models">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Size</div>
+        <div class="stat-value" id="total-size">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">ONNX Models</div>
+        <div class="stat-value" id="onnx-count">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">WebLLM Models</div>
+        <div class="stat-value" id="webllm-count">-</div>
+      </div>
+    </div>
+
+    <button class="refresh-btn" id="refresh-btn">🔄 Refresh Cache List</button>
+
+    <div id="error-container"></div>
+
+    <div id="models-container">
+      <div class="loading">Loading cached models...</div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/model-cache.js"></script>
+</body>
+</html>
+

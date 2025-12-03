@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SQL Formatter | Beautify SQL | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Format and beautify SQL queries with customizable indentation and keyword capitalization. Format SQL locally in your browser.">
+  <link rel="canonical" href="https://example.com/sql/format">
+  <link rel="stylesheet" href="/css/base.css?v=3">
+  <link rel="stylesheet" href="/css/tool.css?v=3">
+  <link rel="preload" href="/css/base.css?v=3" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="SQL Formatter">
+  <meta property="og:description" content="Format and beautify SQL queries with customizable options.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What SQL dialects are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The formatter supports standard SQL syntax and common keywords from SQL Server, MySQL, PostgreSQL, and Oracle."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What formatting options are available?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You can choose indentation (2 spaces, 4 spaces, or tabs) and keyword capitalization (upper, lower, or preserve case)."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "SQL Formatter",
+        "item": "https://example.com/sql/format"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/sql/format">SQL Formatter</a>
+  </nav>
+  
+  <main id="main">
+    <h1>SQL Formatter</h1>
+    <p>Format and beautify SQL queries with customizable indentation and keyword capitalization.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="indent">Indent:</label>
+        <select id="indent">
+          <option value="2">2 spaces</option>
+          <option value="4" selected>4 spaces</option>
+          <option value="tab">Tabs</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label for="keyword-case">Keyword Case:</label>
+        <select id="keyword-case">
+          <option value="upper" selected>UPPER</option>
+          <option value="lower">lower</option>
+          <option value="preserve">Preserve</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool json-tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="input">Input SQL</label>
+          <div class="actions">
+            <button id="format" class="primary">Format</button>
+            <button id="minify">Minify</button>
+            <button id="copy-input">Copy Input</button>
+          </div>
+        </div>
+        <textarea id="input" placeholder="SELECT * FROM users WHERE id = 1;"></textarea>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="output">Formatted SQL</label>
+          <div class="actions">
+            <button id="copy-output">Copy Output</button>
+            <button id="download">Download</button>
+          </div>
+        </div>
+        <textarea id="output" readonly></textarea>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What SQL dialects are supported?</summary>
+        <p>The formatter supports standard SQL syntax and common keywords from SQL Server, MySQL, PostgreSQL, and Oracle.</p>
+      </details>
+      <details>
+        <summary>What formatting options are available?</summary>
+        <p>You can choose indentation (2 spaces, 4 spaces, or tabs) and keyword capitalization (upper, lower, or preserve case).</p>
+      </details>
+      <details>
+        <summary>Can I minify SQL?</summary>
+        <p>Yes, use the 'Minify' button to remove all extra whitespace and create compact SQL.</p>
+      </details>
+      <details>
+        <summary>Is my SQL sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/json/format">JSON Formatter</a></li>
+        <li><a href="/text/base64">Base64 Encode/Decode</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/js/header.js?v=2"></script>
+  <script type="module" src="/js/tools/sql-format.js?v=1"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
