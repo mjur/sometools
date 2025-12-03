@@ -427,6 +427,7 @@ async function downloadModel() {
     modelStatus.textContent = `✓ Model "${modelName}" is ready to use`;
     modelStatus.style.color = 'var(--ok)';
     listCachedModels().catch(console.error);
+    reorganizeModelDropdown().catch(console.error);
   } catch (e) {
     setError(e.message || 'Unknown error');
     isModelLoading = false;
@@ -622,6 +623,7 @@ async function clearSelectedModel() {
     modelStatus.textContent = `✗ Model "${modelName}" is not cached.`;
     modelStatus.style.color = 'var(--error)';
     listCachedModels().catch(console.error);
+    reorganizeModelDropdown().catch(console.error);
   } catch (e) {
     console.error('Clear selected model error:', e);
     toast(`Failed to clear model cache: ${e.message}`, 'error');
@@ -1588,6 +1590,119 @@ if (modelSelect) {
   });
 }
 
+// Reorganize model dropdown to show cached models first
+async function reorganizeModelDropdown() {
+  if (!modelSelect) return;
+  
+  try {
+    // Get all current options and their optgroups
+    const allOptions = Array.from(modelSelect.options).map(opt => ({
+      value: opt.value,
+      text: opt.textContent,
+      optgroup: opt.parentElement?.label || null
+    })).filter(opt => opt.value); // Filter out empty placeholder option
+    
+    if (allOptions.length === 0) return;
+    
+    // Check which models are cached
+    let cachedModels = [];
+    try {
+      await loadWebLLM();
+      if (webllmApi && typeof webllmApi.hasModelInCache === 'function') {
+        for (const opt of allOptions) {
+          try {
+            const isCached = await webllmApi.hasModelInCache(opt.value);
+            if (isCached) {
+              cachedModels.push(opt.value);
+            }
+          } catch (e) {
+            // Ignore individual errors
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Could not check cached models:', e);
+    }
+    
+    // Separate cached and uncached models
+    const cached = allOptions.filter(opt => cachedModels.includes(opt.value));
+    const uncached = allOptions.filter(opt => !cachedModels.includes(opt.value));
+    
+    // Store the currently selected value
+    const currentValue = modelSelect.value;
+    
+    // Clear the select
+    modelSelect.innerHTML = '<option value="">Select a model...</option>';
+    
+    // Add cached models section at the top if any exist
+    if (cached.length > 0) {
+      const cachedOptgroup = document.createElement('optgroup');
+      cachedOptgroup.label = '✓ Cached Models';
+      cached.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.text;
+        cachedOptgroup.appendChild(option);
+      });
+      modelSelect.appendChild(cachedOptgroup);
+    }
+    
+    // Rebuild uncached models by their original optgroups
+    const optgroupMap = new Map();
+    uncached.forEach(opt => {
+      const groupLabel = opt.optgroup || 'Other';
+      if (!optgroupMap.has(groupLabel)) {
+        optgroupMap.set(groupLabel, []);
+      }
+      optgroupMap.get(groupLabel).push(opt);
+    });
+    
+    // Add uncached optgroups in order
+    const optgroupOrder = ['Smallest Models (Recommended for Quick Start)', 'Small Models (Good Balance)', 
+                           'Medium Models (Better Quality)', 'Large Models (Best Quality, Requires More Storage)', 
+                           'Specialized Models', 'Other'];
+    
+    // Add known optgroups in order
+    for (const label of optgroupOrder) {
+      if (optgroupMap.has(label)) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = label;
+        optgroupMap.get(label).forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt.value;
+          option.textContent = opt.text;
+          optgroup.appendChild(option);
+        });
+        modelSelect.appendChild(optgroup);
+        optgroupMap.delete(label);
+      }
+    }
+    
+    // Add any remaining optgroups
+    for (const [label, opts] of optgroupMap.entries()) {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = label;
+      opts.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.text;
+        optgroup.appendChild(option);
+      });
+      modelSelect.appendChild(optgroup);
+    }
+    
+    // Restore selection if it still exists
+    if (currentValue && Array.from(modelSelect.options).some(opt => opt.value === currentValue)) {
+      modelSelect.value = currentValue;
+    } else if (cached.length > 0) {
+      // Select first cached model if available
+      modelSelect.value = cached[0].value;
+    }
+  } catch (error) {
+    console.error('Failed to reorganize model dropdown:', error);
+  }
+}
+
 // On load: check WebGPU and model status, load chat list
 displayChatList();
 
@@ -1599,6 +1714,7 @@ if (!checkWebGPUSupport()) {
 } else {
   checkModelStatus().finally(() => {
     listCachedModels().catch(console.error);
+    reorganizeModelDropdown().catch(console.error);
   });
 }
 

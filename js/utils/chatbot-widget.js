@@ -637,11 +637,48 @@ function initWidgetFunctionality() {
       const modelList = await getWebLLMModelList();
       modelSelect.innerHTML = '<option value="">Select a model...</option>';
       
-      // Group models by size
-      const smallest = modelList.filter(m => m.includes('0.5B') || m.includes('360M') || m.includes('1.1B'));
-      const small = modelList.filter(m => m.includes('1.5B') || m.includes('3B') || m.includes('mini'));
-      const medium = modelList.filter(m => m.includes('8B') || m.includes('7B'));
-      const large = modelList.filter(m => m.includes('70B'));
+      // Check which models are cached
+      let cachedModels = [];
+      try {
+        await loadWebLLM();
+        if (webllmApi && typeof webllmApi.hasModelInCache === 'function') {
+          // Check each model to see if it's cached
+          for (const model of modelList) {
+            try {
+              const isCached = await webllmApi.hasModelInCache(model);
+              if (isCached) {
+                cachedModels.push(model);
+              }
+            } catch (e) {
+              // Ignore individual errors
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Could not check cached models:', e);
+      }
+      
+      // Separate cached and uncached models
+      const uncachedModels = modelList.filter(m => !cachedModels.includes(m));
+      
+      // Add cached models section at the top if any exist
+      if (cachedModels.length > 0) {
+        const cachedOptgroup = document.createElement('optgroup');
+        cachedOptgroup.label = '✓ Cached Models';
+        cachedModels.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model;
+          option.textContent = model.replace(/-MLC$/, '').replace(/-q4f16_1$/, '');
+          cachedOptgroup.appendChild(option);
+        });
+        modelSelect.appendChild(cachedOptgroup);
+      }
+      
+      // Group uncached models by size
+      const smallest = uncachedModels.filter(m => m.includes('0.5B') || m.includes('360M') || m.includes('1.1B'));
+      const small = uncachedModels.filter(m => m.includes('1.5B') || m.includes('3B') || m.includes('mini'));
+      const medium = uncachedModels.filter(m => m.includes('8B') || m.includes('7B'));
+      const large = uncachedModels.filter(m => m.includes('70B'));
       
       if (smallest.length > 0) {
         const optgroup = document.createElement('optgroup');
@@ -691,8 +728,10 @@ function initWidgetFunctionality() {
         modelSelect.appendChild(optgroup);
       }
       
-      // Set default to smallest
-      if (smallest.length > 0) {
+      // Set default to first cached model if available, otherwise smallest
+      if (cachedModels.length > 0) {
+        modelSelect.value = cachedModels[0];
+      } else if (smallest.length > 0) {
         modelSelect.value = smallest[0];
       }
     } catch (error) {
