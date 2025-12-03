@@ -266,6 +266,16 @@
       initModelCacheWidget(container);
     }
   </script>
+  <script type="module">
+    import { initChatbotWidget } from '/js/utils/chatbot-widget.js';
+    // Load WebLLM bundle for chatbot
+    try {
+      await import('/js/tools/bundled/webllm-bundle.js');
+    } catch (e) {
+      console.log('WebLLM bundle not found for chatbot widget');
+    }
+    initChatbotWidget();
+  </script>
 </body>
 </html>
 

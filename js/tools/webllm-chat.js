@@ -411,10 +411,11 @@ if (chatClearConversationBtn) on(chatClearConversationBtn, 'click', clearConvers
 
 if (chatInput) {
   on(chatInput, 'keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
+    // Shift+Enter allows new lines
   });
 }
 

@@ -1,0 +1,827 @@
+// Chatbot Widget - Floating widget for WebLLM chat
+// Can be used on any page, especially the main page
+
+import { toast, on, qs } from '/js/ui.js';
+
+let CreateMLCEngine = null;
+let webllmApi = null;
+let chatEngine = null;
+let isModelLoading = false;
+let messages = [];
+
+// Get WebLLM model list
+async function getWebLLMModelList() {
+  try {
+    const chatPage = await fetch('/ai/chat/index.html').catch(() => null);
+    if (chatPage && chatPage.ok) {
+      const html = await chatPage.text();
+      const selectMatch = html.match(/<select[^>]*id="chat-model-select"[^>]*>([\s\S]*?)<\/select>/);
+      if (selectMatch) {
+        const options = Array.from(selectMatch[1].matchAll(/<option[^>]*value="([^"]*)"[^>]*>/g));
+        if (options.length > 0) {
+          return options.map(m => m[1]);
+        }
+      }
+    }
+    
+    // Fallback: common WebLLM models
+    return [
+      'Qwen2.5-0.5B-Instruct-q4f16_1-MLC',
+      'Qwen2-0.5B-Instruct-q4f16_1-MLC',
+      'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+      'TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC',
+      'SmolLM2-360M-Instruct-q4f16_1-MLC',
+      'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
+      'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      'Phi-3-mini-4k-instruct-q4f16_1-MLC'
+    ];
+  } catch (error) {
+    console.error('Failed to get WebLLM model list:', error);
+    return [];
+  }
+}
+
+// Load WebLLM library
+async function loadWebLLM() {
+  if (CreateMLCEngine) return CreateMLCEngine;
+
+  try {
+    if (typeof window !== 'undefined' && window.CreateMLCEngine) {
+      CreateMLCEngine = window.CreateMLCEngine;
+      webllmApi = window.webllm || webllmApi;
+      return CreateMLCEngine;
+    }
+
+    // Try bundled module
+    try {
+      const bundledModule = await import('/js/tools/bundled/webllm-bundle.js');
+      CreateMLCEngine = bundledModule.CreateMLCEngine || window.CreateMLCEngine;
+      webllmApi = window.webllm || bundledModule.webllm || webllmApi;
+      if (CreateMLCEngine && typeof CreateMLCEngine === 'function') {
+        return CreateMLCEngine;
+      }
+    } catch (e) {
+      console.log('Bundled WebLLM not available:', e);
+    }
+
+    throw new Error('WebLLM library not found. Run "npm install && npm run build" to create the bundle.');
+  } catch (e) {
+    console.error('WebLLM load error:', e);
+    throw e;
+  }
+}
+
+// Initialize chatbot widget on a page
+export function initChatbotWidget() {
+  // Check if widget already exists
+  if (document.getElementById('chatbot-widget')) {
+    console.log('Chatbot widget already initialized');
+    return;
+  }
+
+  // Create widget HTML
+  const widgetHTML = `
+    <div id="chatbot-widget" class="chatbot-widget">
+      <div class="chatbot-widget-toggle" id="chatbot-widget-toggle">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </div>
+      <div class="chatbot-widget-panel" id="chatbot-widget-panel">
+        <div class="chatbot-widget-header">
+          <h3>AI Chatbot</h3>
+          <button class="chatbot-widget-close" id="chatbot-widget-close" aria-label="Close chatbot">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="chatbot-widget-content">
+          <div class="chatbot-widget-model-section">
+            <label for="chatbot-model-select" style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">Model</label>
+            <select id="chatbot-model-select" class="chatbot-widget-select">
+              <option value="">Loading models...</option>
+            </select>
+            <div class="chatbot-widget-model-actions">
+              <button id="chatbot-check-model" class="chatbot-widget-btn-small">Check Status</button>
+              <button id="chatbot-download-model" class="chatbot-widget-btn-small">Download</button>
+            </div>
+            <div id="chatbot-model-status" class="chatbot-widget-status"></div>
+          </div>
+          
+          <div class="chatbot-widget-chat-section">
+            <div id="chatbot-log" class="chatbot-widget-log">
+              <div class="chatbot-widget-placeholder">
+                Select a model and download it to start chatting. All conversations stay in your browser.
+              </div>
+            </div>
+            <div class="chatbot-widget-input-section">
+              <textarea id="chatbot-input" class="chatbot-widget-input" placeholder="Type your message..." rows="1"></textarea>
+              <div class="chatbot-widget-input-actions">
+                <button id="chatbot-clear" class="chatbot-widget-btn-small">Clear</button>
+                <button id="chatbot-send" class="chatbot-widget-btn-primary">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Add widget to body
+  document.body.insertAdjacentHTML('beforeend', widgetHTML);
+
+  // Add CSS if not already added
+  if (!document.getElementById('chatbot-widget-styles')) {
+    const style = document.createElement('style');
+    style.id = 'chatbot-widget-styles';
+    style.textContent = `
+      /* Chatbot Widget Styles */
+      .chatbot-widget {
+        position: fixed;
+        bottom: 5rem;
+        right: 20px;
+        z-index: 998;
+      }
+      
+      .chatbot-widget-toggle {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+      }
+      
+      .chatbot-widget-toggle:hover {
+        background: #1976d2;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        transform: translateY(-2px);
+      }
+      
+      .chatbot-widget-toggle svg {
+        width: 24px;
+        height: 24px;
+      }
+      
+      .chatbot-widget-panel {
+        position: fixed;
+        bottom: 5rem;
+        right: 20px;
+        width: 400px;
+        max-width: calc(100vw - 40px);
+        max-height: calc(100vh - 7rem);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        animation: slideInRight 0.3s ease;
+      }
+      
+      .chatbot-widget-panel.expanded {
+        display: flex;
+      }
+      
+      @keyframes slideInRight {
+        from {
+          opacity: 0;
+          transform: translateX(100%);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      
+      .chatbot-widget-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-elev);
+      }
+      
+      .chatbot-widget-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+      
+      .chatbot-widget-close {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text);
+        border-radius: 4px;
+        transition: background 0.2s;
+      }
+      
+      .chatbot-widget-close:hover {
+        background: var(--bg-hover);
+      }
+      
+      .chatbot-widget-content {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+        flex: 1;
+      }
+      
+      .chatbot-widget-model-section {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-elev);
+      }
+      
+      .chatbot-widget-select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      .chatbot-widget-model-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      .chatbot-widget-btn-small {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--text);
+      }
+      
+      .chatbot-widget-btn-small:hover {
+        background: var(--bg-hover);
+      }
+      
+      .chatbot-widget-btn-small:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      .chatbot-widget-status {
+        font-size: 0.75rem;
+        color: var(--text-subtle);
+        min-height: 1.5rem;
+        padding: 0.25rem 0;
+      }
+      
+      .chatbot-widget-chat-section {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+        min-height: 0;
+      }
+      
+      .chatbot-widget-log {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        min-height: 200px;
+        max-height: 400px;
+        background: var(--bg);
+      }
+      
+      .chatbot-widget-placeholder {
+        text-align: center;
+        color: var(--text-subtle);
+        font-size: 0.875rem;
+        padding: 2rem 1rem;
+      }
+      
+      .chatbot-message {
+        margin-bottom: 1rem;
+      }
+      
+      .chatbot-message-role {
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: var(--text-subtle);
+        margin-bottom: 0.25rem;
+      }
+      
+      .chatbot-message-content {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+      
+      .chatbot-widget-input-section {
+        padding: 1rem;
+        border-top: 1px solid var(--border);
+        background: var(--bg-elev);
+      }
+      
+      .chatbot-widget-input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: inherit;
+        font-size: 0.875rem;
+        resize: none;
+        margin-bottom: 0.5rem;
+        min-height: 2.5rem;
+        max-height: 6rem;
+        line-height: 1.4;
+      }
+      
+      .chatbot-widget-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      
+      .chatbot-widget-input-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+      }
+      
+      .chatbot-widget-btn-primary {
+        padding: 0.5rem 1rem;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+      }
+      
+      .chatbot-widget-btn-primary:hover {
+        background: #1976d2;
+      }
+      
+      .chatbot-widget-btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      @media (max-width: 768px) {
+        .chatbot-widget {
+          bottom: 1rem;
+          right: 1rem;
+        }
+        
+        .chatbot-widget-panel {
+          width: calc(100vw - 2rem);
+          right: 1rem;
+          bottom: 1rem;
+          max-height: calc(100vh - 2rem);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Initialize widget functionality
+  initWidgetFunctionality();
+}
+
+// Initialize widget functionality
+function initWidgetFunctionality() {
+  const toggle = qs('#chatbot-widget-toggle');
+  const panel = qs('#chatbot-widget-panel');
+  const close = qs('#chatbot-widget-close');
+  const modelSelect = qs('#chatbot-model-select');
+  const checkModelBtn = qs('#chatbot-check-model');
+  const downloadModelBtn = qs('#chatbot-download-model');
+  const modelStatus = qs('#chatbot-model-status');
+  const chatLog = qs('#chatbot-log');
+  const chatInput = qs('#chatbot-input');
+  const chatSendBtn = qs('#chatbot-send');
+  const chatClearBtn = qs('#chatbot-clear');
+
+  if (!toggle || !panel || !close) return;
+
+  // Load model list
+  async function loadModelList() {
+    if (!modelSelect) return;
+    
+    try {
+      const modelList = await getWebLLMModelList();
+      modelSelect.innerHTML = '<option value="">Select a model...</option>';
+      
+      // Group models by size
+      const smallest = modelList.filter(m => m.includes('0.5B') || m.includes('360M') || m.includes('1.1B'));
+      const small = modelList.filter(m => m.includes('1.5B') || m.includes('3B') || m.includes('mini'));
+      const medium = modelList.filter(m => m.includes('8B') || m.includes('7B'));
+      const large = modelList.filter(m => m.includes('70B'));
+      
+      if (smallest.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = 'Smallest';
+        smallest.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model;
+          option.textContent = model.replace(/-MLC$/, '').replace(/-q4f16_1$/, '');
+          optgroup.appendChild(option);
+        });
+        modelSelect.appendChild(optgroup);
+      }
+      
+      if (small.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = 'Small';
+        small.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model;
+          option.textContent = model.replace(/-MLC$/, '').replace(/-q4f16_1$/, '');
+          optgroup.appendChild(option);
+        });
+        modelSelect.appendChild(optgroup);
+      }
+      
+      if (medium.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = 'Medium';
+        medium.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model;
+          option.textContent = model.replace(/-MLC$/, '').replace(/-q4f16_1$/, '');
+          optgroup.appendChild(option);
+        });
+        modelSelect.appendChild(optgroup);
+      }
+      
+      if (large.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = 'Large';
+        large.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model;
+          option.textContent = model.replace(/-MLC$/, '').replace(/-q4f16_1$/, '');
+          optgroup.appendChild(option);
+        });
+        modelSelect.appendChild(optgroup);
+      }
+      
+      // Set default to smallest
+      if (smallest.length > 0) {
+        modelSelect.value = smallest[0];
+      }
+    } catch (error) {
+      console.error('Failed to load model list:', error);
+      if (modelSelect) {
+        modelSelect.innerHTML = '<option value="">Failed to load models</option>';
+      }
+    }
+  }
+
+  // Toggle panel
+  on(toggle, 'click', () => {
+    const isExpanded = panel.classList.contains('expanded');
+    if (isExpanded) {
+      panel.classList.remove('expanded');
+    } else {
+      panel.classList.add('expanded');
+      if (modelSelect && modelSelect.options.length <= 1) {
+        loadModelList();
+      }
+    }
+  });
+
+  // Close panel
+  on(close, 'click', () => {
+    panel.classList.remove('expanded');
+  });
+
+  // Close when clicking outside the widget
+  document.addEventListener('click', (e) => {
+    if (!panel.classList.contains('expanded')) {
+      return;
+    }
+    
+    if (toggle.contains(e.target) || toggle === e.target) {
+      return;
+    }
+    
+    if (panel.contains(e.target) || panel === e.target) {
+      return;
+    }
+    
+    panel.classList.remove('expanded');
+  });
+
+  // Append message to chat log
+  function appendMessage(role, content) {
+    if (!chatLog) return;
+    
+    // Remove placeholder if exists
+    const placeholder = chatLog.querySelector('.chatbot-widget-placeholder');
+    if (placeholder) {
+      placeholder.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chatbot-message';
+    messageDiv.innerHTML = `
+      <div class="chatbot-message-role">${role === 'user' ? 'You' : 'Assistant'}</div>
+      <div class="chatbot-message-content">${escapeHtml(content)}</div>
+    `;
+    chatLog.appendChild(messageDiv);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  // Escape HTML
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Check model status
+  async function checkModelStatus() {
+    if (!modelSelect || !modelStatus) return;
+    
+    const modelName = modelSelect.value;
+    if (!modelName) {
+      modelStatus.textContent = 'Please select a model';
+      modelStatus.style.color = 'var(--text-subtle)';
+      return;
+    }
+
+    try {
+      modelStatus.textContent = 'Checking...';
+      modelStatus.style.color = 'var(--text-subtle)';
+
+      // Load WebLLM API
+      await loadWebLLM();
+      
+      if (!webllmApi || typeof webllmApi.hasModelInCache !== 'function') {
+        modelStatus.textContent = 'WebLLM API not available';
+        modelStatus.style.color = 'var(--error)';
+        return;
+      }
+
+      const cached = await webllmApi.hasModelInCache(modelName);
+      if (cached) {
+        modelStatus.textContent = '✓ Model is cached and ready';
+        modelStatus.style.color = 'var(--ok)';
+      } else {
+        modelStatus.textContent = '✗ Model not cached. Click Download to download it.';
+        modelStatus.style.color = 'var(--error)';
+      }
+    } catch (error) {
+      modelStatus.textContent = `Error: ${error.message}`;
+      modelStatus.style.color = 'var(--error)';
+    }
+  }
+
+  // Download model
+  async function downloadModel() {
+    if (!modelSelect || !downloadModelBtn) return;
+    
+    const modelName = modelSelect.value;
+    if (!modelName) {
+      toast('Please select a model', 'error');
+      return;
+    }
+
+    if (isModelLoading) {
+      toast('Model is already loading', 'info');
+      return;
+    }
+
+    try {
+      isModelLoading = true;
+      downloadModelBtn.disabled = true;
+      downloadModelBtn.textContent = 'Downloading...';
+      modelStatus.textContent = 'Downloading model...';
+      modelStatus.style.color = 'var(--text-subtle)';
+
+      const createEngine = await loadWebLLM();
+      if (!createEngine || typeof createEngine !== 'function') {
+        throw new Error('WebLLM CreateMLCEngine not available');
+      }
+
+      // Download model
+      const engine = await createEngine(modelName, {
+        initProgressCallback: (report) => {
+          const progress = report.progress || 0;
+          const text = report.text || '';
+          if (progress < 1) {
+            const percentage = (progress * 100).toFixed(1);
+            modelStatus.textContent = `Downloading: ${percentage}% - ${text}`;
+          }
+        },
+        gpuDevice: null,
+      });
+
+      chatEngine = engine;
+      toast('Model downloaded successfully!', 'success');
+      modelStatus.textContent = '✓ Model ready';
+      modelStatus.style.color = 'var(--ok)';
+    } catch (error) {
+      console.error('Model download error:', error);
+      toast(`Failed to download model: ${error.message}`, 'error');
+      modelStatus.textContent = `✗ Error: ${error.message}`;
+      modelStatus.style.color = 'var(--error)';
+    } finally {
+      isModelLoading = false;
+      if (downloadModelBtn) {
+        downloadModelBtn.disabled = false;
+        downloadModelBtn.textContent = 'Download';
+      }
+    }
+  }
+
+  // Initialize chat engine
+  async function initializeChatEngine() {
+    if (chatEngine) return chatEngine;
+
+    if (!modelSelect) {
+      throw new Error('No model selected');
+    }
+
+    const modelName = modelSelect.value;
+    if (!modelName) {
+      throw new Error('Please select a model');
+    }
+
+    try {
+      modelStatus.textContent = 'Loading model...';
+      modelStatus.style.color = 'var(--text-subtle)';
+
+      const createEngine = await loadWebLLM();
+      if (!createEngine || typeof createEngine !== 'function') {
+        throw new Error('WebLLM CreateMLCEngine not available');
+      }
+
+      const engine = await createEngine(modelName, {
+        initProgressCallback: (report) => {
+          const progress = report.progress || 0;
+          const text = report.text || '';
+          if (progress < 1) {
+            const percentage = (progress * 100).toFixed(1);
+            modelStatus.textContent = `Loading: ${percentage}% - ${text}`;
+          }
+        },
+        gpuDevice: null,
+      });
+
+      chatEngine = engine;
+      modelStatus.textContent = '✓ Model ready';
+      modelStatus.style.color = 'var(--ok)';
+      return engine;
+    } catch (error) {
+      modelStatus.textContent = `✗ Error: ${error.message}`;
+      modelStatus.style.color = 'var(--error)';
+      throw error;
+    }
+  }
+
+  // Send message
+  async function sendMessage() {
+    if (!chatInput || !chatSendBtn) return;
+    
+    const content = chatInput.value.trim();
+    if (!content) {
+      toast('Please enter a message', 'error');
+      return;
+    }
+
+    chatInput.value = '';
+    appendMessage('user', content);
+    messages.push({ role: 'user', content });
+
+    try {
+      chatSendBtn.disabled = true;
+      chatSendBtn.textContent = 'Sending...';
+
+      let engine = chatEngine;
+      if (!engine) {
+        engine = await initializeChatEngine();
+      }
+
+      let reply = '';
+      try {
+        if (engine.chat && engine.chat.completions && engine.chat.completions.create) {
+          const response = await engine.chat.completions.create({
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a helpful, concise assistant running locally in the browser via WebLLM.',
+              },
+              ...messages,
+            ],
+            temperature: 0.7,
+            max_tokens: 512,
+          });
+          if (response && response.choices && response.choices[0]?.message?.content) {
+            reply = response.choices[0].message.content.trim();
+          }
+        } else if (engine.chat) {
+          const response = await engine.chat({
+            messages: [
+              { role: 'system', content: 'You are a helpful, concise assistant running locally in the browser via WebLLM.' },
+              ...messages,
+            ],
+            temperature: 0.7,
+            max_tokens: 512,
+          });
+          if (typeof response === 'string') {
+            reply = response.trim();
+          } else if (response && response.content) {
+            reply = response.content;
+          }
+        } else if (engine.generate) {
+          const fullPrompt = [
+            'You are a helpful, concise assistant running locally in the browser via WebLLM.',
+            '',
+            ...messages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`),
+            'Assistant:',
+          ].join('\n');
+          reply = await engine.generate(fullPrompt, { temperature: 0.7, max_tokens: 512 });
+        } else {
+          throw new Error('WebLLM engine does not support chat or generate methods');
+        }
+      } catch (apiError) {
+        console.error('Chat API error:', apiError);
+        throw new Error(`Failed to generate response: ${apiError.message}`);
+      }
+
+      reply = reply.trim();
+      appendMessage('assistant', reply);
+      messages.push({ role: 'assistant', content: reply });
+    } catch (e) {
+      const errorMsg = e.message || 'Unknown error';
+      toast(`Chat failed: ${errorMsg}`, 'error');
+      appendMessage('assistant', `Error: ${errorMsg}`);
+    } finally {
+      if (chatSendBtn) {
+        chatSendBtn.disabled = false;
+        chatSendBtn.textContent = 'Send';
+      }
+    }
+  }
+
+  // Clear conversation
+  function clearConversation() {
+    messages = [];
+    if (chatLog) {
+      chatLog.innerHTML = '<div class="chatbot-widget-placeholder">Select a model and download it to start chatting. All conversations stay in your browser.</div>';
+    }
+  }
+
+  // Event listeners
+  if (checkModelBtn) {
+    on(checkModelBtn, 'click', checkModelStatus);
+  }
+
+  if (downloadModelBtn) {
+    on(downloadModelBtn, 'click', downloadModel);
+  }
+
+  if (chatSendBtn) {
+    on(chatSendBtn, 'click', sendMessage);
+  }
+
+  if (chatClearBtn) {
+    on(chatClearBtn, 'click', clearConversation);
+  }
+
+  if (chatInput) {
+    on(chatInput, 'keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+      // Shift+Enter allows new lines
+    });
+  }
+
+  // Load model list on init
+  loadModelList();
+}
+

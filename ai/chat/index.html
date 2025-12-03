@@ -137,9 +137,9 @@
           <p class="text-sm text-muted">Select a model, download it if needed, then start chatting. Your messages and responses stay in your browser.</p>
         </div>
         <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
-          <textarea id="chat-input" rows="3" placeholder="Ask a question or start a conversation..." style="resize: vertical;"></textarea>
+          <textarea id="chat-input" rows="1" placeholder="Ask a question or start a conversation..." style="resize: vertical; padding: 0.5rem; min-height: 2.5rem; max-height: 6rem; line-height: 1.4;"></textarea>
           <div class="actions" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-            <div class="text-sm text-muted">Press <kbd>Cmd/Ctrl+Enter</kbd> to send</div>
+            <div class="text-sm text-muted">Press <kbd>Enter</kbd> to send, <kbd>Shift+Enter</kbd> for new line</div>
             <div style="display: flex; gap: 0.5rem;">
               <button id="chat-clear-conversation" class="secondary">Clear conversation</button>
               <button id="chat-send" class="primary">Send</button>
