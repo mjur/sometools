@@ -17,8 +17,232 @@ const chatLog = qs('#chat-log');
 const chatInput = qs('#chat-input');
 const chatSendBtn = qs('#chat-send');
 const chatClearConversationBtn = qs('#chat-clear-conversation');
+const chatNewChatBtn = qs('#chat-new-chat');
+const chatList = qs('#chat-list');
 
 let messages = [];
+let currentChatId = null;
+
+const STORAGE_KEY = 'webllm-chat-saved-chats';
+
+// Load chats from localStorage
+function loadChats() {
+  try {
+    const chatsJson = localStorage.getItem(STORAGE_KEY);
+    return chatsJson ? JSON.parse(chatsJson) : {};
+  } catch (e) {
+    console.error('Error loading chats:', e);
+    return {};
+  }
+}
+
+// Save chats to localStorage
+function saveChats(chats) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    return true;
+  } catch (e) {
+    console.error('Error saving chats:', e);
+    toast('Error saving chat. Storage may be full.', 'error');
+    return false;
+  }
+}
+
+// Generate unique ID
+function generateChatId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Generate title from first message
+function generateChatTitle(messages) {
+  if (!messages || messages.length === 0) {
+    return 'New Chat';
+  }
+  const firstUserMessage = messages.find(m => m.role === 'user');
+  if (firstUserMessage) {
+    const content = firstUserMessage.content.trim();
+    if (content.length <= 50) {
+      return content;
+    }
+    return content.substring(0, 50) + '...';
+  }
+  return 'New Chat';
+}
+
+// Save current chat
+function saveCurrentChat() {
+  if (messages.length === 0) {
+    return; // Don't save empty chats
+  }
+
+  const chats = loadChats();
+  const now = Date.now();
+  const title = generateChatTitle(messages);
+
+  if (currentChatId && chats[currentChatId]) {
+    // Update existing chat
+    chats[currentChatId].title = title;
+    chats[currentChatId].messages = messages;
+    chats[currentChatId].updated = now;
+  } else {
+    // Create new chat
+    currentChatId = generateChatId();
+    chats[currentChatId] = {
+      id: currentChatId,
+      title: title,
+      messages: messages,
+      created: now,
+      updated: now,
+      model: modelSelect ? modelSelect.value : null
+    };
+  }
+
+  saveChats(chats);
+  displayChatList();
+}
+
+// Load a chat
+function loadChat(chatId) {
+  const chats = loadChats();
+  const chat = chats[chatId];
+  
+  if (!chat) {
+    toast('Chat not found', 'error');
+    return;
+  }
+
+  // Save current chat before loading new one
+  if (currentChatId && messages.length > 0) {
+    saveCurrentChat();
+  }
+
+  currentChatId = chatId;
+  messages = chat.messages || [];
+  
+  // Update model if different
+  if (chat.model && modelSelect && chat.model !== modelSelect.value) {
+    modelSelect.value = chat.model;
+    chatEngine = null; // Reset engine when model changes
+  }
+
+  // Display messages
+  chatLog.innerHTML = '';
+  messages.forEach(msg => {
+    appendMessage(msg.role, msg.content);
+  });
+
+  displayChatList();
+}
+
+// Create new chat
+function newChat() {
+  // Save current chat before creating new one
+  if (currentChatId && messages.length > 0) {
+    saveCurrentChat();
+  }
+
+  currentChatId = null;
+  messages = [];
+  chatLog.innerHTML = '<p class="text-sm text-muted">Select a model, download it if needed, then start chatting. Your messages and responses stay in your browser.</p>';
+  displayChatList();
+}
+
+// Delete a chat
+function deleteChat(chatId) {
+  if (!confirm('Are you sure you want to delete this chat?')) {
+    return;
+  }
+
+  const chats = loadChats();
+  delete chats[chatId];
+  saveChats(chats);
+
+  if (currentChatId === chatId) {
+    newChat();
+  } else {
+    displayChatList();
+  }
+}
+
+// Display chat list
+function displayChatList() {
+  if (!chatList) return;
+
+  const chats = loadChats();
+  const chatEntries = Object.values(chats).sort((a, b) => (b.updated || b.created || 0) - (a.updated || a.created || 0));
+
+  if (chatEntries.length === 0) {
+    chatList.innerHTML = '<p class="text-sm text-muted" style="padding: 1rem; text-align: center; margin: 0;">No saved chats yet</p>';
+    return;
+  }
+
+  chatList.innerHTML = chatEntries.map(chat => {
+    const isActive = chat.id === currentChatId;
+    const date = new Date(chat.updated || chat.created);
+    const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    return `
+      <div class="chat-item" data-chat-id="${chat.id}" style="
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: ${isActive ? 'var(--bg-hover)' : 'var(--bg)'};
+        cursor: pointer;
+        transition: all 0.2s;
+        ${isActive ? 'border-color: var(--accent); border-width: 2px;' : ''}
+      ">
+        <div style="display: flex; justify-content: space-between; align-items: start; gap: 0.5rem;">
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-weight: ${isActive ? '600' : '500'}; font-size: 0.875rem; margin-bottom: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ${escapeHtml(chat.title)}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--muted);">
+              ${dateStr}
+            </div>
+            ${chat.model ? `<div style="font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem;">${escapeHtml(chat.model.replace(/-MLC$/, '').replace(/-q4f16_1$/, ''))}</div>` : ''}
+          </div>
+          <button class="chat-delete-btn" data-chat-id="${chat.id}" style="
+            background: transparent;
+            border: 1px solid var(--border);
+            padding: 0.25rem;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text);
+            opacity: 0.6;
+            transition: all 0.2s;
+            flex-shrink: 0;
+          " title="Delete chat">×</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Add event listeners
+  chatList.querySelectorAll('.chat-item').forEach(item => {
+    const chatId = item.getAttribute('data-chat-id');
+    item.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('chat-delete-btn')) {
+        loadChat(chatId);
+      }
+    });
+  });
+
+  chatList.querySelectorAll('.chat-delete-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const chatId = btn.getAttribute('data-chat-id');
+      deleteChat(chatId);
+    });
+  });
+}
+
+// Escape HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
 
 async function listCachedModels() {
   const listEl = qs('#chat-model-list');
@@ -365,6 +589,9 @@ async function sendMessage() {
     reply = reply.trim();
     appendMessage('assistant', reply);
     messages.push({ role: 'assistant', content: reply });
+    
+    // Save chat after sending message
+    saveCurrentChat();
   } catch (e) {
     const errorMsg = e.message || 'Unknown error';
     toast(`Chat failed: ${errorMsg}`, 'error');
@@ -398,8 +625,16 @@ async function clearSelectedModel() {
 }
 
 function clearConversation() {
+  if (currentChatId) {
+    // Delete the current chat
+    const chats = loadChats();
+    delete chats[currentChatId];
+    saveChats(chats);
+    currentChatId = null;
+  }
   messages = [];
   chatLog.innerHTML = '<p class="text-sm text-muted">Conversation cleared. Start a new chat.</p>';
+  displayChatList();
 }
 
 // Event wiring
@@ -408,6 +643,7 @@ if (checkModelBtn) on(checkModelBtn, 'click', checkModelStatus);
 if (clearModelBtn) on(clearModelBtn, 'click', clearSelectedModel);
 if (chatSendBtn) on(chatSendBtn, 'click', sendMessage);
 if (chatClearConversationBtn) on(chatClearConversationBtn, 'click', clearConversation);
+if (chatNewChatBtn) on(chatNewChatBtn, 'click', newChat);
 
 if (chatInput) {
   on(chatInput, 'keydown', (e) => {
@@ -427,7 +663,9 @@ if (modelSelect) {
   });
 }
 
-// On load: check WebGPU and model status
+// On load: check WebGPU and model status, load chat list
+displayChatList();
+
 if (!checkWebGPUSupport()) {
   const warningMsg = '⚠️ WebGPU is not available in your browser. WebLLM requires WebGPU to run models. Use Chrome 113+, Edge 113+, or Safari 18+ with WebGPU enabled.';
   modelStatus.textContent = warningMsg;

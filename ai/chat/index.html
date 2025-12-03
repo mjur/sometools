@@ -34,6 +34,25 @@
     details.info-box summary:hover {
       opacity: 0.8;
     }
+    .chat-item:hover {
+      background: var(--bg-hover) !important;
+      border-color: var(--accent) !important;
+    }
+    .chat-delete-btn:hover {
+      opacity: 1 !important;
+      background: var(--error) !important;
+      border-color: var(--error) !important;
+      color: white !important;
+    }
+    @media (max-width: 1023px) {
+      .pane > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+      }
+      .pane > div[style*="grid-template-columns"] > div:first-child {
+        max-height: 200px;
+        margin-bottom: 1rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -132,17 +151,30 @@
       </div>
 
       <div class="pane" style="display: flex; flex-direction: column; height: 100%;">
-        <label for="chat-log">Chat</label>
-        <div id="chat-log" style="height: 320px; flex: 0 0 320px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elev); padding: 0.75rem; overflow-y: auto; font-size: 0.9rem;">
-          <p class="text-sm text-muted">Select a model, download it if needed, then start chatting. Your messages and responses stay in your browser.</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="chat-log" style="margin: 0;">Chat</label>
+          <button id="chat-new-chat" class="secondary" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">+ New Chat</button>
         </div>
-        <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
-          <textarea id="chat-input" rows="1" placeholder="Ask a question or start a conversation..." style="resize: vertical; padding: 0.5rem; min-height: 2.5rem; max-height: 6rem; line-height: 1.4;"></textarea>
-          <div class="actions" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-            <div class="text-sm text-muted">Press <kbd>Enter</kbd> to send, <kbd>Shift+Enter</kbd> for new line</div>
-            <div style="display: flex; gap: 0.5rem;">
-              <button id="chat-clear-conversation" class="secondary">Clear conversation</button>
-              <button id="chat-send" class="primary">Send</button>
+        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; flex: 1; min-height: 0;">
+          <div style="border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elev); display: flex; flex-direction: column; overflow: hidden;">
+            <div style="padding: 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.875rem; font-weight: 600;">Saved Chats</div>
+            <div id="chat-list" style="flex: 1; overflow-y: auto; padding: 0.5rem;">
+              <p class="text-sm text-muted" style="padding: 1rem; text-align: center; margin: 0;">No saved chats yet</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; min-height: 0;">
+            <div id="chat-log" style="flex: 1; min-height: 320px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elev); padding: 0.75rem; overflow-y: auto; font-size: 0.9rem;">
+              <p class="text-sm text-muted">Select a model, download it if needed, then start chatting. Your messages and responses stay in your browser.</p>
+            </div>
+            <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+              <textarea id="chat-input" rows="1" placeholder="Ask a question or start a conversation..." style="resize: vertical; padding: 0.5rem; min-height: 2.5rem; max-height: 6rem; line-height: 1.4;"></textarea>
+              <div class="actions" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                <div class="text-sm text-muted">Press <kbd>Enter</kbd> to send, <kbd>Shift+Enter</kbd> for new line</div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button id="chat-clear-conversation" class="secondary">Clear conversation</button>
+                  <button id="chat-send" class="primary">Send</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
