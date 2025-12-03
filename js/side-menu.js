@@ -6,6 +6,7 @@ import { qs, on } from '/js/ui.js';
 // Tools list - extracted from index.html
 const TOOLS = [
   { url: '/ai/chat', name: 'WebLLM Chatbot', category: 'ai', description: 'Chat with local AI models in your browser using WebLLM' },
+  { url: '/ai/image-generate', name: 'AI Image Generator', category: 'ai', description: 'Generate images from text prompts using SD-Turbo and Janus-Pro-1B models with WebGPU' },
   { url: '/regex/generator', name: 'Regex Generator', category: 'ai', description: 'Generate regular expressions from natural language using AI' },
   { url: '/utils/grammar-check', name: 'Grammar & Spelling Checker', category: 'ai', description: 'Check spelling and grammar using AI' },
   { url: '/utils/ai-detector', name: 'AI Text Detector', category: 'ai', description: 'Detect AI-generated text using ModernBERT ONNX model' },
