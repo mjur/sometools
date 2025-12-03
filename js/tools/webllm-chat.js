@@ -21,6 +21,8 @@ const chatNewChatBtn = qs('#chat-new-chat');
 const chatList = qs('#chat-list');
 const modelSelectionToggle = qs('#model-selection-toggle');
 const modelSelectionPane = qs('#model-selection-pane');
+const chatMicBtn = qs('#chat-mic-btn');
+const chatMicStatus = qs('#chat-mic-status');
 
 let messages = [];
 let currentChatId = null;
@@ -670,6 +672,895 @@ if (modelSelectionToggle && modelSelectionPane) {
   }
 }
 
+// Speech recognition setup
+let recognition = null;
+let isListening = false;
+let networkErrorCount = 0;
+let voskModel = null;
+let voskRecognizer = null;
+let useLocalRecognition = false;
+let mediaStream = null;
+let audioContext = null;
+let processor = null;
+
+// Initialize local Vosk.js speech recognition
+async function initLocalSpeechRecognition() {
+  // Check if Vosk is available - it might be loaded differently
+  const VoskLib = window.Vosk || (typeof Vosk !== 'undefined' ? Vosk : null);
+  
+  if (!VoskLib) {
+    console.log('Vosk.js not available');
+    return false;
+  }
+
+  try {
+    if (chatMicStatus) {
+      chatMicStatus.style.display = 'block';
+      chatMicStatus.textContent = '📥 Loading local speech recognition model (first time only, ~40MB)...';
+      chatMicStatus.style.color = 'var(--muted)';
+    }
+
+    // Use locally hosted model zip file (Vosk.js expects a zip/tar.gz URL)
+    const modelUrl = '/models/vosk-model-small-en-us-0.15.zip';
+    
+    console.log('Attempting to load Vosk model from:', modelUrl);
+    console.log('Note: Model must be hosted locally due to CORS restrictions');
+    console.log('Vosk object:', VoskLib);
+    console.log('Vosk keys:', Object.keys(VoskLib || {}));
+    
+    // Try different API patterns
+    let model = null;
+    let recognizer = null;
+    
+    // First verify the model zip file is accessible
+    try {
+      const testResponse = await fetch(modelUrl, { method: 'HEAD' });
+      if (!testResponse.ok) {
+        throw new Error(`Model file not accessible: ${testResponse.status}`);
+      }
+      console.log('Model zip file is accessible');
+    } catch (fetchError) {
+      console.error('Cannot access model file:', fetchError);
+      throw new Error(`Cannot access model at ${modelUrl}. Make sure the server is running and the model zip file is in the correct location.`);
+    }
+    
+    // Pattern 1: Vosk.createModel / Vosk.createRecognizer
+    if (typeof VoskLib.createModel === 'function') {
+      console.log('Using Vosk.createModel API');
+      try {
+        if (chatMicStatus) {
+          chatMicStatus.textContent = '📥 Loading model (this may take 30-60 seconds)...';
+        }
+        
+        console.log('Calling Vosk.createModel...');
+        
+        // Vosk.createModel loads and processes the model files
+        // This can take time as it needs to load all model files
+        const loadPromise = VoskLib.createModel(modelUrl);
+        
+        // Show progress updates
+        const progressInterval = setInterval(() => {
+          if (chatMicStatus && chatMicStatus.textContent.includes('Loading')) {
+            chatMicStatus.textContent = '📥 Loading model (still processing, please wait)...';
+          }
+        }, 5000);
+        
+        // Add timeout but make it longer since model loading can be slow
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => {
+            clearInterval(progressInterval);
+            reject(new Error('Model loading timed out after 2 minutes. The model might be too large or the server is slow.'));
+          }, 120000) // 2 minutes
+        );
+        
+        model = await Promise.race([loadPromise, timeoutPromise]);
+        clearInterval(progressInterval);
+        
+        console.log('Model loaded, creating recognizer...');
+        console.log('Model object:', model);
+        console.log('Model type:', typeof model);
+        console.log('Model constructor:', model?.constructor?.name);
+        console.log('Model methods:', Object.keys(model || {}));
+        console.log('Model prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(model || {})));
+        console.log('VoskLib methods:', Object.keys(VoskLib || {}));
+        
+        // Check if model has methods we can use
+        if (model) {
+          console.log('Checking model for recognizer methods...');
+          for (const key in model) {
+            if (typeof model[key] === 'function') {
+              console.log(`Model.${key} is a function`);
+            }
+          }
+          // Check prototype chain
+          let proto = Object.getPrototypeOf(model);
+          while (proto && proto !== Object.prototype) {
+            console.log('Prototype:', proto.constructor.name);
+            const protoMethods = Object.getOwnPropertyNames(proto).filter(name => typeof proto[name] === 'function');
+            console.log('Prototype methods:', protoMethods);
+            proto = Object.getPrototypeOf(proto);
+          }
+        }
+        
+        if (chatMicStatus) {
+          chatMicStatus.textContent = '📥 Creating recognizer...';
+        }
+        
+        // In Vosk.js, the model might need to be used with a Recognizer class
+        // Or the model itself might be usable as a recognizer
+        // Let's try all possible patterns
+        
+        // Pattern 1: Check if model has recognizer methods (might be usable directly)
+        if (model && (typeof model.acceptWaveform === 'function' || typeof model.recognize === 'function' || typeof model.recognizeFinal === 'function')) {
+          console.log('Model appears to be a recognizer already, using directly');
+          recognizer = model;
+        }
+        // Pattern 2: VoskLib.Recognizer constructor
+        else if (typeof VoskLib.Recognizer === 'function') {
+          console.log('Using new VoskLib.Recognizer(model, 16000)');
+          try {
+            recognizer = new VoskLib.Recognizer(model, 16000);
+          } catch (e) {
+            console.log('Recognizer constructor failed, trying with object:', e);
+            recognizer = new VoskLib.Recognizer({ model: model, sampleRate: 16000 });
+          }
+        }
+        // Pattern 3: model.createRecognizer method
+        else if (model && typeof model.createRecognizer === 'function') {
+          console.log('Using model.createRecognizer(16000)');
+          recognizer = model.createRecognizer(16000);
+        }
+        // Pattern 4: model.recognizer property
+        else if (model && model.recognizer) {
+          console.log('Using model.recognizer property');
+          recognizer = typeof model.recognizer === 'function' ? model.recognizer(16000) : model.recognizer;
+        }
+        // Pattern 5: Use model directly (might work)
+        else {
+          console.log('Using model directly as recognizer (fallback)');
+          recognizer = model;
+        }
+        
+        // Verify recognizer has required methods
+        if (!recognizer || (typeof recognizer.acceptWaveform !== 'function' && typeof recognizer.recognize !== 'function')) {
+          console.warn('Recognizer might not have expected methods:', Object.keys(recognizer || {}));
+          // Still try to use it - might work anyway
+        }
+        
+        console.log('Recognizer created:', recognizer);
+        console.log('Recognizer has acceptWaveform:', typeof recognizer?.acceptWaveform === 'function');
+        console.log('Recognizer has recognize:', typeof recognizer?.recognize === 'function');
+      } catch (corsError) {
+        if (corsError.message && corsError.message.includes('CORS')) {
+          throw new Error('Vosk model requires local hosting. The model URL has CORS restrictions. Please host the model locally at /models/vosk-model-small-en-us-0.15/ or use Web Speech API (requires internet).');
+        }
+        if (corsError.message && corsError.message.includes('timeout')) {
+          throw new Error('Model loading timed out. The model files might be too large or the server is slow. Try using Web Speech API instead.');
+        }
+        throw corsError;
+      }
+    }
+    // Pattern 2: new Vosk.Model / new Vosk.Recognizer
+    else if (typeof VoskLib.Model === 'function') {
+      console.log('Using Vosk.Model constructor API');
+      model = new VoskLib.Model(modelUrl);
+      if (model.ready) await model.ready();
+      
+      // Try different ways to create recognizer
+      if (typeof VoskLib.Recognizer === 'function') {
+        recognizer = new VoskLib.Recognizer(model, 16000);
+      } else if (model && typeof model.createRecognizer === 'function') {
+        recognizer = model.createRecognizer(16000);
+      } else if (model && model.recognizer) {
+        recognizer = model.recognizer;
+      } else {
+        throw new Error('Could not create recognizer from Model');
+      }
+    }
+    // Pattern 3: Default export
+    else if (VoskLib.default) {
+      const VoskDefault = VoskLib.default;
+      if (typeof VoskDefault.createModel === 'function') {
+        console.log('Using Vosk.default.createModel API');
+        model = await VoskDefault.createModel(modelUrl);
+        
+        if (typeof VoskDefault.createRecognizer === 'function') {
+          recognizer = await VoskDefault.createRecognizer(model, 16000);
+        } else if (typeof VoskDefault.Recognizer === 'function') {
+          recognizer = new VoskDefault.Recognizer(model, 16000);
+        } else if (model && typeof model.createRecognizer === 'function') {
+          recognizer = model.createRecognizer(16000);
+        } else {
+          throw new Error('Could not create recognizer');
+        }
+      } else if (typeof VoskDefault.Model === 'function') {
+        console.log('Using Vosk.default.Model API');
+        model = new VoskDefault.Model(modelUrl);
+        if (model.ready) await model.ready();
+        
+        if (typeof VoskDefault.Recognizer === 'function') {
+          recognizer = new VoskDefault.Recognizer(model, 16000);
+        } else if (model && typeof model.createRecognizer === 'function') {
+          recognizer = model.createRecognizer(16000);
+        } else {
+          throw new Error('Could not create recognizer');
+        }
+      }
+    }
+    
+    if (!model) {
+      throw new Error('Could not load Vosk model. Available methods: ' + Object.keys(VoskLib).join(', '));
+    }
+    
+    // Check if model has a worker (Vosk.js uses Web Workers)
+    if (model.worker) {
+      console.log('Model has worker, setting up worker-based recognition');
+      console.log('Model methods:', Object.getOwnPropertyNames(model));
+      console.log('Model prototype:', Object.getOwnPropertyNames(Object.getPrototypeOf(model)));
+      
+      // Check if model has recognize methods
+      if (typeof model.recognize === 'function') {
+        console.log('Model has recognize method');
+        voskModel = model;
+        voskRecognizer = model;
+      } else if (typeof model.processAudio === 'function') {
+        console.log('Model has processAudio method');
+        voskModel = model;
+        voskRecognizer = model;
+      } else {
+        console.log('Model uses worker, will communicate via postMessage');
+        voskModel = model;
+        voskRecognizer = model; // Use model directly, but communicate via worker
+      }
+      
+      // Vosk.js model uses a worker internally, but we shouldn't override its handler
+      // Instead, we should use the model's API methods if available
+      // Let's check what methods the model exposes
+      
+      // Check if model has KaldiRecognizer method (this is the correct API!)
+      if (typeof model.KaldiRecognizer === 'function') {
+        console.log('Found KaldiRecognizer method! Creating recognizer...');
+        try {
+          // KaldiRecognizer is a class, so we need to use 'new'
+          voskRecognizer = new model.KaldiRecognizer(model, 16000);
+          console.log('Created KaldiRecognizer:', voskRecognizer);
+          console.log('KaldiRecognizer methods:', Object.getOwnPropertyNames(voskRecognizer));
+          console.log('KaldiRecognizer prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(voskRecognizer)));
+          
+          // Set up event listeners for recognition results
+          // KaldiRecognizer emits 'result' and 'partialresult' events
+          voskRecognizer.on('result', (message) => {
+            console.log('Recognition result event:', message);
+            const result = message.result || message;
+            if (result.text) {
+              if (chatInput) {
+                const currentText = chatInput.value.trim();
+                chatInput.value = currentText + (currentText ? ' ' : '') + result.text + ' ';
+                chatInput.style.height = 'auto';
+                chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+              }
+              if (chatMicStatus) {
+                chatMicStatus.textContent = `🎤 Got: ${result.text}`;
+                chatMicStatus.style.color = 'var(--ok)';
+              }
+            }
+          });
+          
+          voskRecognizer.on('partialresult', (message) => {
+            console.log('Partial result event:', message);
+            const partial = message.result || message;
+            if (partial.partial && chatMicStatus) {
+              chatMicStatus.textContent = `🎤 Listening: ${partial.partial}`;
+              chatMicStatus.style.color = 'var(--accent)';
+            }
+          });
+        } catch (e) {
+          console.error('Failed to create KaldiRecognizer:', e);
+          // Try without 'new' in case it's a factory function
+          try {
+            voskRecognizer = model.KaldiRecognizer(model, 16000);
+            console.log('Created KaldiRecognizer without new:', voskRecognizer);
+          } catch (e2) {
+            console.error('Both attempts failed:', e2);
+          }
+        }
+      } else {
+        console.log('KaldiRecognizer method not found on model');
+      }
+      
+      // Set up worker message handler to intercept recognition results
+      // But preserve the original handler so Vosk.js can still function
+      // Store original handler if it exists
+      const originalOnMessage = model.worker.onmessage;
+      model.worker.onmessage = (e) => {
+        console.log('Worker message received:', e.data);
+        console.log('Message type:', typeof e.data);
+        console.log('Message keys:', e.data && typeof e.data === 'object' ? Object.keys(e.data) : 'N/A');
+        
+        // Try to handle the message
+        const message = e.data;
+        
+        // Check for result in various formats
+        let result = null;
+        let partial = null;
+        
+        // Vosk.js worker might send different message formats
+        // Try parsing as JSON string first
+        if (typeof message === 'string') {
+          try {
+            const parsed = JSON.parse(message);
+            console.log('Parsed JSON string:', parsed);
+            if (parsed.text) result = parsed;
+            if (parsed.partial) partial = parsed;
+            if (parsed.result) {
+              const res = typeof parsed.result === 'string' ? JSON.parse(parsed.result) : parsed.result;
+              if (res.text) result = res;
+            }
+          } catch (e) {
+            console.log('Not JSON string');
+          }
+        }
+        // Check for result property
+        else if (message && typeof message === 'object') {
+          if (message.result) {
+            result = typeof message.result === 'string' ? JSON.parse(message.result) : message.result;
+            console.log('Found result:', result);
+          }
+          if (message.partialResult) {
+            partial = typeof message.partialResult === 'string' ? JSON.parse(message.partialResult) : message.partialResult;
+            console.log('Found partialResult:', partial);
+          }
+          if (message.text) {
+            result = message;
+            console.log('Found text in message:', result);
+          }
+          if (message.partial) {
+            partial = message;
+            console.log('Found partial in message:', partial);
+          }
+        }
+        
+        console.log('Extracted result:', result);
+        console.log('Extracted partial:', partial);
+        
+        if (result && result.text) {
+          console.log('Processing result text:', result.text);
+          if (chatInput) {
+            const currentText = chatInput.value.trim();
+            chatInput.value = currentText + (currentText ? ' ' : '') + result.text + ' ';
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+          }
+          if (chatMicStatus) {
+            chatMicStatus.textContent = `🎤 Got: ${result.text}`;
+            chatMicStatus.style.color = 'var(--ok)';
+          }
+        }
+        
+        if (partial && partial.partial && chatMicStatus) {
+          console.log('Processing partial:', partial.partial);
+          chatMicStatus.textContent = `🎤 Listening: ${partial.partial}`;
+          chatMicStatus.style.color = 'var(--accent)';
+        }
+        
+        // Call original handler if it exists
+        if (originalOnMessage) {
+          originalOnMessage(e);
+        }
+      };
+    } else {
+      // If we couldn't create a separate recognizer, try using the model directly
+      if (!recognizer) {
+        console.log('No recognizer created, trying to use model directly');
+        recognizer = model;
+      }
+      voskModel = model;
+      voskRecognizer = recognizer;
+    }
+    
+    console.log('Vosk model loaded successfully');
+    useLocalRecognition = true;
+    
+    if (chatMicStatus) {
+      chatMicStatus.style.display = 'none';
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize Vosk:', error);
+    console.error('Vosk error details:', {
+      message: error.message,
+      stack: error.stack,
+      voskAvailable: typeof Vosk !== 'undefined',
+      windowVosk: typeof window.Vosk !== 'undefined'
+    });
+    useLocalRecognition = false;
+    
+    // Show helpful message about CORS/local hosting requirement
+    if (chatMicStatus) {
+      let errorMsg = 'Local speech recognition unavailable. ';
+      if (error.message && error.message.includes('CORS')) {
+        errorMsg += 'Vosk models require local hosting. Using Web Speech API instead (requires internet).';
+      } else {
+        errorMsg += `Error: ${error.message}. Using Web Speech API instead.`;
+      }
+      chatMicStatus.textContent = errorMsg;
+      chatMicStatus.style.color = 'var(--muted)';
+      setTimeout(() => {
+        if (chatMicStatus) {
+          chatMicStatus.style.display = 'none';
+        }
+      }, 5000);
+    }
+    
+    // Don't show error toast - just silently fall back to Web Speech API
+    return false;
+  }
+}
+
+// Start local speech recognition
+async function startLocalRecognition() {
+  if (!voskRecognizer) {
+    const loaded = await initLocalSpeechRecognition();
+    if (!loaded) {
+      toast('Failed to load local speech recognition', 'error');
+      return;
+    }
+  }
+
+  try {
+    // Get microphone access
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    audioContext = new (window.AudioContext || window.webkitAudioContext)({
+      sampleRate: 16000
+    });
+    
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    processor = audioContext.createScriptProcessor(4096, 1, 1);
+    
+    processor.onaudioprocess = (e) => {
+      if (!isListening || !voskRecognizer) return;
+      
+      try {
+        // Check if we have a KaldiRecognizer (the correct Vosk.js API!)
+        // acceptWaveform expects an AudioBuffer, not Int16Array
+        // Results come through events, not method calls
+        if (voskRecognizer && typeof voskRecognizer.acceptWaveform === 'function') {
+          // Use the KaldiRecognizer's acceptWaveform method
+          // It expects an AudioBuffer, so pass e.inputBuffer directly
+          // Results will come through the 'result' and 'partialresult' events we set up
+          voskRecognizer.acceptWaveform(e.inputBuffer);
+          return; // Success, don't try other methods
+        }
+        
+        // Fallback: Check if model has direct methods (unlikely to be needed)
+        const inputData = e.inputBuffer.getChannelData(0);
+        const int16Data = new Int16Array(inputData.length);
+        
+        for (let i = 0; i < inputData.length; i++) {
+          int16Data[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+        }
+        
+        if (voskModel && typeof voskModel.recognize === 'function') {
+          const result = voskModel.recognize(int16Data);
+          if (result && result.text) {
+            if (chatInput) {
+              const currentText = chatInput.value.trim();
+              chatInput.value = currentText + (currentText ? ' ' : '') + result.text + ' ';
+              chatInput.style.height = 'auto';
+              chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+            }
+            if (chatMicStatus) {
+              chatMicStatus.textContent = `🎤 Got: ${result.text}`;
+              chatMicStatus.style.color = 'var(--ok)';
+            }
+          }
+        }
+        // Fallback: Check if model uses worker pattern (Vosk.js)
+        else if (voskModel && voskModel.worker) {
+          // This shouldn't be needed if KaldiRecognizer works
+          console.warn('Using worker directly - KaldiRecognizer should be used instead');
+          const audioCopy = new Int16Array(int16Data);
+          try {
+            voskModel.worker.postMessage(audioCopy.buffer, [audioCopy.buffer]);
+          } catch (e) {
+            console.error('Failed to send audio buffer to worker:', e);
+          }
+        }
+        // Try acceptWaveform method (standard Vosk API - direct)
+        else if (typeof voskRecognizer?.acceptWaveform === 'function') {
+          if (voskRecognizer.acceptWaveform(int16Data)) {
+            const result = JSON.parse(voskRecognizer.result());
+            if (result.text) {
+              if (chatInput) {
+                const currentText = chatInput.value.trim();
+                chatInput.value = currentText + (currentText ? ' ' : '') + result.text + ' ';
+                
+                // Auto-resize textarea
+                chatInput.style.height = 'auto';
+                chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+              }
+              
+              if (chatMicStatus) {
+                chatMicStatus.textContent = `🎤 Got: ${result.text}`;
+                chatMicStatus.style.color = 'var(--ok)';
+              }
+            }
+          } else {
+            const partial = JSON.parse(voskRecognizer.partialResult());
+            if (partial.partial && chatMicStatus) {
+              chatMicStatus.textContent = `🎤 Listening: ${partial.partial}`;
+              chatMicStatus.style.color = 'var(--accent)';
+            }
+          }
+        }
+        // Try recognize method (alternative API)
+        else if (typeof voskRecognizer.recognize === 'function') {
+          const result = voskRecognizer.recognize(int16Data);
+          if (result && result.text) {
+            if (chatInput) {
+              const currentText = chatInput.value.trim();
+              chatInput.value = currentText + (currentText ? ' ' : '') + result.text + ' ';
+              chatInput.style.height = 'auto';
+              chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+            }
+            if (chatMicStatus) {
+              chatMicStatus.textContent = `🎤 Got: ${result.text}`;
+              chatMicStatus.style.color = 'var(--ok)';
+            }
+          }
+        } else {
+          console.warn('Recognizer does not have acceptWaveform or recognize method, and no worker found');
+        }
+      } catch (error) {
+        console.error('Error processing audio:', error);
+      }
+    };
+    
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+    
+    isListening = true;
+    
+    if (chatMicBtn) {
+      chatMicBtn.style.background = 'var(--error)';
+      chatMicBtn.style.color = 'white';
+      chatMicBtn.title = 'Stop listening';
+    }
+    
+    if (chatMicStatus) {
+      chatMicStatus.style.display = 'block';
+      chatMicStatus.textContent = '🎤 Listening (local, offline)...';
+      chatMicStatus.style.color = 'var(--accent)';
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to start local recognition:', error);
+    toast(`Failed to start microphone: ${error.message}`, 'error');
+    return false;
+  }
+}
+
+// Stop local speech recognition
+function stopLocalRecognition() {
+  isListening = false;
+  
+  if (processor) {
+    processor.disconnect();
+    processor = null;
+  }
+  
+  if (audioContext) {
+    audioContext.close();
+    audioContext = null;
+  }
+  
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+    mediaStream = null;
+  }
+  
+  if (chatMicBtn) {
+    chatMicBtn.style.background = '';
+    chatMicBtn.style.color = '';
+    chatMicBtn.title = 'Start voice input';
+  }
+  
+  if (chatMicStatus) {
+    chatMicStatus.textContent = '✅ Done listening';
+    chatMicStatus.style.color = 'var(--ok)';
+    setTimeout(() => {
+      if (chatMicStatus) {
+        chatMicStatus.style.display = 'none';
+      }
+    }, 2000);
+  }
+}
+
+function initSpeechRecognition() {
+  // Try to use local Vosk recognition first
+  if (typeof Vosk !== 'undefined') {
+    // Vosk is available, we'll use it
+    return 'local';
+  }
+
+  // Fallback to Web Speech API
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    if (chatMicBtn) {
+      chatMicBtn.style.display = 'none';
+      toast('Speech recognition not supported in this browser. Use Chrome, Edge, or Safari.', 'error');
+    }
+    return null;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+  recognition.maxAlternatives = 1;
+
+  // Set up event handlers
+  recognition.onstart = () => {
+    isListening = true;
+    // Only reset error count if we successfully started (not during retry)
+    // Don't reset if we're in the middle of retrying network errors
+    if (networkErrorCount === 0) {
+      // Fresh start, reset is fine
+    } else {
+      // We're retrying, keep the count but this is a successful restart
+      console.log('Successfully restarted after network error');
+    }
+    if (chatInput) {
+      // Store the current text as base text
+      chatInput.dataset.baseText = chatInput.value;
+    }
+    if (chatMicBtn) {
+      chatMicBtn.style.background = 'var(--error)';
+      chatMicBtn.style.color = 'white';
+      chatMicBtn.title = 'Stop listening';
+    }
+    if (chatMicStatus) {
+      chatMicStatus.style.display = 'block';
+      chatMicStatus.textContent = '🎤 Listening... Speak now';
+      chatMicStatus.style.color = 'var(--accent)';
+    }
+  };
+
+  recognition.onresult = (event) => {
+    let interimTranscript = '';
+    let finalTranscript = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript + ' ';
+      } else {
+        interimTranscript += transcript;
+      }
+    }
+
+    if (chatInput) {
+      // Get the base text (before this recognition session)
+      const baseText = chatInput.dataset.baseText || '';
+      
+      // Update with new transcriptions
+      const newText = baseText + finalTranscript + interimTranscript;
+      chatInput.value = newText;
+      
+      // Auto-resize textarea
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+    }
+
+    if (chatMicStatus) {
+      if (interimTranscript) {
+        chatMicStatus.textContent = `🎤 Listening: ${interimTranscript}`;
+      } else if (finalTranscript) {
+        chatMicStatus.textContent = `🎤 Got: ${finalTranscript.trim()}`;
+      }
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+    
+    // Handle network errors with retry limit
+    if (event.error === 'network' && isListening) {
+      networkErrorCount++;
+      console.log(`Network error count: ${networkErrorCount}`);
+      
+      // Stop retrying after 3 attempts
+      if (networkErrorCount >= 3) {
+        console.log('Max network errors reached, stopping recognition');
+        isListening = false;
+        networkErrorCount = 0;
+        
+        // Make sure recognition is stopped
+        try {
+          recognition.stop();
+        } catch (e) {
+          // Ignore if already stopped
+        }
+        
+        if (chatMicBtn) {
+          chatMicBtn.style.background = '';
+          chatMicBtn.style.color = '';
+          chatMicBtn.title = 'Start voice input';
+        }
+        
+        if (chatMicStatus) {
+          chatMicStatus.textContent = '❌ Network error: Speech recognition requires internet. Check your connection.';
+          chatMicStatus.style.color = 'var(--error)';
+          setTimeout(() => {
+            if (chatMicStatus) {
+              chatMicStatus.style.display = 'none';
+            }
+          }, 5000);
+        }
+        return;
+      }
+      
+      // Try to restart - stop first, then start
+      console.log(`Network error (attempt ${networkErrorCount}/3), attempting to restart...`);
+      setTimeout(() => {
+        if (isListening && recognition) {
+          try {
+            // Stop first if running
+            try {
+              recognition.stop();
+            } catch (e) {
+              // Ignore if not running
+            }
+            
+            // Wait a bit before restarting
+            setTimeout(() => {
+              if (isListening && recognition) {
+                try {
+                  recognition.start();
+                  if (chatMicStatus) {
+                    chatMicStatus.textContent = `🎤 Reconnecting... (${networkErrorCount}/3)`;
+                    chatMicStatus.style.color = 'var(--muted)';
+                  }
+                } catch (e) {
+                  console.error('Failed to restart after network error:', e);
+                  networkErrorCount = 3; // Force stop
+                  isListening = false;
+                }
+              }
+            }, 500);
+          } catch (e) {
+            console.error('Failed to stop/restart after network error:', e);
+            networkErrorCount = 3; // Force stop
+            isListening = false;
+          }
+        }
+      }, 1000);
+      return;
+    }
+    
+    // Reset network error count for non-network errors
+    if (event.error !== 'network') {
+      networkErrorCount = 0;
+    }
+    
+    isListening = false;
+    
+    if (chatMicBtn) {
+      chatMicBtn.style.background = '';
+      chatMicBtn.style.color = '';
+      chatMicBtn.title = 'Start voice input';
+    }
+    
+    if (chatMicStatus) {
+      let errorMsg = 'Error: ';
+      switch (event.error) {
+        case 'no-speech':
+          errorMsg = 'No speech detected. Try again.';
+          break;
+        case 'audio-capture':
+          errorMsg = 'No microphone found.';
+          break;
+        case 'not-allowed':
+          errorMsg = 'Microphone permission denied.';
+          break;
+        case 'network':
+          errorMsg = 'Network error. Speech recognition requires internet connection.';
+          break;
+        case 'aborted':
+          // User stopped it, don't show error
+          chatMicStatus.style.display = 'none';
+          return;
+        default:
+          errorMsg = `Error: ${event.error}`;
+      }
+      chatMicStatus.textContent = errorMsg;
+      chatMicStatus.style.color = 'var(--error)';
+      setTimeout(() => {
+        if (chatMicStatus) {
+          chatMicStatus.style.display = 'none';
+        }
+      }, 4000);
+    }
+  };
+
+  recognition.onend = () => {
+    // Don't auto-restart if we have network errors
+    if (networkErrorCount >= 3) {
+      isListening = false;
+      return;
+    }
+    
+    // If we're still supposed to be listening, restart (some browsers auto-stop)
+    if (isListening) {
+      try {
+        recognition.start();
+        return;
+      } catch (e) {
+        // If restart fails, we're done
+        console.log('Recognition ended, restart failed:', e);
+      }
+    }
+    
+    isListening = false;
+    if (chatMicBtn) {
+      chatMicBtn.style.background = '';
+      chatMicBtn.style.color = '';
+      chatMicBtn.title = 'Start voice input';
+    }
+    // Only show "Done" if we were actually listening (not if user stopped it)
+    if (chatMicStatus && chatMicStatus.textContent.includes('Listening')) {
+      chatMicStatus.textContent = '✅ Done listening';
+      chatMicStatus.style.color = 'var(--ok)';
+      setTimeout(() => {
+        if (chatMicStatus) {
+          chatMicStatus.style.display = 'none';
+        }
+      }, 2000);
+    }
+  };
+
+  return 'webapi';
+}
+
+async function toggleSpeechRecognition() {
+  // Check what type of recognition to use
+  let recognitionType = useLocalRecognition ? 'local' : null;
+  
+  if (!recognitionType) {
+    const initResult = initSpeechRecognition();
+    if (!initResult) {
+      toast('Speech recognition is not supported in your browser', 'error');
+      return;
+    }
+    recognitionType = initResult;
+  }
+
+  if (isListening) {
+    if (recognitionType === 'local') {
+      stopLocalRecognition();
+    } else {
+      isListening = false;
+      recognition.stop();
+    }
+  } else {
+    if (recognitionType === 'local') {
+      await startLocalRecognition();
+    } else {
+      try {
+        isListening = true;
+        recognition.start();
+      } catch (error) {
+        isListening = false;
+        console.error('Failed to start recognition:', error);
+        toast('Failed to start voice input. Make sure microphone permission is granted.', 'error');
+      }
+    }
+  }
+}
+
 // Event wiring
 if (downloadModelBtn) on(downloadModelBtn, 'click', downloadModel);
 if (checkModelBtn) on(checkModelBtn, 'click', checkModelStatus);
@@ -677,6 +1568,7 @@ if (clearModelBtn) on(clearModelBtn, 'click', clearSelectedModel);
 if (chatSendBtn) on(chatSendBtn, 'click', sendMessage);
 if (chatClearConversationBtn) on(chatClearConversationBtn, 'click', clearConversation);
 if (chatNewChatBtn) on(chatNewChatBtn, 'click', newChat);
+if (chatMicBtn) on(chatMicBtn, 'click', toggleSpeechRecognition);
 
 if (chatInput) {
   on(chatInput, 'keydown', (e) => {
