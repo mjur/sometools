@@ -19,6 +19,7 @@
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
    - **Root directory**: `/` (leave empty)
+   - **Deploy command**: Leave this EMPTY (do not set `npx wrangler deploy` - that's for Workers, not Pages)
 
 4. **Deploy!**
    - Click "Save and Deploy"

@@ -7,7 +7,10 @@ When setting up your project in Cloudflare Pages, use these settings:
 - **Build command**: `npm run build`
 - **Build output directory**: `dist`
 - **Root directory**: `/` (leave empty or use `/`)
+- **Deploy command**: Leave EMPTY (do not set this - Pages automatically deploys the build output)
 - **Node version**: `18` or `20` (set in Environment Variables if needed)
+
+⚠️ **Important**: Do NOT set a deploy command. Cloudflare Pages automatically deploys your `dist` directory. The deploy command (`npx wrangler deploy`) is only for Cloudflare Workers, not Pages.
 
 ## Environment Variables
 
