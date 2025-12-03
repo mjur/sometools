@@ -17,3 +17,10 @@ Thumbs.db
 .cache/
 models/
 
+# Large unused directories
+DeOldify/
+
+# Python scripts (conversion tools, not needed in production)
+*.py
+!scripts/*.js
+
