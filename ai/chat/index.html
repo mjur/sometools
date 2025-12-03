@@ -44,9 +44,39 @@
       border-color: var(--error) !important;
       color: white !important;
     }
-    /* Make model selection smaller, chat area larger */
+    /* Model selection above chat, collapsible */
     section.tool {
-      grid-template-columns: 320px 1fr !important;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    #model-selection-pane {
+      position: relative;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+    }
+    #model-selection-pane.collapsed {
+      max-height: 60px;
+      overflow: hidden;
+    }
+    #model-selection-content {
+      transition: opacity 0.3s ease, max-height 0.3s ease;
+      overflow: hidden;
+    }
+    #model-selection-pane.collapsed #model-selection-content {
+      max-height: 0;
+      opacity: 0;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    /* Toggle button */
+    #model-selection-toggle {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    #model-selection-toggle:hover {
+      background: var(--bg-hover);
     }
     @media (max-width: 1023px) {
       section.tool {
@@ -100,9 +130,13 @@
       </div>
     </details>
 
-    <section class="tool">
-      <div class="pane">
-        <label for="chat-model-select">AI Model</label>
+    <section class="tool" style="position: relative; display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="pane" id="model-selection-pane" style="position: relative;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="chat-model-select" style="margin: 0;">AI Model</label>
+          <button id="model-selection-toggle" class="secondary" style="font-size: 1.2rem; padding: 0.3rem 0.6rem; min-width: 32px;">−</button>
+        </div>
+        <div id="model-selection-content">
         <select id="chat-model-select">
           <optgroup label="Smallest Models (Recommended for Quick Start)">
             <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5 0.5B Instruct (~300MB)</option>
@@ -155,9 +189,10 @@
 
         <div id="chat-model-status" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.875rem; color: var(--muted); white-space: pre-wrap; min-height: 3rem; max-height: 20rem; overflow-y: auto;"></div>
         <div id="chat-model-list" style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elev); border-radius: 4px; font-size: 0.8rem; color: var(--muted); max-height: 10rem; overflow-y: auto;"></div>
+        </div>
       </div>
 
-      <div class="pane" style="display: flex; flex-direction: column; height: 100%;">
+      <div class="pane" style="display: flex; flex-direction: column; height: 100%; flex: 1;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
           <label for="chat-log" style="margin: 0;">Chat</label>
           <button id="chat-new-chat" class="secondary" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">+ New Chat</button>

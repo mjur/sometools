@@ -19,6 +19,8 @@ const chatSendBtn = qs('#chat-send');
 const chatClearConversationBtn = qs('#chat-clear-conversation');
 const chatNewChatBtn = qs('#chat-new-chat');
 const chatList = qs('#chat-list');
+const modelSelectionToggle = qs('#model-selection-toggle');
+const modelSelectionPane = qs('#model-selection-pane');
 
 let messages = [];
 let currentChatId = null;
@@ -635,6 +637,37 @@ function clearConversation() {
   messages = [];
   chatLog.innerHTML = '<p class="text-sm text-muted">Conversation cleared. Start a new chat.</p>';
   displayChatList();
+}
+
+// Toggle model selection collapse
+if (modelSelectionToggle && modelSelectionPane) {
+  const toolSection = modelSelectionPane.closest('section.tool');
+  
+  on(modelSelectionToggle, 'click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const isCollapsed = modelSelectionPane.classList.contains('collapsed');
+    if (isCollapsed) {
+      modelSelectionPane.classList.remove('collapsed');
+      if (toolSection) {
+        toolSection.classList.remove('collapsed');
+      }
+      modelSelectionToggle.textContent = '−';
+      modelSelectionToggle.title = 'Collapse model selection';
+    } else {
+      modelSelectionPane.classList.add('collapsed');
+      if (toolSection) {
+        toolSection.classList.add('collapsed');
+      }
+      modelSelectionToggle.textContent = '+';
+      modelSelectionToggle.title = 'Expand model selection';
+    }
+  });
+  
+  // Set initial title
+  if (modelSelectionToggle) {
+    modelSelectionToggle.title = 'Collapse model selection';
+  }
 }
 
 // Event wiring
