@@ -104,7 +104,10 @@ async function loadFFmpeg() {
       } else if (window.FFmpegWASM.FFmpeg) {
         // It exports the FFmpeg class - use it directly
         const { FFmpeg: FFmpegClass } = window.FFmpegWASM;
-        ffmpeg = new FFmpegClass();
+        ffmpeg = new FFmpegClass({
+          corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/ffmpeg-core.js',
+          log: true
+        });
         ffmpeg.on('log', ({ message }) => console.log('FFmpeg:', message));
         ffmpeg.on('progress', ({ progress }) => {
           if (progressBar && progressPercent) {
@@ -115,11 +118,8 @@ async function loadFFmpeg() {
         });
         toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
         
-        // Load FFmpeg - use local core files to avoid CORS issues with Cross-Origin-Embedder-Policy
-        await ffmpeg.load({
-          coreURL: '/js/ffmpeg-core/ffmpeg-core.js',
-          wasmURL: '/js/ffmpeg-core/ffmpeg-core.wasm'
-        });
+        // Load FFmpeg - corePath is set in constructor
+        await ffmpeg.load();
         
         toast('FFmpeg loaded successfully!', 'success');
         // Mark that we're using new API
@@ -139,7 +139,10 @@ async function loadFFmpeg() {
       console.log('createFFmpeg not found in UMD, trying ESM import...');
       try {
         const { FFmpeg: FFmpegClass } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
-        ffmpeg = new FFmpegClass();
+        ffmpeg = new FFmpegClass({
+          corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/ffmpeg-core.js',
+          log: true
+        });
         ffmpeg.on('log', ({ message }) => console.log('FFmpeg:', message));
         ffmpeg.on('progress', ({ progress }) => {
           if (progressBar && progressPercent) {
@@ -149,11 +152,8 @@ async function loadFFmpeg() {
           }
         });
         toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
-        // ESM build - use local core files to avoid CORS issues
-        await ffmpeg.load({
-          coreURL: '/js/ffmpeg-core/ffmpeg-core.js',
-          wasmURL: '/js/ffmpeg-core/ffmpeg-core.wasm'
-        });
+        // ESM build - corePath is set in constructor
+        await ffmpeg.load();
         toast('FFmpeg loaded successfully!', 'success');
         // Mark that we're using new API
         ffmpeg._useNewAPI = true;
@@ -169,7 +169,7 @@ async function loadFFmpeg() {
     if (createFFmpegFunc && !ffmpeg) {
       console.log('Using createFFmpeg:', createFFmpegFunc);
       
-      // Create FFmpeg instance
+      // Create FFmpeg instance - use CDN directly
       ffmpeg = createFFmpegFunc({
         log: true,
         progress: (p) => {
@@ -179,7 +179,7 @@ async function loadFFmpeg() {
             progressPercent.textContent = `${percent}%`;
           }
         },
-        corePath: '/js/ffmpeg-core/ffmpeg-core.js'
+        corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/ffmpeg-core.js'
       });
 
       toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');

@@ -59,7 +59,7 @@ const excludePatterns = [
   /\.txt$/,
   /\.md$/,
   /DeOldify/,
-  /workers/,
+  /^workers$/,  // Only exclude root-level workers directory, not ffmpeg-workers
   /vite$/,
   /devtools-toolset@/,
   /\.config\.js$/,
@@ -74,11 +74,21 @@ const excludePatterns = [
   /generate-unit-pages\.py$/,
   /convert-.*\.py$/,
   /server-with-cors\.py$/,
-  /test\.py$/
+  /test\.py$/,
+  /ffmpeg-core\.wasm$/  // Exclude large WASM file (30.6 MB, exceeds Cloudflare Pages 25 MB limit)
 ];
 
 function shouldExclude(filePath) {
-  return excludePatterns.some(pattern => pattern.test(filePath));
+  // Convert to relative path for better matching
+  const relativePath = path.relative(rootDir, filePath);
+  const fileName = path.basename(filePath);
+  
+  // Check both full path and filename
+  return excludePatterns.some(pattern => 
+    pattern.test(filePath) || 
+    pattern.test(relativePath) || 
+    pattern.test(fileName)
+  );
 }
 
 function copyRecursive(src, dest) {
@@ -98,14 +108,21 @@ function copyRecursive(src, dest) {
       const srcPath = path.join(src, entry);
       const destPath = path.join(dest, entry);
       
-      // Skip excluded files
-      if (shouldExclude(srcPath)) {
+      // Skip excluded files (check both relative and absolute paths)
+      if (shouldExclude(srcPath) || shouldExclude(entry)) {
+        console.log(`  Skipping excluded file: ${entry}`);
         continue;
       }
       
       copyRecursive(srcPath, destPath);
     }
   } else {
+    // Check exclusion before copying file
+    if (shouldExclude(src) || shouldExclude(path.basename(src))) {
+      console.log(`  Skipping excluded file: ${path.basename(src)}`);
+      return;
+    }
+    
     // Copy file
     const destDir = path.dirname(dest);
     if (!fs.existsSync(destDir)) {

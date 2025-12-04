@@ -115,10 +115,10 @@ async function loadFFmpeg() {
         });
         toast('Loading FFmpeg core files (this may take a minute on first use)...', 'info');
         
-        // Load FFmpeg - use local core files to avoid CORS issues with Cross-Origin-Embedder-Policy
+        // Load FFmpeg - use local JS but CDN for WASM (too large for Cloudflare Pages 25MB limit)
         await ffmpeg.load({
           coreURL: '/js/ffmpeg-core/ffmpeg-core.js',
-          wasmURL: '/js/ffmpeg-core/ffmpeg-core.wasm'
+          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.wasm'
         });
         
         toast('FFmpeg loaded successfully!', 'success');
@@ -152,7 +152,7 @@ async function loadFFmpeg() {
         // ESM build - use local core files to avoid CORS issues
         await ffmpeg.load({
           coreURL: '/js/ffmpeg-core/ffmpeg-core.js',
-          wasmURL: '/js/ffmpeg-core/ffmpeg-core.wasm'
+          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.wasm'
         });
         toast('FFmpeg loaded successfully!', 'success');
         // Mark that we're using new API
