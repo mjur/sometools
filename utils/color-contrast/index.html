@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Color Contrast Checker | Fast, Client-Side | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Check color contrast ratios for WCAG accessibility compliance locally in your browser.">
+  <link rel="canonical" href="https://example.com/utils/color-contrast">
+  <link rel="stylesheet" href="/css/base.css?v=3">
+  <link rel="stylesheet" href="/css/tool.css?v=3">
+  <link rel="preload" href="/css/base.css?v=3" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Color Contrast Checker">
+  <meta property="og:description" content="Check color contrast ratios for WCAG accessibility compliance.">
+  <style>
+    .color-preview {
+      width: 100%;
+      height: 100px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      margin: 1rem 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .color-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 768px) {
+      .color-inputs {
+        grid-template-columns: 1fr;
+      }
+    }
+    .color-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .color-picker-wrapper {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    input[type="color"] {
+      width: 60px;
+      height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    input[type="text"] {
+      flex: 1;
+    }
+    .contrast-results {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 4px;
+      background: var(--bg-hover);
+    }
+    .contrast-ratio {
+      font-size: 2rem;
+      font-weight: bold;
+      margin: 0.5rem 0;
+    }
+    .wcag-level {
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+    .wcag-pass {
+      background: #4caf50;
+      color: white;
+    }
+    .wcag-fail {
+      background: #f44336;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/color-contrast">Color Contrast Checker</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Color Contrast Checker</h1>
+    <p>Check color contrast ratios for WCAG accessibility compliance. All processing happens locally.</p>
+    
+    <section class="tool">
+      <div class="pane">
+        <div class="color-inputs">
+          <div class="color-input-group">
+            <label for="foreground-color">Foreground Color (Text)</label>
+            <div class="color-picker-wrapper">
+              <input type="color" id="foreground-color" value="#000000">
+              <input type="text" id="foreground-hex" placeholder="#000000" value="#000000">
+            </div>
+          </div>
+          <div class="color-input-group">
+            <label for="background-color">Background Color</label>
+            <div class="color-picker-wrapper">
+              <input type="color" id="background-color" value="#ffffff">
+              <input type="text" id="background-hex" placeholder="#ffffff" value="#ffffff">
+            </div>
+          </div>
+        </div>
+        
+        <div class="color-preview" id="preview">
+          Sample Text
+        </div>
+        
+        <div class="contrast-results" id="results">
+          <div>Select colors to check contrast ratio</div>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What is WCAG?</summary>
+        <p>WCAG (Web Content Accessibility Guidelines) provides standards for web accessibility. Level AA requires a contrast ratio of at least 4.5:1 for normal text and 3:1 for large text. Level AAA requires 7:1 for normal text and 4.5:1 for large text.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/text/base64">Base64 Encode/Decode</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/color-contrast.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
