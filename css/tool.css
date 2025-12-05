@@ -500,6 +500,49 @@ pre.binary-output {
   overflow-y: auto !important;
 }
 
+.json-schema-generate-tool {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  align-items: start !important;
+}
+
+.json-schema-generate-tool .pane {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 600px;
+  flex: 1 !important;
+  align-items: stretch !important;
+}
+
+.json-schema-generate-tool .pane > div:first-child {
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.json-schema-generate-tool textarea {
+  flex: 1 1 auto !important;
+  min-height: 500px !important;
+  resize: vertical !important;
+  margin-top: 0 !important;
+}
+
+@media (max-width: 1024px) {
+  .json-schema-generate-tool {
+    grid-template-columns: 1fr;
+  }
+  
+  .json-schema-generate-tool .pane {
+    min-height: 400px;
+  }
+  
+  .json-schema-generate-tool textarea {
+    min-height: 300px !important;
+  }
+}
+
 @media (max-width: 1024px) {
   .json-schema-tool {
     grid-template-columns: 1fr;

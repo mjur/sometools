@@ -13,6 +13,7 @@ const TOOLS = [
   { url: '/json/validate', name: 'JSON Validator', category: 'json', description: 'Validate JSON with instant feedback and error pointers' },
   { url: '/json/format', name: 'JSON Formatter', category: 'json', description: 'Format and beautify JSON with customizable indentation' },
   { url: '/json/schema', name: 'JSON Schema Validator', category: 'json', description: 'Validate JSON against JSON Schema locally' },
+  { url: '/json/schema-generate', name: 'JSON Schema Generator', category: 'json', description: 'Generate JSON Schema from JSON data locally' },
   { url: '/json/yaml', name: 'JSON ↔ YAML Converter', category: 'json', description: 'Convert between JSON and YAML formats' },
   { url: '/yaml/validate', name: 'YAML Validator', category: 'yaml', description: 'Validate YAML syntax with instant feedback' },
   { url: '/text/base64', name: 'Base64 Encode/Decode', category: 'text', description: 'Encode and decode Base64 strings with URL-safe option' },
