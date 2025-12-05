@@ -62,19 +62,69 @@ export function createSearchableSelect(selectElement, options = {}) {
   const dropdown = document.createElement('div');
   dropdown.className = 'searchable-select-dropdown';
   
-  // Function to position dropdown relative to input field (which is above the select)
+  // Function to position dropdown relative to the button (select field)
   function positionDropdown() {
-    // Find the input field that's in the same container
-    const wrapper = button.closest('[style*="flex-direction: column"]') || button.parentElement;
-    const inputField = wrapper ? wrapper.querySelector('input[type="number"]') : null;
+    // Always use the button as reference for consistent positioning
+    // getBoundingClientRect() returns coordinates relative to viewport (perfect for fixed positioning)
+    const rect = button.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
     
-    // Use input field if found, otherwise use button
-    const referenceElement = inputField || button;
-    const rect = referenceElement.getBoundingClientRect();
+    // Estimate dropdown height (max-height is 300px)
+    const estimatedHeight = 300;
+    const minSpaceNeeded = 250; // Minimum space needed for dropdown to be usable
     
-    dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`;
-    dropdown.style.left = `${rect.left + window.scrollX}px`;
+    // Calculate if dropdown would fit below, otherwise position above
+    const positionBelow = spaceBelow >= minSpaceNeeded || (spaceBelow > spaceAbove && spaceBelow > 150);
+    
+    if (positionBelow) {
+      // Position below the button (fixed positioning is relative to viewport)
+      dropdown.style.top = `${rect.bottom + 4}px`;
+    } else {
+      // Position above the button
+      // Use actual height if available, otherwise estimate
+      let topPosition = rect.top - estimatedHeight - 4;
+      // Ensure it doesn't go above viewport
+      if (topPosition < 8) {
+        topPosition = 8;
+      }
+      dropdown.style.top = `${topPosition}px`;
+    }
+    
+    // Position horizontally - align with button
+    dropdown.style.left = `${rect.left}px`;
     dropdown.style.width = `${rect.width}px`;
+    
+    // Ensure dropdown stays within viewport horizontally
+    // We need to measure after setting position, so temporarily show if hidden
+    const wasVisible = dropdown.style.display !== 'none';
+    if (!wasVisible) {
+      dropdown.style.visibility = 'hidden';
+      dropdown.style.display = 'block';
+    }
+    
+    const dropdownRect = dropdown.getBoundingClientRect();
+    
+    // Adjust horizontal position if needed
+    if (dropdownRect.right > viewportWidth) {
+      dropdown.style.left = `${viewportWidth - dropdownRect.width - 8}px`;
+    }
+    if (dropdownRect.left < 0) {
+      dropdown.style.left = '8px';
+    }
+    
+    // If positioned above, ensure it doesn't go above viewport
+    if (!positionBelow && dropdownRect.top < 8) {
+      dropdown.style.top = '8px';
+    }
+    
+    // Restore visibility state
+    if (!wasVisible) {
+      dropdown.style.visibility = '';
+      dropdown.style.display = 'none';
+    }
   }
   
   // Set initial styles - using fixed positioning to avoid overflow issues
