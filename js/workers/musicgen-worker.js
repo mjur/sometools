@@ -80,7 +80,12 @@ self.addEventListener('message', async (event) => {
       
       // Generate audio
       self.postMessage({ type: 'status', message: 'Generating audio...' });
-      const maxNewTokens = Math.floor(duration * 50); // MusicGen generates at 50 Hz
+      
+      // MusicGen generates at 50 Hz, but the model has a maximum sequence length of 2048 tokens
+      // Cap max_new_tokens to prevent index out of bounds errors
+      const MAX_SEQUENCE_LENGTH = 2048;
+      const requestedTokens = Math.floor(duration * 50); // 50 Hz generation rate
+      const maxNewTokens = Math.min(requestedTokens, MAX_SEQUENCE_LENGTH);
       
       const generateOptions = {
         ...inputTokens,
