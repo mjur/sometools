@@ -1,6 +1,6 @@
 // AI Text Detector Tool
 // Uses ONNX Runtime directly for AI-generated text detection
-// Model is hosted at localhost:5000
+// Model is hosted on CDN at https://cdn.sometools.io
 
 import { toast, on, qs } from '/js/ui.js';
 import { loadONNXRuntime, createInferenceSession, runInference } from '/js/utils/onnx-loader.js';
@@ -11,13 +11,13 @@ import { loadTokenizerFromJSON } from '/js/utils/bpe-tokenizer.js';
 const MODEL_CONFIG = {
   name: 'AI Text Detector (Fakespot RoBERTa)',
   key: 'fakespot-ai-text-detection-v1-onnx',
-  // Update these URLs to match your local server paths
-  modelUrl: 'http://localhost:5000/fakespot-ai-text-detection-v1-onnx/model.onnx',
-  tokenizerUrl: 'http://localhost:5000/fakespot-ai-text-detection-v1-onnx/tokenizer.json',
+  // Model files hosted on CDN
+  modelUrl: 'https://cdn.sometools.io/fakespot-ai-text-detection-v1-onnx/model.onnx',
+  tokenizerUrl: 'https://cdn.sometools.io/fakespot-ai-text-detection-v1-onnx/tokenizer.json',
   // For RoBERTa-style BPE we can still use vocab/merges if needed as fallback
-  vocabUrl: 'http://localhost:5000/fakespot-ai-text-detection-v1-onnx/vocab.json',
-  mergesUrl: 'http://localhost:5000/fakespot-ai-text-detection-v1-onnx/merges.txt',
-  configUrl: 'http://localhost:5000/fakespot-ai-text-detection-v1-onnx/config.json',
+  vocabUrl: 'https://cdn.sometools.io/fakespot-ai-text-detection-v1-onnx/vocab.json',
+  mergesUrl: 'https://cdn.sometools.io/fakespot-ai-text-detection-v1-onnx/merges.txt',
+  configUrl: 'https://cdn.sometools.io/fakespot-ai-text-detection-v1-onnx/config.json',
   maxLength: 512
 };
 
@@ -64,15 +64,30 @@ async function loadTokenizer() {
   } catch (error) {
     console.error('Tokenizer loading error:', error);
     
-    // Provide helpful error message for CORS
+    // Provide helpful error message for CORS or network errors
     if (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-      const errorMsg = `CORS Error: Your server at localhost:5000 needs to allow cross-origin requests from localhost:4000.
+      let errorMsg = `Network Error: Failed to load model files from CDN.
 
-To fix this, run the provided server script:
-  python server-with-cors.py
+The model files are hosted at: https://cdn.sometools.io/fakespot-ai-text-detection-v1-onnx/
 
-Or if using Python's http.server, you need to add CORS headers manually.
-See server-with-cors.py for a complete example.`;
+`;
+      
+      // Check if it's specifically a CORS error
+      if (error.message.includes('CORS') || error.message.includes('Access-Control-Allow-Origin')) {
+        errorMsg += `CORS Error: The CDN server needs to allow cross-origin requests.
+
+The CDN at cdn.sometools.io must be configured with CORS headers:
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, OPTIONS
+  Access-Control-Allow-Headers: Content-Type
+
+Please contact the CDN administrator to enable CORS headers.`;
+      } else {
+        errorMsg += `Please check:
+- Your internet connection
+- If the CDN is accessible
+- Browser console for more details`;
+      }
       
       throw new Error(errorMsg);
     }
