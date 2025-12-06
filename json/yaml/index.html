@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>JSON to YAML Converter | YAML to JSON | SomeTools</title>
+  <title>JSON ↔ YAML ↔ TOML Converter | SomeTools</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Convert JSON to YAML and YAML to JSON instantly. All processing happens locally in your browser.">
+  <meta name="description" content="Convert between JSON, YAML, and TOML formats instantly. All processing happens locally in your browser.">
   <link rel="canonical" href="https://example.com/json/yaml">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/tool.css">
@@ -79,12 +79,12 @@
   
   <nav aria-label="Breadcrumb">
     <a href="/">Home</a>
-    <a href="/json/yaml">JSON/YAML Converter</a>
+    <a href="/json/yaml">JSON/YAML/TOML Converter</a>
   </nav>
   
   <main id="main">
-    <h1>JSON ↔ YAML Converter</h1>
-    <p>Convert between JSON and YAML formats instantly. All processing happens locally in your browser.</p>
+    <h1>JSON ↔ YAML ↔ TOML Converter</h1>
+    <p>Convert between JSON, YAML, and TOML formats instantly. All processing happens locally in your browser.</p>
     
     <div class="options">
       <div class="option-group">
@@ -92,6 +92,10 @@
         <select id="direction">
           <option value="json-to-yaml" selected>JSON → YAML</option>
           <option value="yaml-to-json">YAML → JSON</option>
+          <option value="json-to-toml">JSON → TOML</option>
+          <option value="toml-to-json">TOML → JSON</option>
+          <option value="yaml-to-toml">YAML → TOML</option>
+          <option value="toml-to-yaml">TOML → YAML</option>
         </select>
       </div>
       <div class="option-group" id="indent-group">
@@ -139,7 +143,7 @@
       <h2 id="faq-h">FAQ</h2>
       <details>
         <summary>What formats are supported?</summary>
-        <p>You can convert between JSON and YAML formats. Both directions are supported with customizable options.</p>
+        <p>You can convert between JSON, YAML, and TOML formats. All directions are supported with customizable options.</p>
       </details>
       <details>
         <summary>Is my data secure?</summary>
@@ -148,6 +152,10 @@
       <details>
         <summary>What YAML features are supported?</summary>
         <p>The converter supports basic YAML features including objects, arrays, strings, numbers, booleans, and null values. Advanced YAML features like anchors, aliases, and custom tags are not currently supported.</p>
+      </details>
+      <details>
+        <summary>What is TOML?</summary>
+        <p>TOML (Tom's Obvious, Minimal Language) is a configuration file format that's easy to read and write. Note that TOML can only represent objects, so arrays and primitives are wrapped when converting to TOML.</p>
       </details>
       <details>
         <summary>Can I customize the output format?</summary>

@@ -17,8 +17,7 @@ async function loadTOML() {
   }
 }
 
-// Preload TOML
-loadTOML();
+// Don't preload TOML - load it only when needed to avoid Node.js module errors
 
 const input = qs('#input');
 const output = qs('#output');

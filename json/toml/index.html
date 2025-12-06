@@ -2,10 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>TOML Converter | Fast, Client-Side | SomeTools</title>
+  <title>JSON ↔ YAML ↔ TOML Converter | Fast, Client-Side | SomeTools</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Convert between TOML, JSON, and YAML formats locally in your browser.">
-  <link rel="canonical" href="https://example.com/json/toml">
+  <link rel="canonical" href="https://example.com/json/yaml">
+  <meta http-equiv="refresh" content="0; url=/json/yaml">
+  <script>
+    // Immediate redirect before any other scripts load
+    if (window.location.pathname === '/json/toml' || window.location.pathname === '/json/toml/') {
+      window.location.replace('/json/yaml');
+    }
+  </script>
   <link rel="stylesheet" href="/css/base.css?v=3">
   <link rel="stylesheet" href="/css/tool.css?v=3">
   <link rel="preload" href="/css/base.css?v=3" as="style">
@@ -35,12 +42,12 @@
   
   <nav aria-label="Breadcrumb">
     <a href="/">Home</a>
-    <a href="/json/toml">TOML/JSON/YAML Converter</a>
+    <a href="/json/yaml">JSON/YAML/TOML Converter</a>
   </nav>
   
   <main id="main">
-    <h1>TOML ↔ JSON ↔ YAML Converter</h1>
-    <p>Convert between TOML, JSON, and YAML formats instantly. All processing happens locally in your browser.</p>
+    <h1>Redirecting...</h1>
+    <p>This tool has been combined with the JSON ↔ YAML converter. <a href="/json/yaml">Click here if you are not redirected automatically.</a></p>
     
     <div class="options">
       <div class="option-group">
@@ -126,7 +133,12 @@
   </main>
   
   <script type="module" src="/js/header.js"></script>
-  <script type="module" src="/js/tools/toml-converter.js"></script>
+  <script>
+    // Redirect immediately to avoid loading TOML library
+    if (window.location.pathname === '/json/toml' || window.location.pathname === '/json/toml/') {
+      window.location.replace('/json/yaml');
+    }
+  </script>
   <script type="module">
     import { initNotesWidget } from '/js/utils/notes-widget.js';
     initNotesWidget();
