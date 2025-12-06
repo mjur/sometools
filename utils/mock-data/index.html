@@ -40,19 +40,30 @@
   
   <main id="main">
     <h1>Mock Data Generator</h1>
-    <p>Generate mock JSON data from JSON Schema locally in your browser.</p>
+    <p>Generate mock JSON data from JSON Schema, JSON structure, or completely random data locally in your browser.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="input-type">Input Type:</label>
+        <select id="input-type">
+          <option value="schema">JSON Schema</option>
+          <option value="json">JSON Structure</option>
+        </select>
+      </div>
+    </div>
     
     <section class="tool">
       <div class="pane">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
-          <label for="schema-input">JSON Schema</label>
+          <label for="input" id="input-label">JSON Schema</label>
           <div class="actions" style="margin: 0;">
             <button id="generate" class="primary">Generate</button>
-            <button id="schema-copy">Copy</button>
-            <button id="schema-example">Example</button>
+            <button id="input-copy">Copy</button>
+            <button id="input-example">Example</button>
+            <button id="clear">Clear</button>
           </div>
         </div>
-        <textarea id="schema-input" placeholder='{"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "number"}}}'></textarea>
+        <textarea id="input" placeholder='Enter JSON Schema or JSON structure (optional - leave empty for random data)'></textarea>
       </div>
       <div class="pane">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
@@ -74,7 +85,15 @@
       </details>
       <details>
         <summary>What types of data can be generated?</summary>
-        <p>The generator supports strings, numbers, booleans, arrays, objects, and nested structures based on your JSON Schema.</p>
+        <p>The generator supports strings, numbers, booleans, arrays, objects, and nested structures. You can provide either a JSON Schema or JSON data - if you provide JSON, it will automatically infer the schema and generate similar mock data.</p>
+      </details>
+      <details>
+        <summary>Do I need a JSON Schema?</summary>
+        <p>No! You can provide JSON data instead, or leave the input empty to generate completely random JSON data. The generator will analyze the structure and generate similar mock data with realistic values.</p>
+      </details>
+      <details>
+        <summary>How does random generation work?</summary>
+        <p>If you leave the input empty and click Generate, the tool will create a random JSON structure with various data types including objects, arrays, strings, numbers, booleans, and common formats like emails, dates, and UUIDs.</p>
       </details>
     </section>
     

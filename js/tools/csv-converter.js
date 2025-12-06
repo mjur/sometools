@@ -69,20 +69,61 @@ function parseDelimited(text, delimiter) {
     const row = {};
     headers.forEach((header, index) => {
       let value = values[index] || '';
+      
+      // Try to parse as JSON (for nested objects/arrays)
+      if (value.trim().startsWith('{') || value.trim().startsWith('[')) {
+        try {
+          value = JSON.parse(value);
+        } catch (e) {
+          // If JSON parse fails, keep as string
+        }
+      }
       // Try to parse as number or boolean
-      if (value === 'true') value = true;
+      else if (value === 'true') value = true;
       else if (value === 'false') value = false;
       else if (value === '') value = null;
       else if (!isNaN(value) && value !== '') {
         const num = Number(value);
         if (!isNaN(num)) value = num;
       }
+      
       row[header] = value;
     });
     rows.push(row);
   }
   
   return rows;
+}
+
+// Flatten nested objects and arrays for CSV
+function flattenValue(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  
+  // Handle arrays
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '';
+    // If array contains objects, serialize as JSON
+    if (value.length > 0 && typeof value[0] === 'object' && value[0] !== null) {
+      return JSON.stringify(value);
+    }
+    // Otherwise join simple values with semicolon
+    return value.map(v => {
+      if (typeof v === 'object' && v !== null) {
+        return JSON.stringify(v);
+      }
+      return String(v);
+    }).join('; ');
+  }
+  
+  // Handle objects
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  
+  // Handle primitives
+  return String(value);
 }
 
 // Convert array of objects to CSV/TSV
@@ -94,12 +135,14 @@ function toDelimited(data, delimiter) {
   
   for (const row of data) {
     const values = headers.map(header => {
-      let value = row[header];
-      if (value === null || value === undefined) value = '';
-      else if (typeof value === 'string' && (value.includes(delimiter) || value.includes('"') || value.includes('\n'))) {
+      let value = flattenValue(row[header]);
+      
+      // Escape if contains delimiter, quotes, or newlines
+      if (value.includes(delimiter) || value.includes('"') || value.includes('\n')) {
         value = `"${value.replace(/"/g, '""')}"`;
       }
-      return String(value);
+      
+      return value;
     });
     lines.push(values.join(delimiter));
   }
