@@ -6,6 +6,8 @@
 - **Decoder Model**: `decoder_model_merged_int8.onnx` (~407MB, INT8 quantized)
 - **Designed For**: Transformers.js (`@huggingface/transformers` or `@xenova/transformers`)
 - **Library**: The model is specifically exported for use with Transformers.js, not raw ONNX Runtime
+- **Sequence Length Limit**: 2048 tokens (~41 seconds at 50 Hz) - This is an architectural limitation of MusicGen models, not just the small variant
+- **Larger Models**: `musicgen-medium` (1.5B) and `musicgen-large` (3.3B) exist but are not available in browser-compatible format from Xenova
 
 ## Current Issue
 
