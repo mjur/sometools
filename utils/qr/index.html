@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>QR Code Generator | Fast, Client-Side | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate and decode QR codes locally in your browser.">
+  <link rel="canonical" href="https://example.com/utils/qr">
+  <link rel="stylesheet" href="/css/base.css?v=3">
+  <link rel="stylesheet" href="/css/tool.css?v=3">
+  <link rel="preload" href="/css/base.css?v=3" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="QR Code Generator">
+  <meta property="og:description" content="Generate and decode QR codes locally in your browser.">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/qr">QR Code Generator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>QR Code Generator</h1>
+    <p>Generate and decode QR codes locally in your browser.</p>
+    
+    <section class="tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label for="input">Text/URL to Encode</label>
+          <div class="actions" style="margin: 0;">
+            <button id="generate" class="primary">Generate QR Code</button>
+            <button id="copy-input">Copy</button>
+          </div>
+        </div>
+        <textarea id="input" placeholder="Enter text or URL to encode as QR code"></textarea>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label>QR Code</label>
+          <div class="actions" style="margin: 0;">
+            <button id="download">Download</button>
+          </div>
+        </div>
+        <div id="qr-container" style="display: flex; justify-content: center; align-items: center; min-height: 300px; background: white; border: 1px solid var(--border); border-radius: 4px; padding: 1rem;">
+          <p style="color: var(--muted);">Enter text above to generate QR code</p>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+      <details>
+        <summary>Can I decode QR codes?</summary>
+        <p>QR code decoding requires camera access and is coming soon. For now, this tool generates QR codes.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/text/base64">Base64 Encode/Decode</a></li>
+        <li><a href="/text/url">URL Encode/Decode</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/qr-generator.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
