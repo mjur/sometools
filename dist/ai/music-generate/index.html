@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AI Music Generator | MusicGen | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate music from text prompts using MusicGen. Powered by ONNX - runs entirely in your browser.">
+  <link rel="canonical" href="https://example.com/ai/music-generate">
+  <link rel="stylesheet" href="/css/base.css?v=3">
+  <link rel="stylesheet" href="/css/tool.css?v=3">
+  <link rel="preload" href="/css/base.css?v=3" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="AI Music Generator">
+  <meta property="og:description" content="Generate music from text prompts using MusicGen.">
+  <style>
+    .progress-container {
+      margin-top: 0.5rem;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background-color: var(--bg);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.25rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background-color: var(--accent);
+      transition: width 0.3s ease;
+    }
+    .model-status {
+      padding: 0.75rem;
+      background: var(--bg-elev);
+      border-radius: 4px;
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+    .audio-player {
+      width: 100%;
+      margin-top: 1rem;
+    }
+    .options {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .option-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .option-group label {
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    .option-group input,
+    .option-group select {
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/ai/music-generate">AI Music Generator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>AI Music Generator</h1>
+    <p>Generate music from text prompts using MusicGen. Powered by Transformers.js - runs entirely in your browser.</p>
+    <div style="background: var(--info-bg, #d1ecf1); border: 1px solid var(--info-border, #0c5460); border-radius: 6px; padding: 1rem; margin: 1rem 0; color: var(--info-text, #0c5460);">
+      <strong>ℹ️ Using Quantized Models:</strong> This tool uses Q8 quantized models via Transformers.js for better browser compatibility. Models are automatically downloaded and cached on first use.
+    </div>
+    
+    <details class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600; list-style: none; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <span>ℹ️ Technical Details</span>
+          <span style="font-size: 0.875rem; color: var(--muted); font-weight: normal;">(click to expand)</span>
+        </span>
+      </summary>
+      <div style="margin-top: 1rem;">
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          <li><strong>Model:</strong> MusicGen-small (Xenova/musicgen-small via Transformers.js)</li>
+          <li><strong>First Use:</strong> Models will be downloaded and cached in your browser (IndexedDB)</li>
+          <li><strong>Privacy:</strong> All processing happens locally in your browser</li>
+          <li><strong>Format:</strong> Models are in ONNX format, loaded via Transformers.js</li>
+          <li><strong>Output:</strong> Generates audio in WAV format at 32kHz sample rate</li>
+        </ul>
+      </div>
+    </details>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="duration">Duration:</label>
+        <select id="duration">
+          <option value="5">5 seconds</option>
+          <option value="10" selected>10 seconds</option>
+          <option value="15">15 seconds</option>
+          <option value="30">30 seconds</option>
+          <option value="40">40 seconds</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label for="temperature">Temperature:</label>
+        <input type="number" id="temperature" value="1.0" min="0.1" max="2.0" step="0.1">
+      </div>
+      <div class="option-group">
+        <label for="top-k">Top-K:</label>
+        <input type="number" id="top-k" value="250" min="1" max="1000" step="1">
+      </div>
+      <div class="option-group">
+        <label for="top-p">Top-P:</label>
+        <input type="number" id="top-p" value="0.0" min="0.0" max="1.0" step="0.1">
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="prompt-input">Text Prompt</label>
+        <textarea id="prompt-input" placeholder="Enter a description of the music you want to generate, e.g., 'upbeat electronic dance music with synthesizers' or 'calm acoustic guitar melody'" style="min-height: 150px;"></textarea>
+        
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="generate-btn" class="primary">Generate Music</button>
+          <button id="clear-btn">Clear</button>
+        </div>
+        
+        <div class="model-status" id="model-status">
+          Models not loaded. Click "Generate Music" to download and load models (first time only).
+        </div>
+        <div class="progress-container" id="progress-container" style="display: none;">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+          </div>
+          <div id="progress-text" style="font-size: 0.875rem; color: var(--muted); margin-top: 0.25rem;"></div>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <label for="audio-output">Generated Audio</label>
+        <div id="audio-container" style="display: none;">
+          <audio id="audio-output" class="audio-player" controls></audio>
+          <div class="actions" style="margin-top: 0.5rem;">
+            <button id="download-btn">Download Audio</button>
+          </div>
+        </div>
+        <div id="audio-placeholder" style="color: var(--muted); padding: 2rem; text-align: center;">
+          Generated audio will appear here...
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens locally in your browser. The models are downloaded once and cached locally.</p>
+      </details>
+      <details>
+        <summary>How long does generation take?</summary>
+        <p>Generation time depends on the duration and your device. Typically 10-30 seconds for 10 seconds of audio on a modern device.</p>
+      </details>
+      <details>
+        <summary>What audio format is generated?</summary>
+        <p>The tool generates audio in WAV format at 32kHz sample rate.</p>
+      </details>
+      <details>
+        <summary>Can I use this commercially?</summary>
+        <p>Please check the MusicGen model license on Hugging Face. The model is typically available under Apache 2.0 license.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/ai/image-generate">AI Image Generator</a></li>
+        <li><a href="/ai/chat">WebLLM Chatbot</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/music-generate.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

@@ -2,13 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>JSON ↔ YAML ↔ TOML Converter | SomeTools</title>
+  <title>JSON ↔ YAML ↔ TOML Converter | Fast, Client-Side | SomeTools</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Convert between JSON, YAML, and TOML formats instantly. All processing happens locally in your browser.">
+  <meta name="description" content="Convert between TOML, JSON, and YAML formats locally in your browser.">
   <link rel="canonical" href="https://example.com/json/yaml">
-  <link rel="stylesheet" href="/css/base.css">
-  <link rel="stylesheet" href="/css/tool.css">
-  <link rel="preload" href="/css/base.css" as="style">
+  <meta http-equiv="refresh" content="0; url=/json/yaml">
+  <script>
+    // Immediate redirect before any other scripts load
+    if (window.location.pathname === '/json/toml' || window.location.pathname === '/json/toml/') {
+      window.location.replace('/json/yaml');
+    }
+  </script>
+  <link rel="stylesheet" href="/css/base.css?v=3">
+  <link rel="stylesheet" href="/css/tool.css?v=3">
+  <link rel="preload" href="/css/base.css?v=3" as="style">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
   <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
@@ -19,52 +26,8 @@
   <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
   <link rel="manifest" href="/manifest.webmanifest">
   <script type="module" src="/js/analytics.js"></script>
-  <meta property="og:title" content="JSON to YAML Converter">
-  <meta property="og:description" content="Convert between JSON and YAML formats instantly.">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "What formats are supported?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "You can convert between JSON and YAML formats. Both directions are supported."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Is my data secure?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes, all processing happens locally in your browser. Your data never leaves your device."
-        }
-      }
-    ]
-  }
-  </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "name": "Home",
-        "item": "https://example.com/"
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "name": "JSON/YAML Converter",
-        "item": "https://example.com/json/yaml"
-      }
-    ]
-  }
-  </script>
+  <meta property="og:title" content="TOML Converter">
+  <meta property="og:description" content="Convert between TOML, JSON, and YAML formats locally in your browser.">
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to main content</a>
@@ -83,22 +46,22 @@
   </nav>
   
   <main id="main">
-    <h1>JSON ↔ YAML ↔ TOML Converter</h1>
-    <p>Convert between JSON, YAML, and TOML formats instantly. All processing happens locally in your browser.</p>
+    <h1>Redirecting...</h1>
+    <p>This tool has been combined with the JSON ↔ YAML converter. <a href="/json/yaml">Click here if you are not redirected automatically.</a></p>
     
     <div class="options">
       <div class="option-group">
         <label for="direction">Direction:</label>
         <select id="direction">
-          <option value="json-to-yaml" selected>JSON → YAML</option>
-          <option value="yaml-to-json">YAML → JSON</option>
-          <option value="json-to-toml">JSON → TOML</option>
           <option value="toml-to-json">TOML → JSON</option>
-          <option value="yaml-to-toml">YAML → TOML</option>
+          <option value="json-to-toml">JSON → TOML</option>
           <option value="toml-to-yaml">TOML → YAML</option>
+          <option value="yaml-to-toml">YAML → TOML</option>
+          <option value="json-to-yaml">JSON → YAML</option>
+          <option value="yaml-to-json">YAML → JSON</option>
         </select>
       </div>
-      <div class="option-group" id="indent-group">
+      <div class="option-group" id="indent-group" style="display: none;">
         <label for="indent">YAML Indent:</label>
         <select id="indent">
           <option value="2" selected>2 spaces</option>
@@ -117,18 +80,18 @@
       <div class="split-view">
         <div class="pane">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <label for="input" id="input-label">JSON Input</label>
+            <label for="input" id="input-label">TOML Input</label>
             <div class="actions">
               <button id="convert" class="primary">Convert</button>
               <button id="copy-input">Copy Input</button>
               <button id="clear">Clear</button>
             </div>
           </div>
-          <textarea id="input" placeholder='{"foo":"bar","baz":123}'></textarea>
+          <textarea id="input" placeholder='name = "John"\nage = 30'></textarea>
         </div>
         <div class="pane">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <label for="output" id="output-label">YAML Output</label>
+            <label for="output" id="output-label">JSON Output</label>
             <div class="actions">
               <button id="copy-output">Copy Output</button>
               <button id="download">Download</button>
@@ -142,20 +105,16 @@
     <section class="faq" aria-labelledby="faq-h">
       <h2 id="faq-h">FAQ</h2>
       <details>
-        <summary>What formats are supported?</summary>
-        <p>You can convert between JSON, YAML, and TOML formats. All directions are supported with customizable options.</p>
-      </details>
-      <details>
-        <summary>Is my data secure?</summary>
-        <p>Yes, all processing happens locally in your browser. Your data never leaves your device.</p>
-      </details>
-      <details>
-        <summary>What YAML features are supported?</summary>
-        <p>The converter supports basic YAML features including objects, arrays, strings, numbers, booleans, and null values. Advanced YAML features like anchors, aliases, and custom tags are not currently supported.</p>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
       </details>
       <details>
         <summary>What is TOML?</summary>
-        <p>TOML (Tom's Obvious, Minimal Language) is a configuration file format that's easy to read and write. Note that TOML can only represent objects, so arrays and primitives are wrapped when converting to TOML.</p>
+        <p>TOML (Tom's Obvious, Minimal Language) is a configuration file format that's easy to read and write.</p>
+      </details>
+      <details>
+        <summary>What formats are supported?</summary>
+        <p>You can convert between TOML, JSON, and YAML formats. All directions are supported with customizable options.</p>
       </details>
       <details>
         <summary>Can I customize the output format?</summary>
@@ -166,15 +125,20 @@
     <section class="related-tools">
       <h2>Related Tools</h2>
       <ul>
+        <li><a href="/json/yaml">JSON ↔ YAML Converter</a></li>
         <li><a href="/json/format">JSON Formatter</a></li>
         <li><a href="/json/validate">JSON Validator</a></li>
       </ul>
     </section>
   </main>
   
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script type="module" src="/js/header.js"></script>
-  <script type="module" src="/js/tools/json-yaml.js"></script>
+  <script>
+    // Redirect immediately to avoid loading TOML library
+    if (window.location.pathname === '/json/toml' || window.location.pathname === '/json/toml/') {
+      window.location.replace('/json/yaml');
+    }
+  </script>
   <script type="module">
     import { initNotesWidget } from '/js/utils/notes-widget.js';
     initNotesWidget();

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>JSON Schema Generator | Fast, Client-Side | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate JSON Schema from JSON data locally in your browser.">
+  <link rel="canonical" href="https://example.com/json/schema-generate">
+  <link rel="stylesheet" href="/css/base.css?v=3">
+  <link rel="stylesheet" href="/css/tool.css?v=3">
+  <link rel="preload" href="/css/base.css?v=3" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="JSON Schema Generator">
+  <meta property="og:description" content="Generate JSON Schema from JSON data locally in your browser.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is my JSON sent to a server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. All processing happens locally in your browser."
+        }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/json/schema-generate">JSON Schema Generator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>JSON Schema Generator</h1>
+    <p>Generate JSON Schema from JSON data locally in your browser.</p>
+    
+    <section class="tool json-schema-generate-tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label for="json-input">Input JSON</label>
+          <div class="actions" style="margin: 0;">
+            <button id="run" class="primary">Generate Schema</button>
+            <button id="json-copy">Copy</button>
+            <button id="json-example">Example</button>
+          </div>
+        </div>
+        <textarea id="json-input" placeholder='{"name": "John", "age": 30, "email": "john@example.com"}'></textarea>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label for="output">Generated JSON Schema</label>
+          <div class="actions" style="margin: 0;">
+            <button id="schema-copy">Copy</button>
+            <button id="schema-format">Format</button>
+          </div>
+        </div>
+        <textarea id="output" readonly placeholder="Generated schema will appear here"></textarea>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my JSON sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+      <details>
+        <summary>What JSON Schema version is generated?</summary>
+        <p>This tool generates JSON Schema Draft 7 compatible schemas.</p>
+      </details>
+      <details>
+        <summary>How does it work?</summary>
+        <p>The generator analyzes your JSON structure and infers the schema by examining data types, required fields, and nested structures.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/json/schema">JSON Schema Validator</a></li>
+        <li><a href="/json/validate">JSON Validator</a></li>
+        <li><a href="/json/format">JSON Formatter</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/json-schema-generate.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

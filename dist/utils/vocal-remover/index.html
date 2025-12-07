@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Vocal Remover | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Remove vocals from audio tracks using center channel extraction">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <script type="module" src="/js/header.js"></script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header id="header"></header>
+  
+  <main id="main">
+    <h1>Vocal Remover</h1>
+    <p>Remove vocals from audio tracks using center channel extraction. Works best with stereo tracks where vocals are centered in the mix.</p>
+    
+    <div style="background: var(--info-bg, #d1ecf1); border: 1px solid var(--info-border, #0c5460); border-radius: 6px; padding: 1rem; margin: 1rem 0; color: var(--info-text, #0c5460);">
+      <strong>ℹ️ How it works:</strong> This tool uses center channel extraction, which subtracts the center (mono) signal from stereo audio. This works well for tracks where vocals are centered, but may not work perfectly for all audio. For best results, use stereo audio files.
+    </div>
+    
+    <section class="tool">
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label for="audio-input">Upload Audio File</label>
+        <div class="drop-zone" id="drop-zone" style="height: 200px; flex: 0 0 200px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0;">
+          <p>Drag and drop an audio file here, or click to select</p>
+          <p style="font-size: 0.875rem; color: var(--muted); margin-top: 0.5rem;">Supported: MP3, WAV, OGG, M4A, FLAC, AAC, and more</p>
+          <input type="file" id="audio-input" accept="audio/*" style="display: none;">
+        </div>
+        <div id="input-info" style="color: var(--muted); font-size: 0.875rem; margin-top: 0.5rem; display: none;"></div>
+        
+        <div class="options" style="margin-top: 1rem;">
+          <div class="option-group">
+            <label for="method-select">Separation Method:</label>
+            <select id="method-select">
+              <option value="center-channel" selected>Center Channel Extraction (Fast, Basic Quality)</option>
+            </select>
+            <small style="display: block; margin-top: 0.25rem; color: var(--muted);">Center channel extraction works best with stereo tracks where vocals are centered.</small>
+          </div>
+          <div class="option-group" style="margin-top: 1rem;">
+            <label for="vocal-level">Vocal Reduction Level:</label>
+            <input type="range" id="vocal-level" min="0" max="200" value="100" step="5">
+            <span id="vocal-level-value">100%</span>
+            <small style="display: block; margin-top: 0.25rem; color: var(--muted);">Higher values remove more vocals but may affect other sounds</small>
+          </div>
+        </div>
+        
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="process-btn" class="primary" disabled>Process Audio</button>
+          <button id="clear-btn">Clear</button>
+        </div>
+        
+        <div id="status" style="margin-top: 1rem; color: var(--muted);"></div>
+        <div class="progress-container" id="progress-container" style="display: none; margin-top: 1rem;">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+          </div>
+          <div id="progress-text" style="font-size: 0.875rem; color: var(--muted); margin-top: 0.25rem;"></div>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <label>Original Audio</label>
+        <div id="original-audio-container" style="display: none;">
+          <audio id="original-audio" class="audio-player" controls></audio>
+        </div>
+        <div id="original-placeholder" style="color: var(--muted); padding: 2rem; text-align: center;">
+          Original audio will appear here...
+        </div>
+      </div>
+      
+      <div class="pane">
+        <label>Instrumental (Vocals Removed)</label>
+        <div id="output-audio-container" style="display: none;">
+          <audio id="output-audio" class="audio-player" controls></audio>
+          <div class="actions" style="margin-top: 0.5rem;">
+            <button id="download-btn" disabled>Download Instrumental</button>
+          </div>
+        </div>
+        <div id="output-placeholder" style="color: var(--muted); padding: 2rem; text-align: center;">
+          Processed audio will appear here...
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/tools/vocal-remover.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

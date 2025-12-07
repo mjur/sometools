@@ -64,11 +64,120 @@ function objectToYaml(obj, depth = 0, indent = 2) {
     }
     
     const items = obj.map(item => {
-      const value = objectToYaml(item, depth + 1, indent);
       if (isComplexType(item)) {
-        return `-\n${nextIndent}${value.split('\n').join(`\n${nextIndent}`)}`;
+        // For objects in arrays, format specially to get correct indentation
+        if (typeof item === 'object' && !Array.isArray(item)) {
+          const keys = Object.keys(item);
+          const pairs = keys.map((key, idx) => {
+            const value = item[key];
+            const escapedKey = needsQuoting(key) ? `"${escapeString(key)}"` : key;
+            
+            if (isComplexType(value)) {
+              // Special handling for arrays as values - use the same logic as in object formatting
+              if (Array.isArray(value)) {
+                // Use special array-as-value formatting
+                if (value.length === 0) {
+                  return `${escapedKey}: []`;
+                }
+                const arrayIndent = ' '.repeat(indent);
+                const arrayItems = value.map(item => {
+                  if (isComplexType(item)) {
+                    if (typeof item === 'object' && !Array.isArray(item)) {
+                      const itemKeys = Object.keys(item);
+                      const itemPairs = itemKeys.map(itemKey => {
+                        const itemValue = item[itemKey];
+                        const escapedItemKey = needsQuoting(itemKey) ? `"${escapeString(itemKey)}"` : itemKey;
+                        if (isComplexType(itemValue)) {
+                          const itemYamlValue = objectToYaml(itemValue, depth + 1, indent);
+                          const itemValueLines = itemYamlValue.split('\n');
+                          if (itemValueLines.length === 1) {
+                            return `${escapedItemKey}: ${itemValueLines[0]}`;
+                          }
+                          const itemValueIndent = ' '.repeat(indent);
+                          return `${escapedItemKey}:\n${itemValueIndent}${itemValueLines.join(`\n${itemValueIndent}`)}`;
+                        } else {
+                          const itemYamlValue = objectToYaml(itemValue, depth, indent);
+                          return `${escapedItemKey}: ${itemYamlValue}`;
+                        }
+                      });
+                      if (itemPairs.length === 1) {
+                        return `- ${itemPairs[0]}`;
+                      }
+                      const itemIndent = ' '.repeat(indent);
+                      return `- ${itemPairs[0]}\n${itemIndent}${itemPairs.slice(1).join(`\n${itemIndent}`)}`;
+                    } else {
+                      const nestedValue = objectToYaml(item, depth + 2, indent);
+                      const nestedLines = nestedValue.split('\n');
+                      if (nestedLines.length === 1) {
+                        return `- ${nestedLines[0]}`;
+                      }
+                      const nestedIndent = ' '.repeat(indent);
+                      return `-\n${nestedIndent}${nestedLines.join(`\n${nestedIndent}`)}`;
+                    }
+                  } else {
+                    const itemValue = objectToYaml(item, 0, indent);
+                    return `- ${itemValue}`;
+                  }
+                });
+                const indentedItems = arrayItems.map(item => {
+                  const lines = item.split('\n');
+                  const indentedLines = lines.map((line, lineIdx) => {
+                    if (lineIdx === 0) {
+                      // First line (starts with '-') - just add arrayIndent
+                      return arrayIndent + line.trimStart();
+                    } else {
+                      // Subsequent lines (object keys) - preserve their relative indentation
+                      // They already have itemIndent (2 spaces) to align with first key
+                      // We need to add arrayIndent (2 spaces) to the whole thing
+                      // So: existing indent + arrayIndent
+                      const trimmed = line.trimStart();
+                      const existingIndent = line.length - trimmed.length;
+                      // Preserve relative indentation: arrayIndent + existing relative indent
+                      return arrayIndent + ' '.repeat(existingIndent) + trimmed;
+                    }
+                  });
+                  return indentedLines.join('\n');
+                });
+                return `${escapedKey}:\n${indentedItems.join('\n')}`;
+              } else {
+                // Non-array complex type - use regular formatting
+                const yamlValue = objectToYaml(value, depth + 1, indent);
+                const valueLines = yamlValue.split('\n');
+                if (valueLines.length === 1) {
+                  return `${escapedKey}: ${valueLines[0]}`;
+                }
+                const valueIndent = ' '.repeat(indent);
+                return `${escapedKey}:\n${valueIndent}${valueLines.join(`\n${valueIndent}`)}`;
+              }
+            } else {
+              const yamlValue = objectToYaml(value, depth, indent);
+              return `${escapedKey}: ${yamlValue}`;
+            }
+          });
+          
+          // First pair goes after dash, rest align with first key
+          if (pairs.length === 1) {
+            return `- ${pairs[0]}`;
+          }
+          const itemIndent = ' '.repeat(indent);
+          return `- ${pairs[0]}\n${itemIndent}${pairs.slice(1).join(`\n${itemIndent}`)}`;
+        } else {
+          // For nested arrays, format normally
+          const value = objectToYaml(item, depth + 1, indent);
+          const lines = value.split('\n');
+          
+          if (lines.length === 1) {
+            return `- ${lines[0]}`;
+          }
+          
+          // For multi-line nested arrays, put dash on its own line
+          return `-\n${nextIndent}${lines.join(`\n${nextIndent}`)}`;
+        }
+      } else {
+        // Simple values can be on the same line as the dash
+        const value = objectToYaml(item, depth, indent);
+        return `- ${value}`;
       }
-      return `- ${value}`;
     });
     
     return items.join('\n' + indentStr);
@@ -85,8 +194,98 @@ function objectToYaml(obj, depth = 0, indent = 2) {
       const escapedKey = needsQuoting(key) ? `"${escapeString(key)}"` : key;
       
       if (isComplexType(value)) {
-        const yamlValue = objectToYaml(value, depth + 1, indent);
-        return `${escapedKey}:\n${nextIndent}${yamlValue.split('\n').join(`\n${nextIndent}`)}`;
+        // For arrays, we need special handling to get correct indentation
+        if (Array.isArray(value)) {
+          if (value.length === 0) {
+            return `${escapedKey}: []`;
+          }
+          
+          // Format array items with proper indentation
+          // All items should be indented by 'indent' spaces from the key
+          const arrayIndent = ' '.repeat(indent);
+          const arrayItems = value.map((item, itemIndex) => {
+            if (isComplexType(item)) {
+              // For objects in arrays, format them properly
+              if (typeof item === 'object' && !Array.isArray(item)) {
+                const itemKeys = Object.keys(item);
+                const itemPairs = itemKeys.map(itemKey => {
+                  const itemValue = item[itemKey];
+                  const escapedItemKey = needsQuoting(itemKey) ? `"${escapeString(itemKey)}"` : itemKey;
+                  
+                  if (isComplexType(itemValue)) {
+                    // Item value is complex - format at depth + 1 (one level deeper than the array item)
+                    const itemYamlValue = objectToYaml(itemValue, depth + 1, indent);
+                    const itemValueLines = itemYamlValue.split('\n');
+                    if (itemValueLines.length === 1) {
+                      return `${escapedItemKey}: ${itemValueLines[0]}`;
+                    }
+                    // Indent subsequent lines to align with content after the key
+                    const itemValueIndent = ' '.repeat(indent);
+                    return `${escapedItemKey}:\n${itemValueIndent}${itemValueLines.join(`\n${itemValueIndent}`)}`;
+                  } else {
+                    const itemYamlValue = objectToYaml(itemValue, depth, indent);
+                    return `${escapedItemKey}: ${itemYamlValue}`;
+                  }
+                });
+                
+                // Format the object as an array item
+                // First key goes on same line as dash, rest align with first key
+                // When this array is a value of an object key, we'll add arrayIndent to all lines
+                // So subsequent keys should NOT have extra indentation here - they'll get it when arrayIndent is added
+                if (itemPairs.length === 1) {
+                  return `- ${itemPairs[0]}`;
+                }
+                // For subsequent keys, we want them to align with the first key's content
+                // Since we'll add arrayIndent to all lines later, we need to account for that
+                // The first key is: "- key: value" (no leading spaces yet)
+                // Subsequent keys should be: "  key: value" (indented to align with first key's content)
+                // But when arrayIndent is added: "  - key: value" and "    key: value"
+                // So we need: subsequent keys should have indent spaces to align with content after "- "
+                const itemIndent = ' '.repeat(indent);
+                const formattedObject = `- ${itemPairs[0]}\n${itemIndent}${itemPairs.slice(1).join(`\n${itemIndent}`)}`;
+                return formattedObject;
+              } else {
+                // Nested array
+                const nestedValue = objectToYaml(item, depth + 2, indent);
+                const nestedLines = nestedValue.split('\n');
+                if (nestedLines.length === 1) {
+                  return `- ${nestedLines[0]}`;
+                }
+                const nestedIndent = ' '.repeat(indent);
+                return `-\n${nestedIndent}${nestedLines.join(`\n${nestedIndent}`)}`;
+              }
+            } else {
+              // Simple value - just add the dash
+              // For simple values, we don't need any depth-based indentation
+              // because we'll add arrayIndent to all items later
+              const itemValue = objectToYaml(item, 0, indent);
+              return `- ${itemValue}`;
+            }
+          });
+          
+          // Join array items - each item starts with '-' and is indented by arrayIndent
+          // All items need to be indented, including the first one
+          // For multi-line items (objects), all lines need arrayIndent added
+          const indentedItems = arrayItems.map((item, itemIdx) => {
+            // Split by newlines to handle multi-line items (objects in arrays)
+            const lines = item.split('\n');
+            // Add arrayIndent to ALL lines of each item
+            // Remove any existing leading whitespace first to avoid double-indentation
+            const indentedLines = lines.map(line => {
+              const trimmed = line.trimStart();
+              const existingIndent = line.length - trimmed.length;
+              // Only add arrayIndent - don't preserve existing indentation
+              return arrayIndent + trimmed;
+            });
+            return indentedLines.join('\n');
+          });
+          // Join all indented items with newlines
+          return `${escapedKey}:\n${indentedItems.join('\n')}`;
+        } else {
+          // For objects (non-array complex types)
+          const yamlValue = objectToYaml(value, depth + 1, indent);
+          return `${escapedKey}:\n${nextIndent}${yamlValue.split('\n').join(`\n${nextIndent}`)}`;
+        }
       } else {
         const yamlValue = objectToYaml(value, depth, indent);
         return `${escapedKey}: ${yamlValue}`;

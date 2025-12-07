@@ -11,61 +11,152 @@ export async function loadONNXRuntime() {
   if (ort) return ort;
   
   try {
-    // Try CDN sources first (since we're using vanilla JS modules)
-    const cdnSources = [
-      {
-        url: 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js',
-        name: 'jsdelivr'
-      },
-      {
-        url: 'https://unpkg.com/onnxruntime-web@1.16.0/dist/ort.min.js',
-        name: 'unpkg'
-      }
-    ];
+    // Check if we're in a Web Worker (no window object, but has self/importScripts)
+    // More robust detection: check for worker-specific globals
+    const isWorker = typeof window === 'undefined' && 
+                     (typeof self !== 'undefined' || typeof importScripts !== 'undefined');
     
-    // Try loading from CDN via script tag
-    for (const source of cdnSources) {
-      try {
-        console.log(`Trying to load ONNX Runtime from: ${source.name}`);
-        
-        // Load via script tag (onnxruntime-web exposes global 'ort' object)
-        await new Promise((resolve, reject) => {
-          if (window.ort) {
-            ort = window.ort;
-            resolve();
-            return;
+    console.log('[ONNX Loader] Environment check:', {
+      hasWindow: typeof window !== 'undefined',
+      hasSelf: typeof self !== 'undefined',
+      hasImportScripts: typeof importScripts !== 'undefined',
+      isWorker: isWorker
+    });
+    
+    if (isWorker) {
+      // In Web Worker: Try ES module import first, then fallback to UMD
+      // Try ES module version from CDN
+      const esModuleUrls = [
+        'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/+esm',
+        'https://esm.sh/onnxruntime-web@1.16.0'
+      ];
+      
+      let loaded = false;
+      for (const url of esModuleUrls) {
+        try {
+          console.log(`[Worker] Trying ES module import from: ${url}`);
+          const module = await import(url);
+          if (module.default) {
+            ort = module.default;
+          } else if (module.ort) {
+            ort = module.ort;
+          } else {
+            ort = module;
           }
+          if (ort && ort.InferenceSession) {
+            console.log('[Worker] ONNX Runtime loaded via ES module');
+            loaded = true;
+            break;
+          }
+        } catch (importError) {
+          console.warn(`[Worker] ES module import failed from ${url}:`, importError.message);
+          continue;
+        }
+      }
+      
+      // Fallback: Try UMD bundle execution
+      if (!loaded) {
+        const cdnSources = [
+          'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js',
+          'https://unpkg.com/onnxruntime-web@1.16.0/dist/ort.min.js'
+        ];
+        
+        for (const url of cdnSources) {
+          try {
+            console.log(`[Worker] Loading UMD bundle from: ${url}`);
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+            const scriptText = await response.text();
+            
+            // Execute the UMD bundle - it should set self.ort
+            // Use a try-catch around eval to handle CSP restrictions
+            try {
+              // Create execution context
+              const executeScript = new Function('self', `
+                ${scriptText}
+                return self.ort;
+              `);
+              const result = executeScript(self);
+              if (result) {
+                ort = result;
+                console.log('[Worker] ONNX Runtime loaded via UMD execution');
+                loaded = true;
+                break;
+              }
+            } catch (evalError) {
+              console.warn(`[Worker] UMD execution failed:`, evalError.message);
+              // If Function constructor fails, the worker might have CSP restrictions
+              // In that case, we can't load ONNX in the worker
+              throw new Error('Cannot execute UMD bundle in worker (CSP restrictions). Consider processing on main thread.');
+            }
+          } catch (error) {
+            console.warn(`[Worker] Failed to load from ${url}:`, error.message);
+            if (url === cdnSources[cdnSources.length - 1] && !loaded) {
+              throw new Error('ONNX Runtime not available in worker. Please ensure you have an internet connection or process on main thread.');
+            }
+            continue;
+          }
+        }
+      }
+    } else {
+      // In main thread: Try CDN sources via script tag
+      const cdnSources = [
+        {
+          url: 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js',
+          name: 'jsdelivr'
+        },
+        {
+          url: 'https://unpkg.com/onnxruntime-web@1.16.0/dist/ort.min.js',
+          name: 'unpkg'
+        }
+      ];
+      
+      // Try loading from CDN via script tag
+      for (const source of cdnSources) {
+        try {
+          console.log(`Trying to load ONNX Runtime from: ${source.name}`);
           
-          const script = document.createElement('script');
-          script.src = source.url;
-          script.onload = () => {
+          // Load via script tag (onnxruntime-web exposes global 'ort' object)
+          await new Promise((resolve, reject) => {
             if (window.ort) {
               ort = window.ort;
-              console.log(`ONNX Runtime loaded from ${source.name}`);
               resolve();
-            } else {
-              reject(new Error('ONNX Runtime not found on window object'));
+              return;
             }
-          };
-          script.onerror = () => {
-            reject(new Error(`Failed to load from ${source.name}`));
-          };
-          document.head.appendChild(script);
-        });
-        
-        break; // Success, exit loop
-      } catch (error) {
-        console.warn(`Failed to load from ${source.name}:`, error);
-        continue;
+            
+            const script = document.createElement('script');
+            script.src = source.url;
+            script.onload = () => {
+              if (window.ort) {
+                ort = window.ort;
+                console.log(`ONNX Runtime loaded from ${source.name}`);
+                resolve();
+              } else {
+                reject(new Error('ONNX Runtime not found on window object'));
+              }
+            };
+            script.onerror = () => {
+              reject(new Error(`Failed to load from ${source.name}`));
+            };
+            document.head.appendChild(script);
+          });
+          
+          break; // Success, exit loop
+        } catch (error) {
+          console.warn(`Failed to load from ${source.name}:`, error);
+          continue;
+        }
       }
-    }
-    
-    // Fallback: Try ES module import (requires bundler)
-    if (!ort) {
-      try {
-        ort = await import('onnxruntime-web');
-      } catch (importError) {
-        throw new Error('ONNX Runtime not available. Please ensure you have an internet connection or bundle onnxruntime-web.');
+      
+      // Fallback: Try ES module import
+      if (!ort) {
+        try {
+          ort = await import('onnxruntime-web');
+        } catch (importError) {
+          throw new Error('ONNX Runtime not available. Please ensure you have an internet connection or bundle onnxruntime-web.');
+        }
       }
     }
     
@@ -102,9 +193,14 @@ export async function createInferenceSession(modelData, options = {}) {
   
   const sessionOptions = {
     executionProviders: ['webgl', 'wasm'], // Try WebGL first, fallback to WASM
-    graphOptimizationLevel: 'all',
+    graphOptimizationLevel: 'all', // Supported values: 'all', 'basic', 'extended', or omit for default
     ...options
   };
+  
+  // Remove graphOptimizationLevel if it's set to an unsupported value
+  if (sessionOptions.graphOptimizationLevel === 'none' || sessionOptions.graphOptimizationLevel === 'disable') {
+    delete sessionOptions.graphOptimizationLevel;
+  }
   
   try {
     const session = await ort.InferenceSession.create(modelData, sessionOptions);
@@ -113,9 +209,27 @@ export async function createInferenceSession(modelData, options = {}) {
   } catch (error) {
     console.error('Failed to create ONNX session:', error);
     
+    // Decode ONNX Runtime error codes
+    let errorMessage = error.message || String(error);
+    const errorCode = typeof error === 'number' ? error : (error.code || error.errno);
+    
+    // Common ONNX Runtime error codes
+    const errorCodes = {
+      547008096: 'Model loading failed - the model may be corrupted, incompatible, or too large for the browser',
+      547008097: 'Model validation failed - the model structure is invalid',
+      547008098: 'Memory allocation failed - the model is too large',
+      444489896: 'Model execution failed - the model may be too large, require unsupported operations, or have memory issues',
+    };
+    
+    if (errorCode && errorCodes[errorCode]) {
+      errorMessage = `${errorCodes[errorCode]} (Error code: ${errorCode})`;
+    } else if (errorCode) {
+      errorMessage = `ONNX Runtime error code: ${errorCode}. ${errorMessage}`;
+    }
+    
     // Check for ONNX version compatibility issues
-    if (error.message && error.message.includes('IR_VERSION')) {
-      throw new Error(`ONNX model version not supported. The model needs to be converted to ONNX IR version 3 or higher. Error: ${error.message}`);
+    if (errorMessage.includes('IR_VERSION')) {
+      throw new Error(`ONNX model version not supported. The model needs to be converted to ONNX IR version 3 or higher. Error: ${errorMessage}`);
     }
     
     // Try with WASM only as fallback (for WebGL compatibility issues)
@@ -124,17 +238,39 @@ export async function createInferenceSession(modelData, options = {}) {
       try {
         return await ort.InferenceSession.create(modelData, {
           ...sessionOptions,
-          executionProviders: ['wasm']
+          executionProviders: ['wasm'],
+          graphOptimizationLevel: 'basic' // Reduce optimization level
         });
       } catch (wasmError) {
-        // If WASM also fails with version error, throw the original error
-        if (wasmError.message && wasmError.message.includes('IR_VERSION')) {
-          throw new Error(`ONNX model version not supported. The model needs to be converted to ONNX IR version 3 or higher. Error: ${wasmError.message}`);
+        // Decode WASM error too
+        let wasmErrorMessage = wasmError.message || String(wasmError);
+        const wasmErrorCode = typeof wasmError === 'number' ? wasmError : (wasmError.code || wasmError.errno);
+        
+        if (wasmErrorCode && errorCodes[wasmErrorCode]) {
+          wasmErrorMessage = `${errorCodes[wasmErrorCode]} (Error code: ${wasmErrorCode})`;
+        } else if (wasmErrorCode) {
+          wasmErrorMessage = `ONNX Runtime error code: ${wasmErrorCode}. ${wasmErrorMessage}`;
         }
-        throw wasmError;
+        
+        // If WASM also fails with version error, throw the original error
+        if (wasmErrorMessage.includes('IR_VERSION')) {
+          throw new Error(`ONNX model version not supported. The model needs to be converted to ONNX IR version 3 or higher. Error: ${wasmErrorMessage}`);
+        }
+        
+        // Try one more time with minimal options
+        console.log('Retrying with minimal options...');
+        try {
+          return await ort.InferenceSession.create(modelData, {
+            executionProviders: ['wasm'],
+            graphOptimizationLevel: 'none'
+          });
+        } catch (minimalError) {
+          throw new Error(wasmErrorMessage);
+        }
       }
     }
-    throw error;
+    
+    throw new Error(errorMessage);
   }
 }
 
@@ -470,8 +606,81 @@ export async function runInference(session, inputs) {
       }
       throw runError;
     }
-  } catch (error) {
-    console.error('Inference error:', error);
+    } catch (error) {
+      console.error('Inference error:', error);
+      
+      // Try to extract shape information from error messages
+      const errorStr = String(error);
+      const errorMessage = error.message || errorStr;
+      
+      // If error is a number, try to get more info from the error object
+      let errorCode = typeof error === 'number' ? error : (error.code || error.errno);
+      
+      console.error('=== Detailed Error Analysis ===');
+      console.error('Error type:', typeof error);
+      console.error('Error code:', errorCode || 'N/A');
+      console.error('Error message:', errorMessage);
+      console.error('Full error object:', error);
+      console.error('Error object keys:', Object.keys(error || {}));
+      
+      // Try to access error properties that might contain more info
+      if (error && typeof error === 'object') {
+        for (const key of Object.keys(error)) {
+          console.error(`Error.${key}:`, error[key]);
+        }
+      }
+      
+      if (errorMessage.includes('expected shape') || errorMessage.includes('Got invalid dimensions') || errorMessage.includes('dimension')) {
+        console.error('=== Shape Mismatch Details ===');
+        // Extract expected shapes from error message - try multiple patterns
+        const patterns = [
+          /Expected[:\s]+([^\s,]+)/i,
+          /expected[:\s]+([^\s,]+)/i,
+          /expected shape[:\s]*['"]?([^\s'"]+)['"]?/i,
+          /shape[:\s]*['"]?([^\s'"]+)['"]?[^\d]*Expected/i
+        ];
+        for (const pattern of patterns) {
+          const match = errorMessage.match(pattern);
+          if (match) {
+            console.error('Expected shape (pattern match):', match[1]);
+            break;
+          }
+        }
+        
+        const gotPatterns = [
+          /Got[:\s]+([^\s,]+)/i,
+          /got[:\s]+([^\s,]+)/i,
+          /Got invalid dimensions[:\s]*for[:\s]*input[:\s]*([^\s:]+)/i
+        ];
+        for (const pattern of gotPatterns) {
+          const match = errorMessage.match(pattern);
+          if (match) {
+            console.error('Got shape/value (pattern match):', match[1]);
+            break;
+          }
+        }
+        
+        // Look for dimension information with index
+        const dimPatterns = [
+          /index[:\s]+(\d+)[^\d]*Got[:\s]+(\d+)[^\d]*Expected[:\s]+(\d+)/i,
+          /dimension[:\s]+(\d+)[^\d]*Got[:\s]+(\d+)[^\d]*Expected[:\s]+(\d+)/i,
+          /Got[:\s]+(\d+)[^\d]*Expected[:\s]+(\d+)/i
+        ];
+        for (const pattern of dimPatterns) {
+          const match = errorMessage.match(pattern);
+          if (match) {
+            console.error('Dimension mismatch details:', {
+              index: match[1] || 'N/A',
+              got: match[2] || match[1],
+              expected: match[3] || match[2]
+            });
+            break;
+          }
+        }
+        console.error('Full error string:', errorMessage);
+        console.error('=== End Shape Mismatch Details ===');
+      }
+      console.error('=== End Detailed Error Analysis ===');
     
     // Convert error to Error object if it's not already
     let errorObj = error;

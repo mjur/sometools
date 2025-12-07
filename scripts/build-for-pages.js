@@ -56,7 +56,7 @@ const excludePatterns = [
   /\.ipynb$/,
   /\.yml$/,
   /\.yaml$/,
-  /\.txt$/,
+  /\.txt$/,  // Exclude .txt files EXCEPT robots.txt and sitemap.xml (handled separately)
   /\.md$/,
   /DeOldify/,
   /^workers$/,  // Only exclude root-level workers directory, not ffmpeg-workers
@@ -91,6 +91,12 @@ function shouldExclude(filePath) {
   // Convert to relative path for better matching
   const relativePath = path.relative(rootDir, filePath);
   const fileName = path.basename(filePath);
+  
+  // Never exclude root files that are explicitly copied
+  const isRootFile = rootFiles.includes(fileName);
+  if (isRootFile) {
+    return false;
+  }
   
   // Check both full path and filename
   return excludePatterns.some(pattern => 
@@ -186,6 +192,21 @@ if (fs.existsSync(redirectsSource)) {
 `;
   fs.writeFileSync(redirectsDest, redirectsContent);
   console.log('  Created default _redirects');
+}
+
+// Verify critical files were copied
+const criticalFiles = ['index.html', '_redirects'];
+let missingFiles = [];
+for (const file of criticalFiles) {
+  const filePath = path.join(distDir, file);
+  if (!fs.existsSync(filePath)) {
+    missingFiles.push(file);
+  }
+}
+
+if (missingFiles.length > 0) {
+  console.error('\n✗ Build failed: Missing critical files:', missingFiles.join(', '));
+  process.exit(1);
 }
 
 console.log('\n✓ Build complete!');

@@ -5,44 +5,14 @@ import { jsonToYaml, yamlToJson } from '/js/utils/yaml.js';
 
 // Load TOML library dynamically
 let TOML = null;
-let tomlLoading = false;
-
 async function loadTOML() {
   if (TOML) return true;
-  if (tomlLoading) {
-    // Wait for existing load
-    return new Promise((resolve) => {
-      const checkInterval = setInterval(() => {
-        if (TOML) {
-          clearInterval(checkInterval);
-          resolve(true);
-        } else if (!tomlLoading) {
-          clearInterval(checkInterval);
-          resolve(false);
-        }
-      }, 100);
-    });
-  }
-  
-  tomlLoading = true;
   try {
-    // Use jsdelivr with +esm which handles Node.js polyfills better
-    // Wrap in try-catch to handle Node.js module errors gracefully
-    const tomlModule = await import('https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/+esm').catch(err => {
-      // If import fails due to Node.js modules, try alternative
-      throw new Error('TOML library requires Node.js modules');
-    });
+    const tomlModule = await import('https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/+esm');
     TOML = tomlModule.default || tomlModule;
-    // Verify TOML is actually usable
-    if (!TOML || typeof TOML.parse !== 'function') {
-      throw new Error('TOML library loaded but not usable');
-    }
-    tomlLoading = false;
     return true;
   } catch (error) {
-    console.warn('Failed to load TOML from jsdelivr:', error.message);
-    tomlLoading = false;
-    // Don't try fallback - if jsdelivr doesn't work, others likely won't either
+    console.error('Failed to load TOML library:', error);
     return false;
   }
 }
@@ -64,10 +34,10 @@ const outputLabel = qs('#output-label');
 const indentGroup = qs('#indent-group');
 const prettyGroup = qs('#pretty-group');
 
-let currentDirection = 'json-to-yaml';
+let currentDirection = 'toml-to-json';
 
 // Load state
-const storageKey = 'json-yaml-state';
+const storageKey = 'toml-converter-state';
 const state = loadStateWithStorage(storageKey);
 if (state?.input) input.value = state.input;
 if (state?.direction) {
@@ -204,10 +174,12 @@ async function convert() {
       }
       try {
         // TOML.stringify requires an object, not an array
+        // If we have an array, wrap it in an object
         let dataToStringify = jsonData;
         if (Array.isArray(jsonData)) {
           dataToStringify = { items: jsonData };
         } else if (jsonData === null || typeof jsonData !== 'object') {
+          // Primitive values need to be wrapped
           dataToStringify = { value: jsonData };
         }
         outputText = TOML.stringify(dataToStringify);
@@ -224,9 +196,8 @@ async function convert() {
     // Save state
     saveState();
   } catch (error) {
-    output.value = '';
     toast(`Error: ${error.message}`, 'error');
-    console.error('Conversion error:', error);
+    output.value = '';
   }
 }
 
@@ -320,4 +291,9 @@ on(document, 'keydown', (e) => {
     convert();
   }
 });
+
+// Initial convert if there's content
+if (input.value) {
+  convert();
+}
 
