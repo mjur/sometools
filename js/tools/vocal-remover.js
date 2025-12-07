@@ -45,40 +45,60 @@ let ort = null; // ONNX Runtime
 let aiModelSession = null; // AI model session
 let isAIModelLoading = false; // Track AI model loading state
 
-// AI Model Configuration
-// Using MVSEP-MDX23 model for high-quality vocal separation
-// Model options:
-// 1. ZFTurbo/MVSEP-MDX23-music-separation-model (recommended - separates into 4 stems)
-// 2. KimberleyJensen/kmdx-net_music-source-separation (alternative)
-//
-// Note: Hugging Face models may require authentication. If the model URL fails,
-// you may need to:
-// 1. Download the model and host it on your CDN (e.g., cdn.sometools.io)
-// 2. Or use a different publicly accessible model URL
-const AI_MODEL_CONFIG = {
-  name: 'MVSEP-MDX23 Vocal Separation',
-  key: 'mvsep-mdx23-vocal-separation',
-  // MVSEP-MDX23 model URL - separates into: bass, drums, vocals, other
-  // We'll extract the instrumental by combining bass + drums + other (excluding vocals)
-  // Try multiple URL formats in case of authentication issues
-  modelUrl: 'https://huggingface.co/ZFTurbo/MVSEP-MDX23-music-separation-model/resolve/main/model.onnx',
-  // Alternative URLs to try if the first one fails:
-  fallbackUrls: [
-    'https://huggingface.co/ZFTurbo/MVSEP-MDX23-music-separation-model/resolve/main/model.onnx?download=true',
-    'https://huggingface.co/KimberleyJensen/kmdx-net_music-source-separation/resolve/main/model.onnx',
-  ],
-  // Expected input: Audio waveform [batch, samples] or [batch, channels, samples]
-  // Expected output: Separated stems [batch, stems, channels, samples] where stems are:
-  //   - [0] = bass
-  //   - [1] = drums  
-  //   - [2] = vocals (we want to exclude this)
-  //   - [3] = other
-  // We'll combine bass + drums + other to get instrumental
-  inputName: 'audio', // Will be auto-detected from model
-  outputName: 'output', // Will be auto-detected from model
-  sampleRate: 44100, // Model's expected sample rate (will resample if needed)
-  chunkSize: 44100 * 5, // Process 5 seconds at a time to avoid memory issues
+// AI Model Configurations
+// Support for multiple AI models for vocal separation
+const AI_MODEL_CONFIGS = {
+  'mvsep-mdx23': {
+    name: 'MVSEP-MDX23 Vocal Separation',
+    key: 'mvsep-mdx23-vocal-separation',
+    // MVSEP-MDX23 model URL - separates into: bass, drums, vocals, other
+    modelUrl: 'https://huggingface.co/ZFTurbo/MVSEP-MDX23-music-separation-model/resolve/main/model.onnx',
+    fallbackUrls: [
+      'https://huggingface.co/ZFTurbo/MVSEP-MDX23-music-separation-model/resolve/main/model.onnx?download=true',
+      'https://huggingface.co/KimberleyJensen/kmdx-net_music-source-separation/resolve/main/model.onnx',
+    ],
+    // Output: [batch, stems, channels, samples] where stems are:
+    //   [0] = bass, [1] = drums, [2] = vocals, [3] = other
+    // Combine stems: [0, 1, 3] (exclude vocals at index 2)
+    stemIndices: [0, 1, 3], // bass, drums, other (exclude vocals)
+    numStems: 4,
+    inputName: 'audio',
+    outputName: 'output',
+    sampleRate: 44100,
+    chunkSize: 44100 * 5,
+  },
+  'demucs-htdemucs-6s': {
+    name: 'Demucs HTDemucs 6s',
+    key: 'demucs-htdemucs-6s',
+    // Demucs HTDemucs 6s model - pre-converted ONNX from Hugging Face (publicly accessible)
+    modelUrl: 'https://huggingface.co/arjune123/demucs-onnx/resolve/main/htdemucs_6s.onnx',
+    fallbackUrls: [],
+    // Output: [batch, stems, channels, samples] where stems are:
+    //   [0] = drums, [1] = bass, [2] = other, [3] = vocals, [4] = piano, [5] = guitar
+    // Combine stems: [0, 1, 2, 4, 5] (exclude vocals at index 3)
+    stemIndices: [0, 1, 2, 4, 5], // drums, bass, other, piano, guitar (exclude vocals)
+    numStems: 6,
+    inputName: 'audio',
+    outputName: 'output',
+    sampleRate: 44100,
+    chunkSize: 343980, // Exact chunk size the model expects (~7.8 seconds at 44.1kHz)
+    expectsStereo: true, // Demucs expects stereo input [batch, 2, samples]
+  }
 };
+
+// Get the current AI model config based on method selection
+function getAIModelConfig() {
+  const method = methodSelect ? methodSelect.value : 'center-channel';
+  if (method === 'ai-model-mvsep') {
+    return AI_MODEL_CONFIGS['mvsep-mdx23'];
+  } else if (method === 'ai-model-demucs') {
+    return AI_MODEL_CONFIGS['demucs-htdemucs-6s'];
+  }
+  return null;
+}
+
+// Legacy reference for backward compatibility (use Demucs as default)
+const AI_MODEL_CONFIG = AI_MODEL_CONFIGS['demucs-htdemucs-6s'];
 
 // Add error handlers to audio elements to catch blob URL errors
 if (originalAudio) {
@@ -181,28 +201,30 @@ async function handleFile(file) {
 }
 
 // Drag and drop
-on(dropZone, 'dragover', (e) => {
-  e.preventDefault();
-  dropZone.classList.add('dragover');
-});
+if (dropZone && audioInput) {
+  on(dropZone, 'dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
 
-on(dropZone, 'dragleave', () => {
-  dropZone.classList.remove('dragover');
-});
+  on(dropZone, 'dragleave', () => {
+    dropZone.classList.remove('dragover');
+  });
 
-on(dropZone, 'drop', (e) => {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (file) handleFile(file);
-});
+  on(dropZone, 'drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
 
-on(dropZone, 'click', () => audioInput.click());
+  on(dropZone, 'click', () => audioInput.click());
 
-on(audioInput, 'change', (e) => {
-  const file = e.target.files[0];
-  if (file) handleFile(file);
-});
+  on(audioInput, 'change', (e) => {
+    const file = e.target.files[0];
+    if (file) handleFile(file);
+  });
+}
 
 // Process audio to remove vocals
 on(processBtn, 'click', async () => {
@@ -276,7 +298,8 @@ on(processBtn, 'click', async () => {
     // Check which method to use
     let method = methodSelect ? methodSelect.value : 'center-channel';
     
-    if (method === 'ai-model' && AI_MODEL_CONFIG.modelUrl) {
+    const modelConfig = getAIModelConfig();
+    if ((method === 'ai-model-demucs' || method === 'ai-model-mvsep') && modelConfig) {
       // Use AI model for separation
       progressFill.style.width = '20%';
       progressText.textContent = 'Loading AI model...';
@@ -298,7 +321,7 @@ on(processBtn, 'click', async () => {
     }
     
     // Center channel extraction (default or fallback)
-    if (method === 'center-channel' || !AI_MODEL_CONFIG.modelUrl) {
+    if (method === 'center-channel' || !modelConfig) {
       // Use center channel extraction
       progressFill.style.width = '20%';
       progressText.textContent = 'Extracting center channel...';
@@ -839,7 +862,8 @@ async function loadAIModel() {
     return null;
   }
   
-  if (!AI_MODEL_CONFIG.modelUrl) {
+  const modelConfig = getAIModelConfig();
+  if (!modelConfig || !modelConfig.modelUrl) {
     const errorMsg = `AI Model Not Configured
 
 The AI model option requires an ONNX vocal separation model to be configured.
@@ -847,7 +871,7 @@ The AI model option requires an ONNX vocal separation model to be configured.
 To enable the AI model:
 1. Convert a vocal separation model (Spleeter, Demucs, etc.) to ONNX format
 2. Host the ONNX model file on your CDN (e.g., cdn.sometools.io)
-3. Update AI_MODEL_CONFIG.modelUrl in js/tools/vocal-remover.js
+3. Update AI_MODEL_CONFIGS in js/tools/vocal-remover.js
 
 For now, please use "Center Channel Extraction" method instead.
 It works well for stereo tracks where vocals are centered.`;
@@ -857,20 +881,20 @@ It works well for stereo tracks where vocals are centered.`;
   
   try {
     isAIModelLoading = true;
-    console.log('[Vocal Remover] Loading AI model...');
+    console.log(`[Vocal Remover] Loading ${modelConfig.name}...`);
     
     // Load ONNX Runtime
     ort = await loadONNXRuntime();
     
     // Download model - try primary URL first, then fallbacks
     let modelData = null;
-    const urlsToTry = [AI_MODEL_CONFIG.modelUrl, ...(AI_MODEL_CONFIG.fallbackUrls || [])];
+    const urlsToTry = [modelConfig.modelUrl, ...(modelConfig.fallbackUrls || [])];
     
     for (const modelUrl of urlsToTry) {
       try {
         console.log(`[Vocal Remover] Trying to load model from: ${modelUrl}`);
         modelData = await getOrDownloadModel(
-          AI_MODEL_CONFIG.key + '_' + modelUrl.split('/').slice(-2).join('_'), // Unique key per URL
+          modelConfig.key + '_' + modelUrl.split('/').slice(-2).join('_'), // Unique key per URL
           modelUrl,
           (loaded, total) => {
             if (total > 0) {
@@ -903,17 +927,20 @@ It works well for stereo tracks where vocals are centered.`;
       executionProviders: ['wasm'] // Use WASM for compatibility
     });
     
-    console.log('[Vocal Remover] AI model loaded successfully');
+    console.log(`[Vocal Remover] ${modelConfig.name} loaded successfully`);
     console.log('[Vocal Remover] Model inputs:', aiModelSession.inputNames);
     console.log('[Vocal Remover] Model outputs:', aiModelSession.outputNames);
     
     // Auto-detect input/output names
     if (aiModelSession.inputNames && aiModelSession.inputNames.length > 0) {
-      AI_MODEL_CONFIG.inputName = aiModelSession.inputNames[0];
+      modelConfig.inputName = aiModelSession.inputNames[0];
     }
     if (aiModelSession.outputNames && aiModelSession.outputNames.length > 0) {
-      AI_MODEL_CONFIG.outputName = aiModelSession.outputNames[0];
+      modelConfig.outputName = aiModelSession.outputNames[0];
     }
+    
+    // Store the current model config
+    currentAIModelConfig = modelConfig;
     
     isAIModelLoading = false;
     return aiModelSession;
@@ -927,11 +954,20 @@ It works well for stereo tracks where vocals are centered.`;
 // Process audio with AI model
 async function processWithAIModel(audioBuffer, progressCallback) {
   try {
+    // Get current model config
+    const modelConfig = getAIModelConfig();
+    if (!modelConfig) {
+      throw new Error('No AI model selected');
+    }
+    
     // Load model if needed
     const session = await loadAIModel();
     if (!session) {
       throw new Error('Failed to load AI model');
     }
+    
+    // Use the stored model config (set during loadAIModel)
+    const activeConfig = currentAIModelConfig || modelConfig;
     
     const sampleRate = audioBuffer.sampleRate;
     const length = audioBuffer.length;
@@ -939,35 +975,100 @@ async function processWithAIModel(audioBuffer, progressCallback) {
     
     // Resample if needed (model expects specific sample rate)
     let processedBuffer = audioBuffer;
-    if (sampleRate !== AI_MODEL_CONFIG.sampleRate) {
+    if (sampleRate !== activeConfig.sampleRate) {
       if (progressCallback) progressCallback(0.1, 'Resampling audio...');
       // Simple resampling (linear interpolation) - for production, use a proper resampler
-      processedBuffer = await resampleAudio(audioBuffer, AI_MODEL_CONFIG.sampleRate);
+      processedBuffer = await resampleAudio(audioBuffer, activeConfig.sampleRate);
     }
     
-    // Convert to mono if model expects mono input
+    // Check if model expects stereo or mono
+    const expectsStereo = activeConfig.expectsStereo || false;
+    
+    // Prepare input data based on model requirements
     let inputData = null;
-    if (numberOfChannels > 1) {
-      // Average channels to mono
-      const left = processedBuffer.getChannelData(0);
-      const right = processedBuffer.getChannelData(1);
-      inputData = new Float32Array(processedBuffer.length);
-      for (let i = 0; i < processedBuffer.length; i++) {
-        inputData[i] = (left[i] + right[i]) / 2;
+    let inputChannels = numberOfChannels;
+    
+    if (expectsStereo) {
+      // Model expects stereo - keep both channels
+      if (numberOfChannels === 1) {
+        // Duplicate mono to stereo
+        const mono = processedBuffer.getChannelData(0);
+        inputData = new Float32Array(processedBuffer.length * 2);
+        for (let i = 0; i < processedBuffer.length; i++) {
+          inputData[i * 2] = mono[i];     // Left channel
+          inputData[i * 2 + 1] = mono[i]; // Right channel (same as left)
+        }
+        inputChannels = 2;
+      } else {
+        // Already stereo - interleave channels: [L0, R0, L1, R1, ...]
+        const left = processedBuffer.getChannelData(0);
+        const right = processedBuffer.getChannelData(1);
+        inputData = new Float32Array(processedBuffer.length * 2);
+        for (let i = 0; i < processedBuffer.length; i++) {
+          inputData[i * 2] = left[i];
+          inputData[i * 2 + 1] = right[i];
+        }
+        inputChannels = 2;
       }
     } else {
-      inputData = processedBuffer.getChannelData(0);
+      // Model expects mono - convert to mono
+      if (numberOfChannels > 1) {
+        // Average channels to mono
+        const left = processedBuffer.getChannelData(0);
+        const right = processedBuffer.getChannelData(1);
+        inputData = new Float32Array(processedBuffer.length);
+        for (let i = 0; i < processedBuffer.length; i++) {
+          inputData[i] = (left[i] + right[i]) / 2;
+        }
+        inputChannels = 1;
+      } else {
+        inputData = processedBuffer.getChannelData(0);
+        inputChannels = 1;
+      }
     }
     
     // Process in chunks
-    const chunkSize = AI_MODEL_CONFIG.chunkSize;
-    const totalChunks = Math.ceil(inputData.length / chunkSize);
+    const chunkSize = activeConfig.chunkSize;
+    // For stereo, chunkSize is in samples per channel, but inputData is interleaved (2x length)
+    const samplesPerChannel = expectsStereo ? inputData.length / 2 : inputData.length;
+    const chunkSizeSamples = expectsStereo ? chunkSize : chunkSize;
+    const totalChunks = Math.ceil(samplesPerChannel / chunkSizeSamples);
     const outputChunks = [];
     
     for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
-      const start = chunkIdx * chunkSize;
-      const end = Math.min(start + chunkSize, inputData.length);
-      const chunk = inputData.slice(start, end);
+      const startSample = chunkIdx * chunkSizeSamples;
+      const endSample = Math.min(startSample + chunkSizeSamples, samplesPerChannel);
+      const actualChunkSize = endSample - startSample;
+      
+      let chunk;
+      if (expectsStereo) {
+        // Extract stereo chunk from interleaved data and convert to planar format
+        // inputData is [L0, R0, L1, R1, ...], we need [L0...Ln, R0...Rn]
+        const leftChannel = new Float32Array(actualChunkSize);
+        const rightChannel = new Float32Array(actualChunkSize);
+        for (let i = 0; i < actualChunkSize; i++) {
+          const interleavedIdx = (startSample + i) * 2;
+          leftChannel[i] = inputData[interleavedIdx];
+          rightChannel[i] = inputData[interleavedIdx + 1];
+        }
+        // Planar format: [all left samples, all right samples]
+        chunk = new Float32Array(actualChunkSize * 2);
+        chunk.set(leftChannel, 0);
+        chunk.set(rightChannel, actualChunkSize);
+      } else {
+        // Mono - just slice
+        const start = startSample;
+        const end = endSample;
+        chunk = inputData.slice(start, end);
+      }
+      
+      // Pad chunk to exact size if needed (for models that require fixed size)
+      if (actualChunkSize < chunkSizeSamples && activeConfig.chunkSize === chunkSizeSamples) {
+        const paddedChunk = new Float32Array(chunkSizeSamples * (expectsStereo ? 2 : 1));
+        paddedChunk.set(chunk, 0);
+        // Zero-pad the rest
+        chunk = paddedChunk;
+      }
       
       if (progressCallback) {
         const progress = (chunkIdx + 1) / totalChunks;
@@ -975,19 +1076,28 @@ async function processWithAIModel(audioBuffer, progressCallback) {
       }
       
       // Prepare input tensor
-      // Shape depends on model - typically [1, samples] or [1, 1, samples]
-      const inputShape = [1, chunk.length];
-      const inputTensor = new ort.Tensor('float32', new Float32Array(chunk), inputShape);
+      // Determine input shape based on model requirements
+      const samplesInChunk = expectsStereo ? chunk.length / 2 : chunk.length;
+      let inputShape;
+      
+      // Default to 3D [batch, channels, samples] for stereo, 2D [batch, samples] for mono
+      if (expectsStereo) {
+        inputShape = [1, 2, chunkSizeSamples]; // Use expected chunk size
+      } else {
+        inputShape = [1, chunk.length];
+      }
+      
+      const inputTensor = new ort.Tensor('float32', chunk, inputShape);
       
       const inputs = {
-        [AI_MODEL_CONFIG.inputName]: inputTensor
+        [activeConfig.inputName]: inputTensor
       };
       
       // Run inference
       const outputs = await runInference(session, inputs);
       
       // Extract output (model should output instrumental/vocals-removed audio)
-      const outputTensor = outputs[AI_MODEL_CONFIG.outputName] || outputs[Object.keys(outputs)[0]];
+      const outputTensor = outputs[activeConfig.outputName] || outputs[Object.keys(outputs)[0]];
       if (!outputTensor) {
         throw new Error('Model did not return expected output');
       }
@@ -1018,19 +1128,21 @@ async function processWithAIModel(audioBuffer, progressCallback) {
           // Shape: [batch, stems, channels, samples]
           const [batch, stems, channels, samples] = dims;
           
-          // MVSEP-MDX23: 4 stems (bass=0, drums=1, vocals=2, other=3)
-          // Combine bass + drums + other (exclude vocals) for each channel
-          if (stems === 4) {
-            console.log('[Vocal Remover] MVSEP-MDX23 format detected: combining bass + drums + other');
+          // Use model config to determine which stems to combine
+          const stemIndices = activeConfig.stemIndices || [];
+          const expectedStems = activeConfig.numStems || 0;
+          
+          if (stems === expectedStems && stemIndices.length > 0) {
+            console.log(`[Vocal Remover] ${activeConfig.name} format detected: combining stems ${stemIndices.join(', ')} (excluding vocals)`);
             // Output format: [channels, samples] - planar format
             const instrumentalData = new Float32Array(channels * samples);
             
             for (let ch = 0; ch < channels; ch++) {
               for (let i = 0; i < samples; i++) {
                 let sum = 0;
-                // Combine stems 0 (bass), 1 (drums), 3 (other) - skip 2 (vocals)
+                // Combine specified stems (exclude vocals)
                 // Index calculation: batch*stems*channels*samples + stem*channels*samples + channel*samples + sample
-                for (const stemIdx of [0, 1, 3]) {
+                for (const stemIdx of stemIndices) {
                   const idx = stemIdx * channels * samples + ch * samples + i;
                   sum += outputData[idx];
                 }
@@ -1071,13 +1183,18 @@ async function processWithAIModel(audioBuffer, progressCallback) {
           const [batch, stems, samples] = dims;
           const instrumentalData = new Float32Array(samples);
           
-          if (stems === 4) {
-            // MVSEP-MDX23: combine bass + drums + other
-            console.log('[Vocal Remover] MVSEP-MDX23 mono format: combining stems');
+          const stemIndices = activeConfig.stemIndices || [];
+          const expectedStems = activeConfig.numStems || 0;
+          
+          if (stems === expectedStems && stemIndices.length > 0) {
+            // Use model config stem indices
+            console.log(`[Vocal Remover] ${activeConfig.name} mono format: combining stems ${stemIndices.join(', ')}`);
             for (let i = 0; i < samples; i++) {
-              instrumentalData[i] = outputData[0 * samples + i] + // bass
-                                    outputData[1 * samples + i] + // drums
-                                    outputData[3 * samples + i];  // other (skip vocals at index 2)
+              let sum = 0;
+              for (const stemIdx of stemIndices) {
+                sum += outputData[stemIdx * samples + i];
+              }
+              instrumentalData[i] = sum;
             }
           } else if (stems === 2) {
             // Spleeter: use accompaniment
@@ -1097,12 +1214,18 @@ async function processWithAIModel(audioBuffer, progressCallback) {
           const [stems, samples] = dims;
           const instrumentalData = new Float32Array(samples);
           
-          if (stems === 4) {
-            // MVSEP-MDX23: combine stems
+          const stemIndices = activeConfig.stemIndices || [];
+          const expectedStems = activeConfig.numStems || 0;
+          
+          if (stems === expectedStems && stemIndices.length > 0) {
+            // Use model config stem indices
+            console.log(`[Vocal Remover] ${activeConfig.name} mono format: combining stems ${stemIndices.join(', ')}`);
             for (let i = 0; i < samples; i++) {
-              instrumentalData[i] = outputData[0 * samples + i] + // bass
-                                    outputData[1 * samples + i] + // drums
-                                    outputData[3 * samples + i];  // other
+              let sum = 0;
+              for (const stemIdx of stemIndices) {
+                sum += outputData[stemIdx * samples + i];
+              }
+              instrumentalData[i] = sum;
             }
           } else if (stems === 2) {
             // Spleeter: use accompaniment
@@ -1137,22 +1260,22 @@ async function processWithAIModel(audioBuffer, progressCallback) {
     // Determine if output is interleaved [ch0_sample0, ch1_sample0, ch0_sample1, ch1_sample1, ...]
     // or planar [ch0_all_samples, ch1_all_samples, ...]
     // MVSEP-MDX23 typically outputs planar format after our processing
-    const samplesPerChannel = Math.floor(combinedOutput.length / numberOfChannels);
-    const isPlanar = samplesPerChannel > 0 && samplesPerChannel * numberOfChannels === combinedOutput.length;
+    const outputSamplesPerChannel = Math.floor(combinedOutput.length / numberOfChannels);
+    const isPlanar = outputSamplesPerChannel > 0 && outputSamplesPerChannel * numberOfChannels === combinedOutput.length;
     
     // Create output AudioBuffer
     const outputBuffer = audioContext.createBuffer(
       numberOfChannels,
-      Math.min(samplesPerChannel || length, length),
+      Math.min(outputSamplesPerChannel || length, length),
       sampleRate
     );
     
-    if (isPlanar && samplesPerChannel > 0) {
+    if (isPlanar && outputSamplesPerChannel > 0) {
       // Planar format: [ch0_samples..., ch1_samples...]
       for (let ch = 0; ch < numberOfChannels; ch++) {
         const channelData = outputBuffer.getChannelData(ch);
-        const channelOffset = ch * samplesPerChannel;
-        for (let i = 0; i < Math.min(samplesPerChannel, channelData.length); i++) {
+        const channelOffset = ch * outputSamplesPerChannel;
+        for (let i = 0; i < Math.min(outputSamplesPerChannel, channelData.length); i++) {
           channelData[i] = Math.max(-1, Math.min(1, combinedOutput[channelOffset + i]));
         }
       }
