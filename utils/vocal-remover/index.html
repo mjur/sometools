@@ -33,6 +33,14 @@
         
         <div class="options" style="margin-top: 1rem;">
           <div class="option-group">
+            <label for="method-select">Separation Method:</label>
+            <select id="method-select">
+              <option value="center-channel">Center Channel Extraction (Fast, Basic Quality)</option>
+              <option value="ai-model">AI Model - MVSEP-MDX23 (Better Quality, Slower)</option>
+            </select>
+            <small style="display: block; margin-top: 0.25rem; color: var(--muted);">Center channel extraction works best with stereo tracks where vocals are centered. AI model uses MVSEP-MDX23 for high-quality separation.</small>
+          </div>
+          <div class="option-group" style="margin-top: 1rem;">
             <label for="vocal-level">Vocal Reduction Level:</label>
             <input type="range" id="vocal-level" min="0" max="200" value="100" step="5">
             <span id="vocal-level-value">100%</span>
