@@ -75,7 +75,16 @@ const excludePatterns = [
   /convert-.*\.py$/,
   /server-with-cors\.py$/,
   /test\.py$/,
-  /ffmpeg-core\.wasm$/  // Exclude large WASM file (30.6 MB, exceeds Cloudflare Pages 25 MB limit)
+  /ffmpeg-core\.wasm$/,  // Exclude large WASM file (30.6 MB, exceeds Cloudflare Pages 25 MB limit)
+  // Exclude development directories
+  /\/scripts\//,  // Exclude scripts directory (matches anywhere in path)
+  /\/tests\//,  // Exclude tests directory (matches anywhere in path)
+  /\/models\//,  // Exclude models directory (models are downloaded at runtime)
+  // Exclude test files
+  /test.*\.mjs$/,  // Exclude test .mjs files
+  /test.*\.js$/,  // Exclude test .js files (like js/tests/)
+  /\.test\.js$/,  // Exclude .test.js files
+  /\.spec\.js$/   // Exclude .spec.js files
 ];
 
 function shouldExclude(filePath) {
