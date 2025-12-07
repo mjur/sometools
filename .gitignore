@@ -24,3 +24,11 @@ DeOldify/
 *.py
 !scripts/*.js
 
+# Python virtual environments
+venv/
+venv-*/
+.venv/
+env/
+.env/
+*.venv
+

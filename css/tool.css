@@ -139,6 +139,7 @@
   text-align: center;
   color: var(--muted);
   transition: border-color 0.2s, background-color 0.2s;
+  cursor: pointer;
 }
 
 .drop-zone.dragover {

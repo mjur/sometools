@@ -274,33 +274,26 @@ on(processBtn, 'click', async () => {
     console.log('[Vocal Remover] Output buffer created');
     
     // Check which method to use
-    const method = methodSelect ? methodSelect.value : 'center-channel';
+    let method = methodSelect ? methodSelect.value : 'center-channel';
     
     if (method === 'ai-model' && AI_MODEL_CONFIG.modelUrl) {
-      try {
-        // Use AI model for separation
-        progressFill.style.width = '20%';
-        progressText.textContent = 'Loading AI model...';
-        await new Promise(resolve => setTimeout(resolve, 10));
-        
-        const aiOutputBuffer = await processWithAIModel(audioBuffer, (progress, message) => {
-          progressFill.style.width = (20 + progress * 60) + '%'; // 20% to 80%
-          progressText.textContent = message || `AI Processing: ${Math.round(progress * 100)}%`;
-        });
-        
-        // Copy AI output to output buffer
-        for (let ch = 0; ch < Math.min(aiOutputBuffer.numberOfChannels, numberOfChannels); ch++) {
-          const aiChannel = aiOutputBuffer.getChannelData(ch);
-          const outChannel = outputBuffer.getChannelData(ch);
-          for (let i = 0; i < Math.min(aiChannel.length, length); i++) {
-            outChannel[i] = aiChannel[i];
-          }
+      // Use AI model for separation
+      progressFill.style.width = '20%';
+      progressText.textContent = 'Loading AI model...';
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      const aiOutputBuffer = await processWithAIModel(audioBuffer, (progress, message) => {
+        progressFill.style.width = (20 + progress * 60) + '%'; // 20% to 80%
+        progressText.textContent = message || `AI Processing: ${Math.round(progress * 100)}%`;
+      });
+      
+      // Copy AI output to output buffer
+      for (let ch = 0; ch < Math.min(aiOutputBuffer.numberOfChannels, numberOfChannels); ch++) {
+        const aiChannel = aiOutputBuffer.getChannelData(ch);
+        const outChannel = outputBuffer.getChannelData(ch);
+        for (let i = 0; i < Math.min(aiChannel.length, length); i++) {
+          outChannel[i] = aiChannel[i];
         }
-      } catch (error) {
-        console.error('[Vocal Remover] AI model processing failed, falling back to center channel:', error);
-        toast('AI model processing failed. Using center channel extraction instead.', 'warning');
-        // Fall through to center channel extraction
-        method = 'center-channel';
       }
     }
     
