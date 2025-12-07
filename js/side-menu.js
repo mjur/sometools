@@ -37,6 +37,7 @@ const TOOLS = [
   { url: '/utils/shuffler', name: 'List Shuffler', category: 'utils', description: 'Shuffle lists of items with customizable delimiters' },
   { url: '/utils/notes', name: 'Notes', category: 'utils', description: 'Create and manage notes saved locally' },
   { url: '/utils/text-to-speech', name: 'Text to Speech', category: 'utils', description: 'Convert text to speech with various voices and download audio files' },
+  { url: '/utils/vocal-remover', name: 'Vocal Remover', category: 'utils', description: 'Remove vocals from audio tracks using center channel extraction' },
   { url: '/utils/model-cache', name: 'Model Cache Manager', category: 'utils', description: 'View and manage all cached AI models across tools' },
   { url: '/utils/color-contrast', name: 'Color Contrast Checker', category: 'utils', description: 'Check color contrast ratios for WCAG accessibility compliance' },
   { url: '/diff/text', name: 'Text Diff', category: 'text', description: 'Compare two texts side-by-side with word/char granularity' },
