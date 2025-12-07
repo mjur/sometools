@@ -11,61 +11,152 @@ export async function loadONNXRuntime() {
   if (ort) return ort;
   
   try {
-    // Try CDN sources first (since we're using vanilla JS modules)
-    const cdnSources = [
-      {
-        url: 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js',
-        name: 'jsdelivr'
-      },
-      {
-        url: 'https://unpkg.com/onnxruntime-web@1.16.0/dist/ort.min.js',
-        name: 'unpkg'
-      }
-    ];
+    // Check if we're in a Web Worker (no window object, but has self/importScripts)
+    // More robust detection: check for worker-specific globals
+    const isWorker = typeof window === 'undefined' && 
+                     (typeof self !== 'undefined' || typeof importScripts !== 'undefined');
     
-    // Try loading from CDN via script tag
-    for (const source of cdnSources) {
-      try {
-        console.log(`Trying to load ONNX Runtime from: ${source.name}`);
-        
-        // Load via script tag (onnxruntime-web exposes global 'ort' object)
-        await new Promise((resolve, reject) => {
-          if (window.ort) {
-            ort = window.ort;
-            resolve();
-            return;
+    console.log('[ONNX Loader] Environment check:', {
+      hasWindow: typeof window !== 'undefined',
+      hasSelf: typeof self !== 'undefined',
+      hasImportScripts: typeof importScripts !== 'undefined',
+      isWorker: isWorker
+    });
+    
+    if (isWorker) {
+      // In Web Worker: Try ES module import first, then fallback to UMD
+      // Try ES module version from CDN
+      const esModuleUrls = [
+        'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/+esm',
+        'https://esm.sh/onnxruntime-web@1.16.0'
+      ];
+      
+      let loaded = false;
+      for (const url of esModuleUrls) {
+        try {
+          console.log(`[Worker] Trying ES module import from: ${url}`);
+          const module = await import(url);
+          if (module.default) {
+            ort = module.default;
+          } else if (module.ort) {
+            ort = module.ort;
+          } else {
+            ort = module;
           }
+          if (ort && ort.InferenceSession) {
+            console.log('[Worker] ONNX Runtime loaded via ES module');
+            loaded = true;
+            break;
+          }
+        } catch (importError) {
+          console.warn(`[Worker] ES module import failed from ${url}:`, importError.message);
+          continue;
+        }
+      }
+      
+      // Fallback: Try UMD bundle execution
+      if (!loaded) {
+        const cdnSources = [
+          'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js',
+          'https://unpkg.com/onnxruntime-web@1.16.0/dist/ort.min.js'
+        ];
+        
+        for (const url of cdnSources) {
+          try {
+            console.log(`[Worker] Loading UMD bundle from: ${url}`);
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+            const scriptText = await response.text();
+            
+            // Execute the UMD bundle - it should set self.ort
+            // Use a try-catch around eval to handle CSP restrictions
+            try {
+              // Create execution context
+              const executeScript = new Function('self', `
+                ${scriptText}
+                return self.ort;
+              `);
+              const result = executeScript(self);
+              if (result) {
+                ort = result;
+                console.log('[Worker] ONNX Runtime loaded via UMD execution');
+                loaded = true;
+                break;
+              }
+            } catch (evalError) {
+              console.warn(`[Worker] UMD execution failed:`, evalError.message);
+              // If Function constructor fails, the worker might have CSP restrictions
+              // In that case, we can't load ONNX in the worker
+              throw new Error('Cannot execute UMD bundle in worker (CSP restrictions). Consider processing on main thread.');
+            }
+          } catch (error) {
+            console.warn(`[Worker] Failed to load from ${url}:`, error.message);
+            if (url === cdnSources[cdnSources.length - 1] && !loaded) {
+              throw new Error('ONNX Runtime not available in worker. Please ensure you have an internet connection or process on main thread.');
+            }
+            continue;
+          }
+        }
+      }
+    } else {
+      // In main thread: Try CDN sources via script tag
+      const cdnSources = [
+        {
+          url: 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js',
+          name: 'jsdelivr'
+        },
+        {
+          url: 'https://unpkg.com/onnxruntime-web@1.16.0/dist/ort.min.js',
+          name: 'unpkg'
+        }
+      ];
+      
+      // Try loading from CDN via script tag
+      for (const source of cdnSources) {
+        try {
+          console.log(`Trying to load ONNX Runtime from: ${source.name}`);
           
-          const script = document.createElement('script');
-          script.src = source.url;
-          script.onload = () => {
+          // Load via script tag (onnxruntime-web exposes global 'ort' object)
+          await new Promise((resolve, reject) => {
             if (window.ort) {
               ort = window.ort;
-              console.log(`ONNX Runtime loaded from ${source.name}`);
               resolve();
-            } else {
-              reject(new Error('ONNX Runtime not found on window object'));
+              return;
             }
-          };
-          script.onerror = () => {
-            reject(new Error(`Failed to load from ${source.name}`));
-          };
-          document.head.appendChild(script);
-        });
-        
-        break; // Success, exit loop
-      } catch (error) {
-        console.warn(`Failed to load from ${source.name}:`, error);
-        continue;
+            
+            const script = document.createElement('script');
+            script.src = source.url;
+            script.onload = () => {
+              if (window.ort) {
+                ort = window.ort;
+                console.log(`ONNX Runtime loaded from ${source.name}`);
+                resolve();
+              } else {
+                reject(new Error('ONNX Runtime not found on window object'));
+              }
+            };
+            script.onerror = () => {
+              reject(new Error(`Failed to load from ${source.name}`));
+            };
+            document.head.appendChild(script);
+          });
+          
+          break; // Success, exit loop
+        } catch (error) {
+          console.warn(`Failed to load from ${source.name}:`, error);
+          continue;
+        }
       }
-    }
-    
-    // Fallback: Try ES module import (requires bundler)
-    if (!ort) {
-      try {
-        ort = await import('onnxruntime-web');
-      } catch (importError) {
-        throw new Error('ONNX Runtime not available. Please ensure you have an internet connection or bundle onnxruntime-web.');
+      
+      // Fallback: Try ES module import
+      if (!ort) {
+        try {
+          ort = await import('onnxruntime-web');
+        } catch (importError) {
+          throw new Error('ONNX Runtime not available. Please ensure you have an internet connection or bundle onnxruntime-web.');
+        }
       }
     }
     

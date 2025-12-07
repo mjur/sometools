@@ -44,6 +44,7 @@ let processingCache = new Map(); // Cache for processing insights
 let ort = null; // ONNX Runtime
 let aiModelSession = null; // AI model session
 let isAIModelLoading = false; // Track AI model loading state
+let currentAIModelConfig = null; // Current AI model configuration
 
 // AI Model Configurations
 // Support for multiple AI models for vocal separation
@@ -79,7 +80,7 @@ const AI_MODEL_CONFIGS = {
     stemIndices: [0, 1, 2, 4, 5], // drums, bass, other, piano, guitar (exclude vocals)
     numStems: 6,
     inputName: 'audio',
-    outputName: 'output',
+    outputName: '5012', // The actual audio output (shape: [1, 6, 2, samples]), not 'output' which is 5D intermediate
     sampleRate: 44100,
     chunkSize: 343980, // Exact chunk size the model expects (~7.8 seconds at 44.1kHz)
     expectsStereo: true, // Demucs expects stereo input [batch, 2, samples]
@@ -935,9 +936,11 @@ It works well for stereo tracks where vocals are centered.`;
     if (aiModelSession.inputNames && aiModelSession.inputNames.length > 0) {
       modelConfig.inputName = aiModelSession.inputNames[0];
     }
-    if (aiModelSession.outputNames && aiModelSession.outputNames.length > 0) {
-      modelConfig.outputName = aiModelSession.outputNames[0];
-    }
+    // Don't auto-detect outputName - use the one from config (e.g., '5012' for Demucs)
+    // The first output might be an intermediate representation, not the final audio
+    // if (aiModelSession.outputNames && aiModelSession.outputNames.length > 0) {
+    //   modelConfig.outputName = aiModelSession.outputNames[0];
+    // }
     
     // Store the current model config
     currentAIModelConfig = modelConfig;
@@ -951,7 +954,7 @@ It works well for stereo tracks where vocals are centered.`;
   }
 }
 
-// Process audio with AI model
+// Process audio with AI model (main thread with optimized chunking)
 async function processWithAIModel(audioBuffer, progressCallback) {
   try {
     // Get current model config
@@ -976,8 +979,7 @@ async function processWithAIModel(audioBuffer, progressCallback) {
     // Resample if needed (model expects specific sample rate)
     let processedBuffer = audioBuffer;
     if (sampleRate !== activeConfig.sampleRate) {
-      if (progressCallback) progressCallback(0.1, 'Resampling audio...');
-      // Simple resampling (linear interpolation) - for production, use a proper resampler
+      if (progressCallback) progressCallback(0.05, 'Resampling audio...');
       processedBuffer = await resampleAudio(audioBuffer, activeConfig.sampleRate);
     }
     
@@ -1027,23 +1029,32 @@ async function processWithAIModel(audioBuffer, progressCallback) {
       }
     }
     
-    // Process in chunks
+    // Process in chunks (main thread with optimized yielding)
     const chunkSize = activeConfig.chunkSize;
-    // For stereo, chunkSize is in samples per channel, but inputData is interleaved (2x length)
     const samplesPerChannel = expectsStereo ? inputData.length / 2 : inputData.length;
     const chunkSizeSamples = expectsStereo ? chunkSize : chunkSize;
     const totalChunks = Math.ceil(samplesPerChannel / chunkSizeSamples);
     const outputChunks = [];
     
+    // Process chunks with frequent yields to keep UI responsive
     for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
       const startSample = chunkIdx * chunkSizeSamples;
       const endSample = Math.min(startSample + chunkSizeSamples, samplesPerChannel);
       const actualChunkSize = endSample - startSample;
       
+      // Yield to UI every chunk to prevent freezing
+      if (chunkIdx > 0 && chunkIdx % 1 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      
+      if (progressCallback) {
+        const progress = chunkIdx / totalChunks;
+        progressCallback(progress, `Processing chunk ${chunkIdx + 1}/${totalChunks}...`);
+      }
+      
       let chunk;
       if (expectsStereo) {
         // Extract stereo chunk from interleaved data and convert to planar format
-        // inputData is [L0, R0, L1, R1, ...], we need [L0...Ln, R0...Rn]
         const leftChannel = new Float32Array(actualChunkSize);
         const rightChannel = new Float32Array(actualChunkSize);
         for (let i = 0; i < actualChunkSize; i++) {
@@ -1051,210 +1062,60 @@ async function processWithAIModel(audioBuffer, progressCallback) {
           leftChannel[i] = inputData[interleavedIdx];
           rightChannel[i] = inputData[interleavedIdx + 1];
         }
-        // Planar format: [all left samples, all right samples]
         chunk = new Float32Array(actualChunkSize * 2);
         chunk.set(leftChannel, 0);
         chunk.set(rightChannel, actualChunkSize);
       } else {
-        // Mono - just slice
-        const start = startSample;
-        const end = endSample;
-        chunk = inputData.slice(start, end);
+        chunk = inputData.slice(startSample, endSample);
       }
       
-      // Pad chunk to exact size if needed (for models that require fixed size)
+      // Pad chunk to exact size if needed
       if (actualChunkSize < chunkSizeSamples && activeConfig.chunkSize === chunkSizeSamples) {
         const paddedChunk = new Float32Array(chunkSizeSamples * (expectsStereo ? 2 : 1));
         paddedChunk.set(chunk, 0);
-        // Zero-pad the rest
         chunk = paddedChunk;
       }
       
-      if (progressCallback) {
-        const progress = (chunkIdx + 1) / totalChunks;
-        progressCallback(progress, `Processing chunk ${chunkIdx + 1}/${totalChunks}...`);
-      }
-      
-      // Prepare input tensor
-      // Determine input shape based on model requirements
-      const samplesInChunk = expectsStereo ? chunk.length / 2 : chunk.length;
-      let inputShape;
-      
-      // Default to 3D [batch, channels, samples] for stereo, 2D [batch, samples] for mono
-      if (expectsStereo) {
-        inputShape = [1, 2, chunkSizeSamples]; // Use expected chunk size
-      } else {
-        inputShape = [1, chunk.length];
-      }
-      
-      const inputTensor = new ort.Tensor('float32', chunk, inputShape);
-      
-      const inputs = {
-        [activeConfig.inputName]: inputTensor
-      };
-      
-      // Run inference
-      const outputs = await runInference(session, inputs);
-      
-      // Extract output (model should output instrumental/vocals-removed audio)
-      const outputTensor = outputs[activeConfig.outputName] || outputs[Object.keys(outputs)[0]];
-      if (!outputTensor) {
-        throw new Error('Model did not return expected output');
-      }
-      
-      // Convert output tensor to Float32Array
-      let outputData = null;
-      if (outputTensor.data instanceof Float32Array) {
-        outputData = outputTensor.data;
-      } else if (Array.isArray(outputTensor.data)) {
-        outputData = new Float32Array(outputTensor.data);
-      } else {
-        outputData = new Float32Array(outputTensor.data);
-      }
-      
-      // Handle different output shapes
-      // MVSEP-MDX23 outputs: [batch, stems, channels, samples] where stems are:
-      //   [0] = bass
-      //   [1] = drums
-      //   [2] = vocals (we want to exclude this)
-      //   [3] = other
-      // We combine bass + drums + other to get instrumental (vocals removed)
-      // Spleeter 2-stem outputs: [vocals, accompaniment] - use index 1
-      if (outputTensor.dims && outputTensor.dims.length >= 3) {
-        const dims = outputTensor.dims;
-        console.log('[Vocal Remover] Output tensor shape:', dims);
-        
-        if (dims.length === 4) {
-          // Shape: [batch, stems, channels, samples]
-          const [batch, stems, channels, samples] = dims;
-          
-          // Use model config to determine which stems to combine
-          const stemIndices = activeConfig.stemIndices || [];
-          const expectedStems = activeConfig.numStems || 0;
-          
-          if (stems === expectedStems && stemIndices.length > 0) {
-            console.log(`[Vocal Remover] ${activeConfig.name} format detected: combining stems ${stemIndices.join(', ')} (excluding vocals)`);
-            // Output format: [channels, samples] - planar format
-            const instrumentalData = new Float32Array(channels * samples);
-            
-            for (let ch = 0; ch < channels; ch++) {
-              for (let i = 0; i < samples; i++) {
-                let sum = 0;
-                // Combine specified stems (exclude vocals)
-                // Index calculation: batch*stems*channels*samples + stem*channels*samples + channel*samples + sample
-                for (const stemIdx of stemIndices) {
-                  const idx = stemIdx * channels * samples + ch * samples + i;
-                  sum += outputData[idx];
-                }
-                // Store in planar format: [ch0_all_samples, ch1_all_samples, ...]
-                instrumentalData[ch * samples + i] = sum;
-              }
-            }
-            outputData = instrumentalData;
-            // Update dimensions for later processing
-            outputTensor.dims = [channels, samples];
-          } else if (stems === 2) {
-            // Spleeter 2-stem: [vocals, accompaniment] - use accompaniment (index 1)
-            console.log('[Vocal Remover] Spleeter 2-stem format detected: using accompaniment');
-            const stemIdx = 1; // Accompaniment
-            for (let i = 0; i < samples; i++) {
-              for (let ch = 0; ch < channels; ch++) {
-                const idx = stemIdx * channels * samples + ch * samples + i;
-                instrumentalData[ch * samples + i] = outputData[idx];
-              }
-            }
-            outputData = instrumentalData;
-            outputTensor.dims = [channels, samples];
-          } else {
-            // Unknown format - try to extract first non-vocal stem
-            console.log('[Vocal Remover] Unknown stem format, using first stem');
-            const stemIdx = 0;
-            for (let i = 0; i < samples; i++) {
-              for (let ch = 0; ch < channels; ch++) {
-                const idx = stemIdx * channels * samples + ch * samples + i;
-                instrumentalData[ch * samples + i] = outputData[idx];
-              }
-            }
-            outputData = instrumentalData;
-            outputTensor.dims = [channels, samples];
-          }
-        } else if (dims.length === 3) {
-          // Shape: [batch, stems, samples] - mono audio
-          const [batch, stems, samples] = dims;
-          const instrumentalData = new Float32Array(samples);
-          
-          const stemIndices = activeConfig.stemIndices || [];
-          const expectedStems = activeConfig.numStems || 0;
-          
-          if (stems === expectedStems && stemIndices.length > 0) {
-            // Use model config stem indices
-            console.log(`[Vocal Remover] ${activeConfig.name} mono format: combining stems ${stemIndices.join(', ')}`);
-            for (let i = 0; i < samples; i++) {
-              let sum = 0;
-              for (const stemIdx of stemIndices) {
-                sum += outputData[stemIdx * samples + i];
-              }
-              instrumentalData[i] = sum;
-            }
-          } else if (stems === 2) {
-            // Spleeter: use accompaniment
-            console.log('[Vocal Remover] Spleeter mono format: using accompaniment');
-            for (let i = 0; i < samples; i++) {
-              instrumentalData[i] = outputData[1 * samples + i]; // accompaniment
-            }
-          } else {
-            // Use first stem as fallback
-            for (let i = 0; i < samples; i++) {
-              instrumentalData[i] = outputData[0 * samples + i];
-            }
-          }
-          outputData = instrumentalData;
-        } else if (dims.length === 2 && dims[0] > 1) {
-          // Shape: [stems, samples] - mono, no batch dimension
-          const [stems, samples] = dims;
-          const instrumentalData = new Float32Array(samples);
-          
-          const stemIndices = activeConfig.stemIndices || [];
-          const expectedStems = activeConfig.numStems || 0;
-          
-          if (stems === expectedStems && stemIndices.length > 0) {
-            // Use model config stem indices
-            console.log(`[Vocal Remover] ${activeConfig.name} mono format: combining stems ${stemIndices.join(', ')}`);
-            for (let i = 0; i < samples; i++) {
-              let sum = 0;
-              for (const stemIdx of stemIndices) {
-                sum += outputData[stemIdx * samples + i];
-              }
-              instrumentalData[i] = sum;
-            }
-          } else if (stems === 2) {
-            // Spleeter: use accompaniment
-            for (let i = 0; i < samples; i++) {
-              instrumentalData[i] = outputData[1 * samples + i];
-            }
-          } else {
-            // Use first stem
-            for (let i = 0; i < samples; i++) {
-              instrumentalData[i] = outputData[0 * samples + i];
-            }
-          }
-          outputData = instrumentalData;
-        }
-      }
-      
+      // Process chunk with ONNX model (inline, not in worker)
+      const outputData = await processChunkWithModel(chunk, chunkIdx, totalChunks, activeConfig, session, expectsStereo, chunkSizeSamples);
       outputChunks.push(outputData);
-      
-      // Yield to UI
-      await new Promise(resolve => setTimeout(resolve, 10));
     }
     
     // Combine chunks
     const totalLength = outputChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    console.log('[Vocal Remover] Combining chunks:', {
+      numChunks: outputChunks.length,
+      totalLength: totalLength,
+      expectedLength: length * numberOfChannels
+    });
     const combinedOutput = new Float32Array(totalLength);
     let offset = 0;
     for (const chunk of outputChunks) {
       combinedOutput.set(chunk, offset);
       offset += chunk.length;
+    }
+    
+    // Demucs models output audio in the correct range [-1, 1]
+    // Only apply minimal normalization if there's clipping (very rare)
+    let maxAbs = 0;
+    const sampleSize = Math.min(combinedOutput.length, 10000);
+    for (let i = 0; i < sampleSize; i++) {
+      const abs = Math.abs(combinedOutput[i]);
+      if (abs > maxAbs) maxAbs = abs;
+    }
+    
+    console.log('[Vocal Remover] Combined output stats:', {
+      maxAbs: maxAbs.toFixed(6),
+      sample: Array.from(combinedOutput.slice(0, 20))
+    });
+    
+    // Only prevent clipping if output exceeds [-1, 1] range (shouldn't happen with Demucs)
+    if (maxAbs > 1.0) {
+      const gain = 0.95 / maxAbs; // Reduce to 95% to prevent clipping
+      console.log(`[Vocal Remover] Output exceeds range (max: ${maxAbs.toFixed(6)}), applying gain: ${gain.toFixed(2)}`);
+      for (let i = 0; i < combinedOutput.length; i++) {
+        combinedOutput[i] *= gain;
+      }
     }
     
     // Determine if output is interleaved [ch0_sample0, ch1_sample0, ch0_sample1, ch1_sample1, ...]
@@ -1264,14 +1125,24 @@ async function processWithAIModel(audioBuffer, progressCallback) {
     const isPlanar = outputSamplesPerChannel > 0 && outputSamplesPerChannel * numberOfChannels === combinedOutput.length;
     
     // Create output AudioBuffer
+    const outputBufferLength = Math.min(outputSamplesPerChannel || length, length);
+    console.log('[Vocal Remover] Creating output buffer:', {
+      numberOfChannels: numberOfChannels,
+      length: outputBufferLength,
+      originalLength: length,
+      outputSamplesPerChannel: outputSamplesPerChannel,
+      isPlanar: isPlanar,
+      combinedOutputLength: combinedOutput.length
+    });
     const outputBuffer = audioContext.createBuffer(
       numberOfChannels,
-      Math.min(outputSamplesPerChannel || length, length),
+      outputBufferLength,
       sampleRate
     );
     
     if (isPlanar && outputSamplesPerChannel > 0) {
       // Planar format: [ch0_samples..., ch1_samples...]
+      console.log('[Vocal Remover] Using planar format for output buffer');
       for (let ch = 0; ch < numberOfChannels; ch++) {
         const channelData = outputBuffer.getChannelData(ch);
         const channelOffset = ch * outputSamplesPerChannel;
@@ -1279,6 +1150,13 @@ async function processWithAIModel(audioBuffer, progressCallback) {
           channelData[i] = Math.max(-1, Math.min(1, combinedOutput[channelOffset + i]));
         }
       }
+      // Log sample of output buffer
+      const sampleChannel = outputBuffer.getChannelData(0);
+      console.log('[Vocal Remover] Output buffer channel 0 sample (first 20 values):', Array.from(sampleChannel.slice(0, 20)));
+      console.log('[Vocal Remover] Output buffer channel 0 range:', {
+        min: Math.min(...Array.from(sampleChannel.slice(0, Math.min(1000, sampleChannel.length)))),
+        max: Math.max(...Array.from(sampleChannel.slice(0, Math.min(1000, sampleChannel.length))))
+      });
     } else {
       // Interleaved or mono: [sample0_ch0, sample0_ch1, sample1_ch0, sample1_ch1, ...] or [all_samples]
       if (numberOfChannels === 1) {
@@ -1305,6 +1183,150 @@ async function processWithAIModel(audioBuffer, progressCallback) {
     console.error('[Vocal Remover] AI model processing error:', error);
     throw new Error(`AI model processing failed: ${error.message}`);
   }
+}
+
+// Process a single chunk with the ONNX model (optimized for main thread)
+async function processChunkWithModel(chunk, chunkIdx, totalChunks, config, session, expectsStereo, chunkSizeSamples) {
+  // Prepare input tensor
+  const inputShape = expectsStereo ? [1, 2, chunkSizeSamples] : [1, chunk.length];
+  const inputTensor = new ort.Tensor('float32', chunk, inputShape);
+  
+  // Create inputs object
+  const inputs = {
+    [config.inputName]: inputTensor
+  };
+  
+  // Handle additional inputs (like onnx::ReduceMean_1)
+  const allInputNames = session.inputNames || [];
+  for (const inputName of allInputNames) {
+    if (inputName !== config.inputName && !inputs[inputName]) {
+      if (inputName === 'onnx::ReduceMean_1') {
+        // Check if this input is optional by looking at the input metadata
+        const inputMeta = session.inputs?.find(inp => inp.name === inputName);
+        const isOptional = inputMeta?.optional || false;
+        
+        if (!isOptional) {
+          const expectedShape = [1, 4, 2048, 336];
+          const totalSize = expectedShape.reduce((a, b) => a * b, 1);
+          
+          // Compute statistics from the full chunk (not just a sample)
+          let sum = 0;
+          let sumSq = 0;
+          let max = 0;
+          const chunkLength = chunk.length;
+          
+          for (let i = 0; i < chunkLength; i++) {
+            const val = chunk[i];
+            const absVal = Math.abs(val);
+            sum += val;
+            sumSq += val * val;
+            if (absVal > max) max = absVal;
+          }
+          
+          const mean = sum / chunkLength;
+          const variance = (sumSq / chunkLength) - (mean * mean);
+          const std = Math.sqrt(Math.max(0, variance));
+          
+          // Use the actual mean value, scaled appropriately
+          // The tensor shape suggests it might be frequency-domain data
+          // Try using a value based on the RMS (root mean square) of the input
+          const rms = Math.sqrt(sumSq / chunkLength);
+          const fillValue = Math.max(0.0001, Math.min(0.1, rms * 0.1));
+          
+          console.log(`[Vocal Remover] Chunk ${chunkIdx}: onnx::ReduceMean_1 - mean: ${mean.toFixed(6)}, std: ${std.toFixed(6)}, rms: ${rms.toFixed(6)}, max: ${max.toFixed(6)}, fillValue: ${fillValue.toFixed(6)}`);
+          
+          const meanData = new Float32Array(totalSize).fill(fillValue);
+          inputs[inputName] = new ort.Tensor('float32', meanData, expectedShape);
+        } else {
+          console.log(`[Vocal Remover] Chunk ${chunkIdx}: onnx::ReduceMean_1 is optional, skipping`);
+        }
+      } else {
+        // Default scalar or tensor
+        const inputMeta = session.inputs?.find(inp => inp.name === inputName);
+        const shape = inputMeta?.shape || [];
+        const type = inputMeta?.type || 'float32';
+        
+        if (shape.length === 0) {
+          inputs[inputName] = new ort.Tensor(type, new Float32Array([0]), []);
+        } else {
+          const totalSize = shape.reduce((a, b) => a * (b > 0 ? b : 1), 1);
+          inputs[inputName] = new ort.Tensor(type, new Float32Array(totalSize).fill(0), shape);
+        }
+      }
+    }
+  }
+  
+  // Run inference
+  const outputs = await runInference(session, inputs);
+  
+  // Find the correct output (prefer 4D shape)
+  let outputTensor = outputs[config.outputName];
+  if (!outputTensor || (outputTensor.dims && outputTensor.dims.length !== 4)) {
+    for (const [name, tensor] of Object.entries(outputs)) {
+      if (tensor.dims && tensor.dims.length === 4) {
+        const [batch, stems, channels, samples] = tensor.dims;
+        if (batch === 1 && stems > 0 && channels > 0 && samples > 0) {
+          outputTensor = tensor;
+          break;
+        }
+      }
+    }
+  }
+  
+  if (!outputTensor) {
+    throw new Error('No suitable output tensor found');
+  }
+  
+  // Extract output data
+  let outputData = outputTensor.data instanceof Float32Array 
+    ? outputTensor.data 
+    : new Float32Array(outputTensor.data);
+  
+  // Process output based on shape
+  const dims = outputTensor.dims;
+  console.log(`[Vocal Remover] Chunk ${chunkIdx}: Output tensor shape:`, dims);
+  
+  if (dims.length === 4) {
+    const [batch, stems, channels, samples] = dims;
+    const stemIndices = config.stemIndices || [];
+    const expectedStems = config.numStems || 0;
+    
+    // Debug: Check each stem's data
+    console.log(`[Vocal Remover] Chunk ${chunkIdx}: Stems=${stems}, Expected=${expectedStems}, Using indices:`, stemIndices);
+    for (let s = 0; s < stems; s++) {
+      const stemSample = outputData.slice(s * channels * samples, (s + 1) * channels * samples);
+      const stemMax = Math.max(...Array.from(stemSample.slice(0, Math.min(1000, stemSample.length)).map(Math.abs)));
+      const stemMean = Array.from(stemSample.slice(0, Math.min(1000, stemSample.length))).reduce((a, b) => a + Math.abs(b), 0) / Math.min(1000, stemSample.length);
+      console.log(`[Vocal Remover] Chunk ${chunkIdx}: Stem ${s} - max: ${stemMax.toFixed(6)}, mean: ${stemMean.toFixed(6)}`);
+    }
+    
+    if (stems === expectedStems && stemIndices.length > 0) {
+      // Combine specified stems
+      const instrumentalData = new Float32Array(channels * samples);
+      
+      for (let ch = 0; ch < channels; ch++) {
+        for (let i = 0; i < samples; i++) {
+          let sum = 0;
+          for (const stemIdx of stemIndices) {
+            const idx = stemIdx * channels * samples + ch * samples + i;
+            sum += outputData[idx];
+          }
+          instrumentalData[ch * samples + i] = sum;
+        }
+      }
+      
+      // Debug combined output
+      const combinedMax = Math.max(...Array.from(instrumentalData.slice(0, Math.min(1000, instrumentalData.length)).map(Math.abs)));
+      const combinedMean = Array.from(instrumentalData.slice(0, Math.min(1000, instrumentalData.length))).reduce((a, b) => a + Math.abs(b), 0) / Math.min(1000, instrumentalData.length);
+      console.log(`[Vocal Remover] Chunk ${chunkIdx}: Combined instrumental - max: ${combinedMax.toFixed(6)}, mean: ${combinedMean.toFixed(6)}`);
+      
+      outputData = instrumentalData;
+    } else {
+      console.warn(`[Vocal Remover] Chunk ${chunkIdx}: Stem count mismatch or no stem indices. Stems: ${stems}, Expected: ${expectedStems}, Indices:`, stemIndices);
+    }
+  }
+  
+  return outputData;
 }
 
 // Simple resampling function (linear interpolation)

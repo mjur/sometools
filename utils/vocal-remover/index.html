@@ -35,11 +35,9 @@
           <div class="option-group">
             <label for="method-select">Separation Method:</label>
             <select id="method-select">
-              <option value="center-channel">Center Channel Extraction (Fast, Basic Quality)</option>
-              <option value="ai-model-demucs" selected>AI Model - Demucs HTDemucs 6s (6 stems: drums, bass, other, vocals, piano, guitar)</option>
-              <option value="ai-model-mvsep">AI Model - MVSEP-MDX23 (4 stems: bass, drums, vocals, other)</option>
+              <option value="center-channel" selected>Center Channel Extraction (Fast, Basic Quality)</option>
             </select>
-            <small style="display: block; margin-top: 0.25rem; color: var(--muted);">Center channel extraction works best with stereo tracks where vocals are centered. AI models provide higher quality separation but require model download.</small>
+            <small style="display: block; margin-top: 0.25rem; color: var(--muted);">Center channel extraction works best with stereo tracks where vocals are centered.</small>
           </div>
           <div class="option-group" style="margin-top: 1rem;">
             <label for="vocal-level">Vocal Reduction Level:</label>
