@@ -189,6 +189,7 @@ function exportToExcel() {
   const loanType = document.getElementById('loan-type').value;
   const loanAmount = document.getElementById('loan-amount').value;
   const interestRate = document.getElementById('interest-rate').value;
+  const currency = getSelectedCurrency();
   
   // Create workbook
   const wb = XLSX.utils.book_new();
@@ -197,6 +198,7 @@ function exportToExcel() {
   const summaryData = [
     ['Loan Calculator - Amortization Schedule'],
     [],
+    ['Currency', currency],
     ['Loan Type', loanType.charAt(0).toUpperCase() + loanType.slice(1)],
     ['Loan Amount', parseFloat(loanAmount)],
     ['Annual Interest Rate', `${interestRate}%`],
@@ -245,17 +247,23 @@ function exportToExcel() {
   // Generate filename
   const loanTypeName = loanType.charAt(0).toUpperCase() + loanType.slice(1);
   const dateStr = new Date().toISOString().split('T')[0];
-  const filename = `Loan_Calculator_${loanTypeName}_${dateStr}.xlsx`;
+  const filename = `Loan_Calculator_${loanTypeName}_${currency}_${dateStr}.xlsx`;
   
   // Write file
   XLSX.writeFile(wb, filename);
 }
 
+// Get selected currency
+function getSelectedCurrency() {
+  return document.getElementById('currency').value || 'USD';
+}
+
 // Format currency
 function formatCurrency(amount) {
+  const currency = getSelectedCurrency();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(amount);
@@ -297,7 +305,7 @@ document.getElementById('export-excel-btn').addEventListener('click', exportToEx
 
 // Auto-calculate on input change (debounced)
 let calculateTimeout;
-const inputs = ['loan-amount', 'interest-rate', 'loan-term', 'term-unit', 
+const inputs = ['currency', 'loan-amount', 'interest-rate', 'loan-term', 'term-unit', 
                 'payment-frequency', 'start-date', 'extra-payment', 
                 'extra-payment-start', 'extra-payment-end'];
 
