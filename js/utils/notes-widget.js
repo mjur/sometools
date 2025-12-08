@@ -18,14 +18,13 @@ export function initNotesWidget() {
   const widgetHTML = `
     <div id="notes-widget" class="notes-widget">
       <div class="notes-widget-toggle" id="notes-widget-toggle">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <line x1="16" y1="13" x2="8" y2="13"></line>
           <line x1="16" y1="17" x2="8" y2="17"></line>
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
-        <span>Notes</span>
       </div>
       <div class="notes-widget-panel" id="notes-widget-panel">
         <div class="notes-widget-header">
@@ -67,25 +66,24 @@ export function initNotesWidget() {
       /* Notes Widget Styles */
       .notes-widget {
         position: fixed;
-        top: 20px;
+        bottom: 9rem;
         right: 20px;
         z-index: 1000;
       }
       
       .notes-widget-toggle {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
         background: var(--accent);
         color: white;
         border: none;
-        border-radius: 50px;
-        padding: 0.75rem 1.25rem;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        justify-content: center;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         transition: all 0.3s ease;
-        font-size: 0.9rem;
-        font-weight: 500;
       }
       
       .notes-widget-toggle:hover {
@@ -95,17 +93,17 @@ export function initNotesWidget() {
       }
       
       .notes-widget-toggle svg {
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
       }
       
       .notes-widget-panel {
         position: fixed;
-        top: 80px;
+        bottom: 9rem;
         right: 20px;
         width: 800px;
         max-width: calc(100vw - 40px);
-        max-height: calc(100vh - 120px);
+        max-height: calc(100vh - 12rem);
         background: var(--bg);
         border: 1px solid var(--border);
         border-radius: 12px;
@@ -113,7 +111,7 @@ export function initNotesWidget() {
         display: none;
         flex-direction: column;
         overflow: hidden;
-        animation: slideDown 0.3s ease;
+        animation: slideUp 0.3s ease;
       }
       
       .notes-widget-panel.expanded {
@@ -411,10 +409,10 @@ export function initNotesWidget() {
         }
       }
       
-      @keyframes slideDown {
+      @keyframes slideUp {
         from {
           opacity: 0;
-          transform: translateY(-20px);
+          transform: translateY(20px);
         }
         to {
           opacity: 1;

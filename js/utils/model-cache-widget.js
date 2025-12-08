@@ -372,12 +372,11 @@ export function initModelCacheWidget() {
   const widgetHTML = `
     <div id="model-cache-widget" class="model-cache-widget">
       <div class="model-cache-widget-toggle" id="model-cache-widget-toggle">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
           <line x1="9" y1="3" x2="9" y2="21"></line>
           <line x1="3" y1="9" x2="21" y2="9"></line>
         </svg>
-        <span>Model Cache</span>
       </div>
       <div class="model-cache-widget-panel" id="model-cache-widget-panel">
         <div class="model-cache-widget-header">
@@ -423,25 +422,24 @@ export function initModelCacheWidget() {
       /* Model Cache Widget Styles */
       .model-cache-widget {
         position: fixed;
-        top: 20px;
-        right: 200px;
+        bottom: 13rem;
+        right: 20px;
         z-index: 999;
       }
       
       .model-cache-widget-toggle {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
         background: var(--accent);
         color: white;
         border: none;
-        border-radius: 50px;
-        padding: 0.75rem 1.25rem;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        justify-content: center;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         transition: all 0.3s ease;
-        font-size: 0.9rem;
-        font-weight: 500;
       }
       
       .model-cache-widget-toggle:hover {
@@ -451,17 +449,17 @@ export function initModelCacheWidget() {
       }
       
       .model-cache-widget-toggle svg {
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
       }
       
       .model-cache-widget-panel {
         position: fixed;
-        top: 80px;
-        right: 200px;
+        bottom: 13rem;
+        right: 20px;
         width: 600px;
         max-width: calc(100vw - 40px);
-        max-height: calc(100vh - 120px);
+        max-height: calc(100vh - 15rem);
         background: var(--bg);
         border: 1px solid var(--border);
         border-radius: 12px;
@@ -469,7 +467,7 @@ export function initModelCacheWidget() {
         display: none;
         flex-direction: column;
         overflow: hidden;
-        animation: slideDown 0.3s ease;
+        animation: slideUp 0.3s ease;
       }
       
       .model-cache-widget-panel.expanded {
@@ -663,10 +661,10 @@ export function initModelCacheWidget() {
         color: var(--text-subtle);
       }
       
-      @keyframes slideDown {
+      @keyframes slideUp {
         from {
           opacity: 0;
-          transform: translateY(-20px);
+          transform: translateY(20px);
         }
         to {
           opacity: 1;
@@ -676,14 +674,14 @@ export function initModelCacheWidget() {
       
       @media (max-width: 900px) {
         .model-cache-widget {
+          bottom: 13rem;
           right: 20px;
-          top: 80px;
         }
         
         .model-cache-widget-panel {
           width: calc(100vw - 40px);
           right: 20px;
-          top: 140px;
+          bottom: 13rem;
         }
       }
     `;
