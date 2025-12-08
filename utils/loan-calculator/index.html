@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Loan Calculator | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Calculate loan and mortgage payments with detailed amortization schedule. Export to Excel format.">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <script type="module" src="/js/header.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    .loan-calculator {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    
+    .calculator-inputs {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      height: fit-content;
+    }
+    
+    .input-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .input-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+    
+    .input-group input,
+    .input-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 1rem;
+    }
+    
+    .input-group input:focus,
+    .input-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    
+    .input-group small {
+      display: block;
+      margin-top: 0.25rem;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+    
+    .results-summary {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    
+    .summary-item {
+      text-align: center;
+    }
+    
+    .summary-item-label {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    
+    .summary-item-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    .amortization-table-container {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    
+    .amortization-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    
+    .amortization-table th {
+      background: var(--bg);
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .amortization-table td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .amortization-table tbody tr:hover {
+      background: var(--bg-hover);
+    }
+    
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    @media (max-width: 1024px) {
+      .loan-calculator {
+        grid-template-columns: 1fr;
+      }
+      
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/loan-calculator">Loan Calculator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Loan Calculator</h1>
+    <p>Calculate loan and mortgage payments with detailed amortization schedule. Export payment breakdown to Excel format.</p>
+    
+    <div class="loan-calculator">
+      <div class="calculator-inputs">
+        <div class="input-group">
+          <label for="loan-type">Loan Type</label>
+          <select id="loan-type">
+            <option value="mortgage">Mortgage</option>
+            <option value="personal">Personal Loan</option>
+            <option value="auto">Auto Loan</option>
+            <option value="student">Student Loan</option>
+            <option value="business">Business Loan</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        
+        <div class="input-group">
+          <label for="loan-amount">Loan Amount</label>
+          <input type="number" id="loan-amount" min="0" step="0.01" placeholder="100000" value="250000">
+          <small>Total amount borrowed</small>
+        </div>
+        
+        <div class="input-group">
+          <label for="interest-rate">Annual Interest Rate (%)</label>
+          <input type="number" id="interest-rate" min="0" max="100" step="0.001" placeholder="5.5" value="6.5">
+          <small>Annual percentage rate (APR)</small>
+        </div>
+        
+        <div class="input-group">
+          <label for="loan-term">Loan Term</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="number" id="loan-term" min="1" step="1" placeholder="30" value="30" style="flex: 1;">
+            <select id="term-unit" style="width: 100px;">
+              <option value="years" selected>Years</option>
+              <option value="months">Months</option>
+            </select>
+          </div>
+          <small>Duration of the loan</small>
+        </div>
+        
+        <div class="input-group">
+          <label for="payment-frequency">Payment Frequency</label>
+          <select id="payment-frequency">
+            <option value="monthly" selected>Monthly</option>
+            <option value="biweekly">Bi-weekly</option>
+            <option value="weekly">Weekly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
+          </select>
+          <small>How often payments are made</small>
+        </div>
+        
+        <div class="input-group">
+          <label for="start-date">Start Date</label>
+          <input type="date" id="start-date">
+          <small>First payment date</small>
+        </div>
+        
+        <div class="input-group">
+          <label for="extra-payment">Extra Payment (Optional)</label>
+          <input type="number" id="extra-payment" min="0" step="0.01" placeholder="0" value="0">
+          <small>Additional payment per period (applied to principal)</small>
+        </div>
+        
+        <div class="input-group">
+          <label for="extra-payment-start">Extra Payment Start Period</label>
+          <input type="number" id="extra-payment-start" min="1" step="1" placeholder="1" value="1">
+          <small>Period when extra payments begin (1 = first payment)</small>
+        </div>
+        
+        <div class="input-group">
+          <label for="extra-payment-end">Extra Payment End Period</label>
+          <input type="number" id="extra-payment-end" min="1" step="1" placeholder="Leave empty for all periods">
+          <small>Period when extra payments end (leave empty for all periods)</small>
+        </div>
+        
+        <div class="actions">
+          <button id="calculate-btn" class="primary" style="flex: 1;">Calculate</button>
+          <button id="reset-btn">Reset</button>
+        </div>
+      </div>
+      
+      <div>
+        <div class="results-summary" id="results-summary" style="display: none;">
+          <h2 style="margin-top: 0; margin-bottom: 1rem;">Payment Summary</h2>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="summary-item-label">Monthly Payment</div>
+              <div class="summary-item-value" id="monthly-payment">$0.00</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-item-label">Total Interest</div>
+              <div class="summary-item-value" id="total-interest">$0.00</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-item-label">Total Amount</div>
+              <div class="summary-item-value" id="total-amount">$0.00</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-item-label">Number of Payments</div>
+              <div class="summary-item-value" id="num-payments">0</div>
+            </div>
+          </div>
+          <div class="actions" style="margin-top: 1rem;">
+            <button id="export-excel-btn" class="primary">Export to Excel</button>
+          </div>
+        </div>
+        
+        <div class="amortization-table-container" id="amortization-container" style="display: none;">
+          <h2 style="margin-top: 0;">Amortization Schedule</h2>
+          <table class="amortization-table" id="amortization-table">
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Payment Date</th>
+                <th>Payment</th>
+                <th>Principal</th>
+                <th>Interest</th>
+                <th>Extra Payment</th>
+                <th>Remaining Balance</th>
+              </tr>
+            </thead>
+            <tbody id="amortization-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <script type="module" src="/js/tools/loan-calculator.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
