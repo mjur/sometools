@@ -98,12 +98,23 @@ function shouldExclude(filePath) {
     return false;
   }
   
-  // Check both full path and filename
-  return excludePatterns.some(pattern => 
-    pattern.test(filePath) || 
-    pattern.test(relativePath) || 
-    pattern.test(fileName)
-  );
+  // Special handling for root-level "workers" directory exclusion
+  // Only exclude if it's exactly at the root, not subdirectories like js/workers/
+  if (fileName === 'workers' && relativePath === 'workers') {
+    return true; // Exclude root-level workers directory
+  }
+  
+  // Check both full path and filename, but skip the /^workers$/ pattern
+  // since we handled it above
+  return excludePatterns.some(pattern => {
+    // Skip the /^workers$/ pattern as we handle it specially above
+    if (pattern.toString() === '/^workers$/') {
+      return false;
+    }
+    return pattern.test(filePath) || 
+           pattern.test(relativePath) || 
+           pattern.test(fileName);
+  });
 }
 
 function copyRecursive(src, dest) {
@@ -118,22 +129,23 @@ function copyRecursive(src, dest) {
       fs.mkdirSync(dest, { recursive: true });
     }
     
-    const entries = fs.readdirSync(src);
-    for (const entry of entries) {
-      const srcPath = path.join(src, entry);
-      const destPath = path.join(dest, entry);
-      
-      // Skip excluded files (check both relative and absolute paths)
-      if (shouldExclude(srcPath) || shouldExclude(entry)) {
-        console.log(`  Skipping excluded file: ${entry}`);
-        continue;
+      const entries = fs.readdirSync(src);
+      for (const entry of entries) {
+        const srcPath = path.join(src, entry);
+        const destPath = path.join(dest, entry);
+        
+        // Skip excluded files (only check full path, not just entry name)
+        // This ensures patterns like /^workers$/ only match root-level workers
+        if (shouldExclude(srcPath)) {
+          console.log(`  Skipping excluded file: ${entry}`);
+          continue;
+        }
+        
+        copyRecursive(srcPath, destPath);
       }
-      
-      copyRecursive(srcPath, destPath);
-    }
   } else {
-    // Check exclusion before copying file
-    if (shouldExclude(src) || shouldExclude(path.basename(src))) {
+    // Check exclusion before copying file (only check full path)
+    if (shouldExclude(src)) {
       console.log(`  Skipping excluded file: ${path.basename(src)}`);
       return;
     }
