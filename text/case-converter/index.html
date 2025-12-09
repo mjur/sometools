@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>String Case Converter | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Convert text between different cases: camelCase, snake_case, kebab-case, PascalCase, and more.">
+  <link rel="canonical" href="https://example.com/text/case-converter">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="String Case Converter">
+  <meta property="og:description" content="Convert text between different cases.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "String Case Converter",
+        "item": "https://example.com/text/case-converter"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/text/case-converter">String Case Converter</a>
+  </nav>
+  
+  <main id="main">
+    <h1>String Case Converter</h1>
+    <p>Convert text between different cases: camelCase, snake_case, kebab-case, PascalCase, and more.</p>
+    
+    <section class="tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label for="input">Input</label>
+          <div class="actions" style="margin: 0;">
+            <button id="copy-input">Copy</button>
+            <button id="clear">Clear</button>
+          </div>
+        </div>
+        <textarea id="input" placeholder="Enter text to convert"></textarea>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label>Output</label>
+          <div class="actions" style="margin: 0;">
+            <button id="copy-all">Copy All</button>
+          </div>
+        </div>
+        <div id="outputs" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <!-- Outputs will be generated here -->
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What cases are supported?</summary>
+        <p>This tool supports camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, Sentence case, Title Case, and lowercase.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/case-converter.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

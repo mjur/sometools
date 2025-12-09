@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Markdown Editor | Live Preview | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Edit Markdown with live preview. All processing happens locally in your browser.">
+  <link rel="canonical" href="https://example.com/text/markdown">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Markdown Editor">
+  <meta property="og:description" content="Edit Markdown with live preview.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Markdown Editor",
+        "item": "https://example.com/text/markdown"
+      }
+    ]
+  }
+  </script>
+  <style>
+    .markdown-editor-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      height: calc(100vh - 300px);
+      min-height: 500px;
+    }
+    
+    @media (max-width: 768px) {
+      .markdown-editor-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+    
+    .markdown-pane {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .markdown-pane-header {
+      padding: 0.5rem 1rem;
+      background-color: var(--bg-elev);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    
+    .markdown-editor {
+      flex: 1;
+      padding: 1rem;
+      border: none;
+      resize: none;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+    
+    .markdown-preview {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+    
+    .markdown-preview h1, .markdown-preview h2, .markdown-preview h3,
+    .markdown-preview h4, .markdown-preview h5, .markdown-preview h6 {
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .markdown-preview h1 { font-size: 2rem; }
+    .markdown-preview h2 { font-size: 1.5rem; }
+    .markdown-preview h3 { font-size: 1.25rem; }
+    
+    .markdown-preview code {
+      background-color: var(--bg-elev);
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.875em;
+    }
+    
+    .markdown-preview pre {
+      background-color: var(--bg-elev);
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    
+    .markdown-preview pre code {
+      background-color: transparent;
+      padding: 0;
+    }
+    
+    .markdown-preview blockquote {
+      border-left: 4px solid var(--accent);
+      padding-left: 1rem;
+      margin-left: 0;
+      color: var(--muted);
+    }
+    
+    .markdown-preview table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1rem 0;
+    }
+    
+    .markdown-preview table th,
+    .markdown-preview table td {
+      border: 1px solid var(--border);
+      padding: 0.5rem;
+    }
+    
+    .markdown-preview table th {
+      background-color: var(--bg-elev);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/text/markdown">Markdown Editor</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Markdown Editor</h1>
+    <p>Edit Markdown with live preview. All processing happens locally in your browser.</p>
+    
+    <div class="options" style="margin-bottom: 1rem;">
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="auto-preview" checked>
+          Auto-preview (updates as you type)
+        </label>
+      </div>
+    </div>
+    
+    <div class="markdown-editor-layout">
+      <div class="markdown-pane">
+        <div class="markdown-pane-header">
+          Editor
+          <div class="actions" style="float: right; margin: 0;">
+            <button id="clear" class="secondary-btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Clear</button>
+          </div>
+        </div>
+        <textarea id="markdown-input" class="markdown-editor" placeholder="Enter your Markdown here..."></textarea>
+      </div>
+      <div class="markdown-pane">
+        <div class="markdown-pane-header">
+          Preview
+          <div class="actions" style="float: right; margin: 0;">
+            <button id="copy-html" class="secondary-btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Copy HTML</button>
+          </div>
+        </div>
+        <div id="markdown-preview" class="markdown-preview"></div>
+      </div>
+    </div>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What Markdown features are supported?</summary>
+        <p>This editor supports standard Markdown including headers, lists, links, images, code blocks, tables, blockquotes, and more.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/markdown.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
