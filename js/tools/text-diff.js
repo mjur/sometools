@@ -7,6 +7,8 @@ const newText = qs('#new-text');
 const diffOutput = qs('#diff-output');
 const oldTextHighlight = qs('#old-text-highlight');
 const newTextHighlight = qs('#new-text-highlight');
+const oldTextLines = qs('#old-text-lines');
+const newTextLines = qs('#new-text-lines');
 const compareBtn = qs('#compare');
 const copyDiffBtn = qs('#copy-diff');
 const swapBtn = qs('#swap');
@@ -33,6 +35,52 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Update line numbers for a textarea
+function updateLineNumbers(textarea, lineNumbersElement) {
+  if (!textarea || !lineNumbersElement) return;
+  
+  const lines = textarea.value.split('\n');
+  const lineCount = lines.length;
+  
+  // Generate line numbers
+  let lineNumbersHTML = '';
+  for (let i = 1; i <= lineCount; i++) {
+    lineNumbersHTML += i + '\n';
+  }
+  
+  lineNumbersElement.textContent = lineNumbersHTML || '1';
+  
+  // Sync scroll
+  lineNumbersElement.scrollTop = textarea.scrollTop;
+}
+
+// Initialize line numbers
+function initLineNumbers() {
+  // Update line numbers on input
+  if (oldText && oldTextLines) {
+    updateLineNumbers(oldText, oldTextLines);
+    oldText.addEventListener('input', () => updateLineNumbers(oldText, oldTextLines));
+    oldText.addEventListener('scroll', () => {
+      oldTextLines.scrollTop = oldText.scrollTop;
+    });
+  }
+  
+  if (newText && newTextLines) {
+    updateLineNumbers(newText, newTextLines);
+    newText.addEventListener('input', () => updateLineNumbers(newText, newTextLines));
+    newText.addEventListener('scroll', () => {
+      newTextLines.scrollTop = newText.scrollTop;
+    });
+  }
+}
+
+// Initialize on load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initLineNumbers);
+} else {
+  initLineNumbers();
 }
 
 // Create highlighted HTML from diff
@@ -147,9 +195,11 @@ function compare() {
         if (!diff || !Array.isArray(diff)) {
           throw new Error('Failed to generate line diff');
         }
-        // Render line-based diff (optimized for large texts)
+        // Render line-based diff with line numbers (optimized for large texts)
         const outputParts = [];
         let lineCount = 0;
+        let oldLineNum = 1;
+        let newLineNum = 1;
         const maxLinesToShow = 10000; // Limit output size
         
         for (const change of diff) {
@@ -159,11 +209,15 @@ function compare() {
           }
           
           if (change.type === 'context') {
-            outputParts.push(`  ${change.line}`);
+            outputParts.push(`${String(oldLineNum).padStart(4)}:${String(newLineNum).padStart(4)}  ${change.line}`);
+            oldLineNum++;
+            newLineNum++;
           } else if (change.type === 'removed') {
-            outputParts.push(`- ${change.line}`);
+            outputParts.push(`${String(oldLineNum).padStart(4)}:     - ${change.line}`);
+            oldLineNum++;
           } else if (change.type === 'added') {
-            outputParts.push(`+ ${change.line}`);
+            outputParts.push(`     :${String(newLineNum).padStart(4)} + ${change.line}`);
+            newLineNum++;
           }
           lineCount++;
         }
@@ -180,16 +234,51 @@ function compare() {
           output = `Large diff detected:\n- ${removed} words removed\n+ ${added} words added\n\nUse line-level diff for better performance with large texts.`;
         } else {
           // Render word-based diff (only show changes)
+          // For word diff, show changes grouped by approximate line
           const outputParts = [];
+          let lineNum = 1;
+          let currentLine = '';
+          
           for (const change of diff) {
             if (!change) continue;
-            if (change.type === 'removed') {
-              outputParts.push(`- ${change.text || ''}`);
-            } else if (change.type === 'added') {
-              outputParts.push(`+ ${change.text || ''}`);
+            
+            const text = change.text || '';
+            
+            if (change.type === 'removed' || change.type === 'added') {
+              // Check if text contains newlines
+              if (text.includes('\n')) {
+                const parts = text.split('\n');
+                parts.forEach((part, idx) => {
+                  if (idx === 0) {
+                    currentLine += (change.type === 'removed' ? '-' : '+') + ' ' + part;
+                  } else {
+                    if (currentLine) {
+                      outputParts.push(`${String(lineNum).padStart(4)}: ${currentLine}`);
+                      lineNum++;
+                    }
+                    currentLine = (change.type === 'removed' ? '-' : '+') + ' ' + part;
+                  }
+                });
+              } else {
+                currentLine += (change.type === 'removed' ? '-' : '+') + ' ' + text;
+              }
+            } else {
+              // Context - check for newlines to track line numbers
+              if (text.includes('\n')) {
+                if (currentLine) {
+                  outputParts.push(`${String(lineNum).padStart(4)}: ${currentLine}`);
+                  lineNum++;
+                  currentLine = '';
+                }
+                lineNum += (text.match(/\n/g) || []).length;
+              }
             }
-            // Skip 'context' (unchanged) parts
           }
+          
+          if (currentLine) {
+            outputParts.push(`${String(lineNum).padStart(4)}: ${currentLine}`);
+          }
+          
           output = outputParts.join('\n') || 'No differences found';
         }
       } else if (granularity === 'char') {
@@ -204,16 +293,43 @@ function compare() {
           output = `Large diff detected:\n- ${removed} characters removed\n+ ${added} characters added\n\nCharacter-level diff is limited for performance. Use word or line-level diff for large texts.`;
         } else {
           // Render char-based diff (only show changes)
+          // For char diff, show changes grouped by approximate line
           const outputParts = [];
+          let lineNum = 1;
+          let currentLine = '';
+          
           for (const change of diff) {
             if (!change) continue;
-            if (change.type === 'removed') {
-              outputParts.push(`- ${change.char || ''}`);
-            } else if (change.type === 'added') {
-              outputParts.push(`+ ${change.char || ''}`);
+            
+            const char = change.char || '';
+            
+            if (change.type === 'removed' || change.type === 'added') {
+              if (char === '\n') {
+                if (currentLine) {
+                  outputParts.push(`${String(lineNum).padStart(4)}: ${currentLine}`);
+                  lineNum++;
+                  currentLine = '';
+                }
+              } else {
+                currentLine += (change.type === 'removed' ? '-' : '+') + ' ' + char;
+              }
+            } else {
+              // Context - track line numbers
+              if (char === '\n') {
+                if (currentLine) {
+                  outputParts.push(`${String(lineNum).padStart(4)}: ${currentLine}`);
+                  lineNum++;
+                  currentLine = '';
+                }
+                lineNum++;
+              }
             }
-            // Skip 'context' (unchanged) parts
           }
+          
+          if (currentLine) {
+            outputParts.push(`${String(lineNum).padStart(4)}: ${currentLine}`);
+          }
+          
           output = outputParts.join('\n') || 'No differences found';
         }
       }
@@ -411,6 +527,9 @@ on(swapBtn, 'click', () => {
   const temp = oldText.value;
   oldText.value = newText.value;
   newText.value = temp;
+  // Update line numbers
+  updateLineNumbers(oldText, oldTextLines);
+  updateLineNumbers(newText, newTextLines);
   // Clear highlights before swapping
   if (oldTextHighlight) oldTextHighlight.innerHTML = '';
   if (newTextHighlight) newTextHighlight.innerHTML = '';

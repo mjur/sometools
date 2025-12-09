@@ -366,6 +366,29 @@ pre.binary-output {
   box-sizing: border-box;
 }
 
+.textarea-wrapper .line-numbers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3.5rem;
+  padding: 0.75rem 0.25rem;
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted);
+  background-color: var(--bg-elev);
+  border-right: 1px solid var(--border);
+  user-select: none;
+  pointer-events: none;
+  text-align: right;
+  overflow: hidden;
+  z-index: 2;
+  box-sizing: border-box;
+  white-space: pre;
+  word-wrap: normal;
+}
+
 .textarea-wrapper textarea {
   position: relative;
   z-index: 1;
@@ -385,6 +408,7 @@ pre.binary-output {
   flex-grow: 0 !important;
   box-sizing: border-box !important;
   width: 100% !important;
+  padding-left: 4rem !important;
 }
 
 .highlight-overlay {
