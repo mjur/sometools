@@ -33,6 +33,7 @@ const TOOLS = [
   { url: '/crypto/uuid', name: 'UUID Generator', category: 'crypto', description: 'Generate UUIDs in versions 1, 2, 3, 4, and 5' },
   { url: '/crypto/jwt', name: 'JWT Decoder', category: 'crypto', description: 'Decode JWT tokens to view header, payload, and signature' },
   { url: '/utils/calculator', name: 'Calculator', category: 'utils', description: 'Simple, advanced, and scientific calculator with history and memory functions' },
+  { url: '/utils/bmi-calculator', name: 'BMI Calculator', category: 'utils', description: 'Calculate BMI with basic and advanced body measurements' },
   { url: '/utils/loan-calculator', name: 'Loan Calculator', category: 'utils', description: 'Calculate loan and mortgage payments with detailed amortization schedule' },
   { url: '/utils/random', name: 'Random Number Generator', category: 'utils', description: 'Generate random numbers with customizable range and count' },
   { url: '/utils/shuffler', name: 'List Shuffler', category: 'utils', description: 'Shuffle lists of items with customizable delimiters' },
