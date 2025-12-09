@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>XML Validator & Formatter | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Validate and format XML documents. Check XML syntax and format with proper indentation.">
+  <link rel="canonical" href="https://example.com/code/xml">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="XML Validator & Formatter">
+  <meta property="og:description" content="Validate and format XML documents.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "XML Validator & Formatter",
+        "item": "https://example.com/code/xml"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/code/xml">XML Validator & Formatter</a>
+  </nav>
+  
+  <main id="main">
+    <h1>XML Validator & Formatter</h1>
+    <p>Validate and format XML documents. Check XML syntax and format with proper indentation.</p>
+    
+    <div class="options" style="margin-bottom: 1rem;">
+      <div class="option-group">
+        <label for="indent">Indent:</label>
+        <select id="indent">
+          <option value="2">2 spaces</option>
+          <option value="4" selected>4 spaces</option>
+          <option value="tab">Tab</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label for="input">Input</label>
+          <div class="actions" style="margin: 0;">
+            <button id="validate" class="primary">Validate</button>
+            <button id="format" class="primary">Format</button>
+            <button id="copy-input">Copy</button>
+            <button id="clear">Clear</button>
+          </div>
+        </div>
+        <textarea id="input" placeholder="Enter XML to validate or format" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;"></textarea>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="output">Output / Validation Result</label>
+          <div class="actions" style="margin: 0;">
+            <button id="copy-output">Copy</button>
+          </div>
+        </div>
+        <textarea id="output" readonly placeholder="Validation result or formatted XML will appear here" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;"></textarea>
+        <div id="validation-status" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 4px;"></div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What XML features are supported?</summary>
+        <p>This tool validates XML syntax, checks for well-formed documents, and formats XML with proper indentation.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/js-beautify@1.14.11/js/lib/beautify-html.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/xml.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
+

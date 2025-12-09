@@ -50,7 +50,10 @@ const TOOLS = [
   { url: '/utils/model-cache', name: 'Model Cache Manager', category: 'utils', description: 'View and manage all cached AI models across tools' },
   { url: '/utils/color-contrast', name: 'Color Contrast Checker', category: 'utils', description: 'Check color contrast ratios for WCAG accessibility compliance' },
   { url: '/diff/text', name: 'Text Diff', category: 'text', description: 'Compare two texts side-by-side with word/char granularity' },
-  { url: '/regex/tester', name: 'Regex Tester', category: 'text', description: 'Test regular expressions with match highlighting and groups' }
+  { url: '/regex/tester', name: 'Regex Tester', category: 'text', description: 'Test regular expressions with match highlighting and groups' },
+  { url: '/code/minify', name: 'Code Minifier', category: 'code', description: 'Minify JavaScript, CSS, and HTML code to reduce file size' },
+  { url: '/code/beautify', name: 'Code Beautifier', category: 'code', description: 'Beautify and format JavaScript, CSS, and HTML code' },
+  { url: '/code/xml', name: 'XML Validator & Formatter', category: 'code', description: 'Validate and format XML documents with proper indentation' }
 ];
 
 let categories = null;
