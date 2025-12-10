@@ -8,7 +8,6 @@ const imageInfo = qs('#image-info');
 const outputArea = qs('#output-area');
 const extractBtn = qs('#extract');
 const clearBtn = qs('#clear');
-const colorCount = qs('#color-count');
 
 let currentFile = null;
 let canvas = null;
@@ -134,72 +133,97 @@ function extractColors() {
     return;
   }
   
-  const count = parseInt(colorCount.value) || 5;
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const pixels = imageData.data;
-  const colorMap = new Map();
+  extractBtn.disabled = true;
+  extractBtn.textContent = 'Extracting...';
+  outputArea.innerHTML = '<p style="color: var(--muted);">Extracting colors, please wait...</p>';
   
-  // Sample pixels (every 10th pixel for performance)
-  for (let i = 0; i < pixels.length; i += 40) {
-    const r = pixels[i];
-    const g = pixels[i + 1];
-    const b = pixels[i + 2];
-    const a = pixels[i + 3];
-    
-    if (a < 128) continue; // Skip transparent pixels
-    
-    // Quantize colors to reduce similar shades
-    const qr = Math.round(r / 10) * 10;
-    const qg = Math.round(g / 10) * 10;
-    const qb = Math.round(b / 10) * 10;
-    const key = `${qr},${qg},${qb}`;
-    
-    colorMap.set(key, (colorMap.get(key) || 0) + 1);
-  }
+  // Use requestAnimationFrame to avoid blocking the UI
+  setTimeout(() => {
+    try {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const pixels = imageData.data;
+      const colorMap = new Map();
+      
+      // Process all pixels (with quantization to group similar colors)
+      // Quantize to reduce similar shades while keeping distinct colors
+      const quantizeStep = 5; // Group colors within 5 RGB units
+      
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        const a = pixels[i + 3];
+        
+        if (a < 128) continue; // Skip transparent pixels
+        
+        // Quantize colors to group similar shades
+        const qr = Math.round(r / quantizeStep) * quantizeStep;
+        const qg = Math.round(g / quantizeStep) * quantizeStep;
+        const qb = Math.round(b / quantizeStep) * quantizeStep;
+        const key = `${qr},${qg},${qb}`;
+        
+        colorMap.set(key, (colorMap.get(key) || 0) + 1);
+      }
+      
+      // Sort by frequency (hash count) - most frequent first
+      const sortedColors = Array.from(colorMap.entries())
+        .sort((a, b) => b[1] - a[1]) // Sort by frequency descending
+        .map(([key, count]) => ({
+          rgb: key.split(',').map(Number),
+          count: count
+        }));
   
-  // Sort by frequency and get top colors
-  const sortedColors = Array.from(colorMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, count)
-    .map(([key]) => key.split(',').map(Number));
-  
-  let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">';
-  
-  sortedColors.forEach(([r, g, b]) => {
-    const hex = `#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}`;
-    const [h, s, l] = rgbToHsl(r, g, b);
-    const rgb = `rgb(${r}, ${g}, ${b})`;
-    const hsl = `hsl(${h}, ${s}%, ${l}%)`;
-    
-    html += `
-      <div style="padding: 1rem; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);">
-        <div style="width: 100%; height: 60px; border-radius: 4px; background: ${hex}; margin-bottom: 0.5rem; border: 1px solid var(--border);"></div>
-        <div style="font-size: 0.875rem;">
-          <div style="margin-bottom: 0.25rem;"><strong>HEX:</strong> <code>${hex}</code></div>
-          <div style="margin-bottom: 0.25rem;"><strong>RGB:</strong> <code>${rgb}</code></div>
-          <div><strong>HSL:</strong> <code>${hsl}</code></div>
-        </div>
-        <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem; flex-wrap: wrap;">
-          <button class="copy-color" data-color="${hex}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Copy HEX</button>
-          <button class="copy-color" data-color="${rgb}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Copy RGB</button>
-          <button class="copy-color" data-color="${hsl}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Copy HSL</button>
-        </div>
-      </div>
-    `;
-  });
-  
-  html += '</div>';
-  outputArea.innerHTML = html;
-  
-  // Add copy handlers
-  outputArea.querySelectorAll('.copy-color').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      await copy(btn.dataset.color);
-      toast('Color copied to clipboard');
-    });
-  });
-  
-  toast(`Extracted ${sortedColors.length} colors`);
+      let html = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-elev); border-radius: 6px; border: 1px solid var(--border);">
+        <strong>Total unique colors found: ${sortedColors.length}</strong>
+      </div>`;
+      html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; max-height: 600px; overflow-y: auto;">';
+      
+      sortedColors.forEach(({ rgb: [r, g, b], count }) => {
+        const hex = `#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}`;
+        const [h, s, l] = rgbToHsl(r, g, b);
+        const rgb = `rgb(${r}, ${g}, ${b})`;
+        const hsl = `hsl(${h}, ${s}%, ${l}%)`;
+        
+        html += `
+          <div style="padding: 1rem; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);">
+            <div style="width: 100%; height: 60px; border-radius: 4px; background: ${hex}; margin-bottom: 0.5rem; border: 1px solid var(--border);"></div>
+            <div style="font-size: 0.875rem;">
+              <div style="margin-bottom: 0.25rem;"><strong>HEX:</strong> <code>${hex}</code></div>
+              <div style="margin-bottom: 0.25rem;"><strong>RGB:</strong> <code>${rgb}</code></div>
+              <div style="margin-bottom: 0.25rem;"><strong>HSL:</strong> <code>${hsl}</code></div>
+              <div style="margin-top: 0.5rem; color: var(--muted); font-size: 0.75rem;">Frequency: ${count.toLocaleString()} pixels</div>
+            </div>
+            <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem; flex-wrap: wrap;">
+              <button class="copy-color" data-color="${hex}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Copy HEX</button>
+              <button class="copy-color" data-color="${rgb}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Copy RGB</button>
+              <button class="copy-color" data-color="${hsl}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Copy HSL</button>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+      outputArea.innerHTML = html;
+      
+      // Add copy handlers
+      outputArea.querySelectorAll('.copy-color').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await copy(btn.dataset.color);
+          toast('Color copied to clipboard');
+        });
+      });
+      
+      extractBtn.disabled = false;
+      extractBtn.textContent = 'Extract Colors';
+      toast(`Extracted ${sortedColors.length} unique colors (sorted by frequency)`);
+    } catch (error) {
+      console.error('Error extracting colors:', error);
+      toast(`Error extracting colors: ${error.message}`);
+      extractBtn.disabled = false;
+      extractBtn.textContent = 'Extract Colors';
+      outputArea.innerHTML = '<p style="color: var(--error);">Error extracting colors. Please try again.</p>';
+    }
+  }, 10);
 }
 
 on(extractBtn, 'click', extractColors);
