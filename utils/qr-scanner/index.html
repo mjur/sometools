@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>QR Code Scanner | Scan QR Codes from Webcam | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Scan QR codes from your webcam or uploaded images.">
+  <link rel="canonical" href="https://sometools.io/utils/qr-scanner">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="QR Code Scanner">
+  <meta property="og:description" content="Scan QR codes from your webcam or uploaded images.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "QR Code Scanner",
+        "item": "https://sometools.io/utils/qr-scanner"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/qr-scanner">QR Code Scanner</a>
+  </nav>
+  
+  <main id="main">
+    <h1>QR Code Scanner</h1>
+    <p>Scan QR codes from your webcam or uploaded images.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="mode">Source</label>
+        <select id="mode">
+          <option value="webcam">Webcam</option>
+          <option value="file">Upload Image</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool" id="webcam-mode">
+      <div class="pane" style="grid-column: 1 / -1;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label>Camera Preview</label>
+          <div class="actions" style="margin: 0;">
+            <button id="start-camera" class="primary">Start Camera</button>
+            <button id="stop-camera" class="secondary" disabled>Stop Camera</button>
+          </div>
+        </div>
+        <video id="video" autoplay playsinline style="width: 100%; max-width: 640px; border: 1px solid var(--border); border-radius: 4px; display: none;"></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+        <div id="camera-placeholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 4px; color: var(--muted);">
+          Click "Start Camera" to begin scanning
+        </div>
+      </div>
+    </section>
+    
+    <section class="tool" id="file-mode" style="display: none;">
+      <div class="pane">
+        <label for="file-input">Upload Image</label>
+        <input type="file" id="file-input" accept="image/*" style="width: 100%; padding: 0.5rem;">
+      </div>
+      <div class="pane">
+        <label>Preview</label>
+        <img id="image-preview" style="max-width: 100%; border: 1px solid var(--border); border-radius: 4px; display: none;">
+      </div>
+    </section>
+    
+    <section class="tool">
+      <div class="pane" style="grid-column: 1 / -1;">
+        <label for="result">Scanned Result</label>
+        <textarea id="result" readonly placeholder="QR code content will appear here" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; min-height: 150px;"></textarea>
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="copy-result">Copy</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>How does webcam scanning work?</summary>
+        <p>Click "Start Camera" to access your webcam. Point it at a QR code and it will automatically scan and decode the content.</p>
+      </details>
+      <details>
+        <summary>Can I scan from an image file?</summary>
+        <p>Yes, select "Upload Image" mode and choose an image file containing a QR code.</p>
+      </details>
+      <details>
+        <summary>Is my camera data sent to a server?</summary>
+        <p>No. All scanning happens locally in your browser. No data is sent to any server.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/utils/qr">QR Code Generator</a></li>
+        <li><a href="/utils/barcode">Barcode Generator</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/qr-scanner.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

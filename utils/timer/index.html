@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Timer & Stopwatch | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Simple timer and stopwatch with countdown and elapsed time tracking.">
+  <link rel="canonical" href="https://sometools.io/utils/timer">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Timer & Stopwatch">
+  <meta property="og:description" content="Simple timer and stopwatch with countdown and elapsed time tracking.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Timer & Stopwatch",
+        "item": "https://sometools.io/utils/timer"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/timer">Timer & Stopwatch</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Timer & Stopwatch</h1>
+    <p>Simple timer and stopwatch with countdown and elapsed time tracking.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="stopwatch">Stopwatch</option>
+          <option value="timer">Timer</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool" id="timer-mode" style="display: none;">
+      <div class="pane" style="grid-column: 1 / -1;">
+        <label>Set Timer</label>
+        <div style="display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap;">
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <label for="hours" style="font-size: 0.875rem; margin-bottom: 0.25rem;">Hours</label>
+            <input type="number" id="hours" min="0" max="99" value="0" style="width: 80px; padding: 0.5rem; text-align: center;">
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <label for="minutes" style="font-size: 0.875rem; margin-bottom: 0.25rem;">Minutes</label>
+            <input type="number" id="minutes" min="0" max="59" value="0" style="width: 80px; padding: 0.5rem; text-align: center;">
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <label for="seconds" style="font-size: 0.875rem; margin-bottom: 0.25rem;">Seconds</label>
+            <input type="number" id="seconds" min="0" max="59" value="0" style="width: 80px; padding: 0.5rem; text-align: center;">
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <section class="tool">
+      <div class="pane" style="grid-column: 1 / -1; text-align: center;">
+        <div id="display" style="font-size: 4rem; font-weight: bold; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; margin: 2rem 0; color: var(--text);">
+          00:00:00
+        </div>
+        <div class="actions" style="justify-content: center; gap: 0.5rem;">
+          <button id="start" class="primary">Start</button>
+          <button id="pause" class="secondary" disabled>Pause</button>
+          <button id="reset" class="secondary">Reset</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>How does the stopwatch work?</summary>
+        <p>The stopwatch counts up from zero, tracking elapsed time. Click Start to begin, Pause to pause, and Reset to return to zero.</p>
+      </details>
+      <details>
+        <summary>How does the timer work?</summary>
+        <p>Set the hours, minutes, and seconds, then click Start. The timer counts down to zero and will alert you when it reaches zero.</p>
+      </details>
+      <details>
+        <summary>Does it work in the background?</summary>
+        <p>The timer/stopwatch continues running even if you switch tabs, but may pause if the browser tab is inactive for extended periods.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/utils/pomodoro">Pomodoro Timer</a></li>
+        <li><a href="/time/date-calc">Date Calculator</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/timer.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

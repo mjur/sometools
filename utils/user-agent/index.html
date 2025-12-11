@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>User Agent Parser | Parse User Agent Strings | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Parse and analyze user agent strings to identify browser, OS, and device information.">
+  <link rel="canonical" href="https://sometools.io/utils/user-agent">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="User Agent Parser">
+  <meta property="og:description" content="Parse and analyze user agent strings.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "User Agent Parser",
+        "item": "https://sometools.io/utils/user-agent"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/user-agent">User Agent Parser</a>
+  </nav>
+  
+  <main id="main">
+    <h1>User Agent Parser</h1>
+    <p>Parse and analyze user agent strings to identify browser, OS, and device information.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="use-current" checked> Use Current Browser's User Agent
+        </label>
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="input">User Agent String</label>
+          <button id="parse" class="primary">Parse</button>
+        </div>
+        <textarea id="input" placeholder="Enter user agent string" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;"></textarea>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="output">Parsed Information</label>
+          <div class="actions" style="margin: 0;">
+            <button id="copy-output">Copy</button>
+          </div>
+        </div>
+        <textarea id="output" readonly placeholder="Parsed user agent information will appear here" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; min-height: 300px;"></textarea>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What is a user agent string?</summary>
+        <p>A user agent string is a text identifier that browsers and applications send to servers to identify themselves, including browser name, version, operating system, and device information.</p>
+      </details>
+      <details>
+        <summary>What information can be extracted?</summary>
+        <p>The parser can identify browser name and version, operating system, device type (mobile/desktop), and engine information.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All parsing happens locally in your browser.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/utils/ip">IP Address Tools</a></li>
+        <li><a href="/utils/mime">MIME Type Checker</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/user-agent-parser.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

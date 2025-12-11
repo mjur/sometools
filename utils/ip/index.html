@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>IP Address Tools | IP Lookup & Subnet Calculator | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="IP address lookup, subnet calculator, and IP address utilities.">
+  <link rel="canonical" href="https://sometools.io/utils/ip">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="IP Address Tools">
+  <meta property="og:description" content="IP address lookup, subnet calculator, and IP address utilities.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "IP Address Tools",
+        "item": "https://sometools.io/utils/ip"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/ip">IP Address Tools</a>
+  </nav>
+  
+  <main id="main">
+    <h1>IP Address Tools</h1>
+    <p>IP address lookup, subnet calculator, and IP address utilities.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="mode">Tool</label>
+        <select id="mode">
+          <option value="lookup">IP Lookup</option>
+          <option value="subnet">Subnet Calculator</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool" id="lookup-mode">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="ip-input">IP Address</label>
+          <button id="use-current-ip" class="secondary" style="font-size: 0.875rem;">Use My IP</button>
+        </div>
+        <input type="text" id="ip-input" placeholder="e.g., 192.168.1.1" style="width: 100%; padding: 0.5rem;">
+        <button id="lookup-btn" class="primary" style="margin-top: 0.5rem; width: 100%;">Lookup</button>
+      </div>
+      <div class="pane">
+        <label for="lookup-output">IP Information</label>
+        <textarea id="lookup-output" readonly placeholder="IP address information will appear here" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; min-height: 300px;"></textarea>
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="copy-lookup">Copy</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="tool" id="subnet-mode" style="display: none;">
+      <div class="pane">
+        <label for="subnet-ip">IP Address</label>
+        <input type="text" id="subnet-ip" placeholder="e.g., 192.168.1.0" style="width: 100%; padding: 0.5rem;">
+      </div>
+      <div class="pane">
+        <label for="subnet-mask">Subnet Mask / CIDR</label>
+        <input type="text" id="subnet-mask" placeholder="e.g., 255.255.255.0 or /24" style="width: 100%; padding: 0.5rem;">
+      </div>
+      <div class="pane" style="grid-column: 1 / -1;">
+        <button id="calculate-subnet" class="primary" style="width: 100%;">Calculate</button>
+      </div>
+      <div class="pane" style="grid-column: 1 / -1;">
+        <label for="subnet-output">Subnet Information</label>
+        <textarea id="subnet-output" readonly placeholder="Subnet information will appear here" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; min-height: 200px;"></textarea>
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="copy-subnet">Copy</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What is IP lookup?</summary>
+        <p>IP lookup provides information about an IP address, including whether it's IPv4 or IPv6, if it's private/public, and basic network information.</p>
+      </details>
+      <details>
+        <summary>What is a subnet calculator?</summary>
+        <p>A subnet calculator helps you calculate network addresses, broadcast addresses, host ranges, and subnet masks for IP networks.</p>
+      </details>
+      <details>
+        <summary>Is my IP address sent to a server?</summary>
+        <p>No. All calculations happen locally in your browser. However, to get your public IP address, a request may be made to a third-party service.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/utils/user-agent">User Agent Parser</a></li>
+        <li><a href="/utils/mime">MIME Type Checker</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/ip-tools.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
