@@ -29,6 +29,7 @@ let ffmpeg = null;
 let isGenerating = false;
 let currentAbort = null;
 let videoBlob = null;
+let imageClientDetected = false; // Track if detect() was already called successfully
 
 // Progress helpers
 function updateProgress(text, percent) {
@@ -89,24 +90,205 @@ async function initImageClient() {
     updateProgress('Loading image generation model...', 5);
     const Txt2ImgWorkerClient = await loadImageLibrary();
     
+    // Intercept Worker constructor to fix paths (same pattern as image-generate.js)
+    // This handles both CDN (CORS issues) and bundled (path issues) scenarios
+    // Only set OriginalWorker if it doesn't exist (to avoid recursion if already set)
+    if (!window.OriginalWorker) {
+      window.OriginalWorker = window.Worker;
+    }
+    
+    // Store reference to original Worker to avoid recursion
+    const OriginalWorkerRef = window.OriginalWorker;
+    
+    // Replace Worker with our interceptor
+    window.Worker = function(scriptURL, options) {
+      const url = String(scriptURL);
+      console.log('[Video Slideshow] Worker constructor called with URL:', url);
+      
+      // Don't intercept FFmpeg workers - let them use original Worker
+      if (url.includes('ffmpeg') || url.includes('ffmpeg-workers')) {
+        return new OriginalWorkerRef(scriptURL, options);
+      }
+      
+      let workerUrl = scriptURL;
+      
+      // If it's trying to load from a CDN, redirect to bundled assets
+      if (url.includes('esm.sh') || url.includes('cdn.jsdelivr.net') || url.includes('unpkg.com')) {
+        // Use the wrapper that loads transformers first
+        workerUrl = '/js/tools/bundled/assets/host-wrapper.js';
+        console.log('[Video Slideshow] Intercepting CDN worker, redirecting to wrapper:', workerUrl);
+      }
+      // If it's trying to load from /assets/ (bundle's relative path), fix it
+      else if (url.includes('/assets/') && !url.includes('/js/tools/bundled/assets/')) {
+        const fileName = url.split('/assets/').pop();
+        // If it's the host worker, use the wrapper instead
+        if (fileName.includes('host')) {
+          workerUrl = '/js/tools/bundled/assets/host-wrapper.js';
+          console.log('[Video Slideshow] Using wrapper for host worker:', workerUrl);
+        } else {
+          workerUrl = `/js/tools/bundled/assets/${fileName}`;
+          console.log('[Video Slideshow] Fixing bundled worker path:', url, '->', workerUrl);
+        }
+      }
+      
+      // Create worker with proper module type - use OriginalWorkerRef to avoid recursion
+      try {
+        return new OriginalWorkerRef(workerUrl, { ...options, type: 'module' });
+      } catch (e) {
+        console.error('[Video Slideshow] Failed to create worker:', e);
+        throw e;
+      }
+    };
+    
     // Create client using createDefault (same pattern as image-generate.js)
     if (!imageClient) {
-      imageClient = Txt2ImgWorkerClient.createDefault();
-      await imageClient.detect(); // Check capabilities
+      console.log('[Video Slideshow] Creating Txt2ImgWorkerClient...');
+      try {
+        imageClient = Txt2ImgWorkerClient.createDefault();
+        console.log('[Video Slideshow] Client created:', imageClient);
+        console.log('[Video Slideshow] Client worker:', imageClient.worker);
+        console.log('[Video Slideshow] Worker state:', imageClient.worker ? 'exists' : 'missing');
+        
+        // Add error handlers to worker
+        if (imageClient.worker) {
+          imageClient.worker.addEventListener('error', (error) => {
+            console.error('[Video Slideshow] Image worker error event:', error);
+            console.error('[Video Slideshow] Worker error message:', error.message);
+            console.error('[Video Slideshow] Worker error filename:', error.filename);
+            console.error('[Video Slideshow] Worker error lineno:', error.lineno);
+            console.error('[Video Slideshow] Worker error colno:', error.colno);
+            console.error('[Video Slideshow] Worker error stack:', error.error?.stack);
+            console.error('[Video Slideshow] Full error object:', error.error);
+            toast('Image generation worker error - check console for details', 'error');
+          });
+          imageClient.worker.addEventListener('messageerror', (error) => {
+            console.error('[Video Slideshow] Image worker message error:', error);
+            toast('Image generation worker message error', 'error');
+          });
+        } else {
+          console.warn('[Video Slideshow] Worker was not created - worker is null');
+          throw new Error('Worker creation failed - worker is null. Please run: npm run build to use the bundled version');
+        }
+      } catch (workerError) {
+        console.error('[Video Slideshow] Worker creation failed:', workerError);
+        if (workerError.message && workerError.message.includes('Worker')) {
+          throw new Error('Worker creation failed. Please run: npm run build to use the bundled version');
+        }
+        throw workerError;
+      }
+    }
+    
+    // Call detect() only if not already called (with timeout to prevent hanging)
+    if (!imageClientDetected) {
+      console.log('[Video Slideshow] Calling client.detect()...');
+      updateProgress('Detecting capabilities...', 6);
+      
+      const detectPromise = imageClient.detect();
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Capability detection timed out')), 10000); // 10 second timeout
+      });
+      
+      try {
+        const caps = await Promise.race([detectPromise, timeoutPromise]);
+        console.log('[Video Slideshow] client.detect() returned:', caps);
+        
+        if (caps && caps.webgpu) {
+          imageClientDetected = true;
+        } else {
+          console.warn('[Video Slideshow] WebGPU not detected, but continuing...');
+          imageClientDetected = true; // Mark as detected to avoid retrying
+        }
+      } catch (detectError) {
+        console.warn('[Video Slideshow] detect() failed or timed out:', detectError.message);
+        // Mark as detected to avoid retrying, but continue anyway
+        // Model loading will fail if WebGPU isn't actually available
+        imageClientDetected = true;
+      }
+    }
+    
+    // Validate that the client has the load method
+    if (!imageClient || typeof imageClient.load !== 'function') {
+      throw new Error('Image client is not properly initialized. The load method is not available.');
     }
     
     // Load the selected model
     updateProgress(`Loading ${model} model...`, 10);
-    await imageClient.loadModel(model, {
-      progress: (p) => {
-        updateProgress(`Loading image model: ${p.phase || 'processing'}`, 10 + (p.pct || 0) * 0.25);
+    const wasmPathsConfig = '/js/tools/bundled/assets/';
+    
+    let result;
+    try {
+      result = await imageClient.load(
+        model,
+        {
+          backendPreference: ['webgpu'],
+          wasmPaths: wasmPathsConfig
+        },
+        (progress) => {
+          updateProgress(
+            `Loading image model: ${progress.phase || 'processing'}`,
+            10 + (progress.pct || 0) * 0.25
+          );
+        }
+      );
+      
+      // Check if WebGPU failed and fallback to WASM
+      const actualResult = result.data || result;
+      if (!actualResult.ok) {
+        const errorMsg = actualResult.message || actualResult.reason || '';
+        if (errorMsg.includes('mjs') || errorMsg.includes('Failed to fetch dynamically imported module') || 
+            errorMsg.includes('no available backend')) {
+          console.warn('[Video Slideshow] WebGPU failed, falling back to WASM backend. Error:', errorMsg);
+          result = await imageClient.load(
+            model,
+            {
+              backendPreference: ['wasm'],
+              wasmPaths: wasmPathsConfig
+            },
+            (progress) => {
+              updateProgress(
+                `Loading image model: ${progress.phase || 'processing'}`,
+                10 + (progress.pct || 0) * 0.25
+              );
+            }
+          );
+        } else {
+          throw new Error(errorMsg || 'Failed to load model');
+        }
       }
-    });
+    } catch (error) {
+      // If WebGPU fails, try WASM as fallback
+      if (error.message?.includes('mjs') || error.message?.includes('Failed to fetch dynamically imported module')) {
+        console.warn('[Video Slideshow] WebGPU failed, falling back to WASM backend');
+        result = await imageClient.load(
+          model,
+          {
+            backendPreference: ['wasm'],
+            wasmPaths: wasmPathsConfig
+          },
+          (progress) => {
+            updateProgress(
+              `Loading image model: ${progress.phase || 'processing'}`,
+              10 + (progress.pct || 0) * 0.25
+            );
+          }
+        );
+      } else {
+        throw error;
+      }
+    }
+    
+    // Check if the load was successful
+    const actualResult = result.data || result;
+    if (!actualResult.ok) {
+      const errorMsg = actualResult.message || actualResult.reason || 'Failed to load model';
+      throw new Error(errorMsg);
+    }
     
     currentImageModel = model;
     toast('Image model loaded', 'success');
     return imageClient;
   } catch (error) {
+    console.error('[Video Slideshow] Image client initialization error:', error);
     toast(`Failed to load image model: ${error.message}`, 'error');
     throw error;
   }
@@ -220,22 +402,45 @@ async function loadTTS() {
         clearInterval(progressInterval); // Clear the periodic updates when real progress comes in
         progressInterval = null;
         
-        // progress might be a number between 0-1, or an object with progress property
+        // progress might be a number between 0-1 (ratio), 0-100 (percentage), 0-10000 (basis points), or an object
         let progressValue = 0;
+        
         if (typeof progress === 'number' && isFinite(progress)) {
           progressValue = progress;
+        } else if (progress && typeof progress.percent === 'number' && isFinite(progress.percent)) {
+          progressValue = progress.percent;
         } else if (progress && typeof progress.progress === 'number' && isFinite(progress.progress)) {
           progressValue = progress.progress;
         } else if (progress && typeof progress.ratio === 'number' && isFinite(progress.ratio)) {
           progressValue = progress.ratio;
         }
         
-        const percent = Math.round(progressValue * 100);
+        // Normalize to 0-1 ratio
+        // Handle different formats:
+        // - If value is > 100, it might be in basis points (0-10000) or already multiplied
+        // - If value is > 1 and <= 100, it's likely a percentage (0-100)
+        // - If value is <= 1, it's likely a ratio (0-1)
+        let normalizedRatio = 0;
+        if (progressValue > 100) {
+          // Likely basis points (0-10000) or similar scale
+          normalizedRatio = progressValue / 10000;
+        } else if (progressValue > 1) {
+          // Likely percentage (0-100)
+          normalizedRatio = progressValue / 100;
+        } else {
+          // Likely ratio (0-1)
+          normalizedRatio = progressValue;
+        }
+        
+        // Clamp to valid range
+        const clampedRatio = Math.max(0, Math.min(1, normalizedRatio));
+        
+        const percent = Math.round(clampedRatio * 100);
         const baseProgress = 40;
         const maxProgress = 70;
-        const calculatedProgress = baseProgress + (progressValue * (maxProgress - baseProgress));
+        const calculatedProgress = baseProgress + (clampedRatio * (maxProgress - baseProgress));
         updateProgress(`Loading TTS model: ${percent}% (downloading/processing...)`, calculatedProgress);
-        console.log(`[Video Slideshow] TTS model loading progress: ${percent}%`);
+        console.log(`[Video Slideshow] TTS model loading progress: ${percent}% (raw: ${progressValue}, normalized: ${clampedRatio})`);
       }
     });
     
@@ -722,13 +927,14 @@ async function generateVideo() {
     updateProgress('Complete!', 100);
     
   } catch (error) {
-    if (error.message.includes('aborted')) {
+    const errorMessage = error?.message || String(error) || 'Unknown error';
+    if (errorMessage.includes('aborted')) {
       toast('Generation aborted', 'info');
       output.innerHTML = '<p class="text-muted">Generation was cancelled.</p>';
     } else {
       console.error('Generation error:', error);
-      output.innerHTML = `<p style="color: var(--error);">Error: ${error.message}</p>`;
-      toast(`Generation failed: ${error.message}`, 'error');
+      output.innerHTML = `<p style="color: var(--error);">Error: ${errorMessage}</p>`;
+      toast(`Generation failed: ${errorMessage}`, 'error');
     }
   } finally {
     isGenerating = false;
