@@ -8,6 +8,7 @@ const TOOLS = [
   { url: '/ai/chat', name: 'WebLLM Chatbot', category: 'ai', description: 'Chat with local AI models in your browser using WebLLM' },
   { url: '/ai/image-generate', name: 'AI Image Generator', category: 'ai', description: 'Generate images from text prompts using SD-Turbo and Janus-Pro-1B models with WebGPU' },
   { url: '/ai/image-caption', name: 'Image Caption Generator', category: 'ai', description: 'Generate AI-powered captions for images using vit-gpt2-image-captioning model' },
+  { url: '/ai/image-ocr', name: 'Image OCR', category: 'ai', description: 'Extract text from images using OCR (Optical Character Recognition) with Tesseract.js' },
   { url: '/ai/video-slideshow', name: 'Video Slideshow Generator', category: 'ai', description: 'Generate video slideshows from text with AI images and voice narration' },
   { url: '/ai/music-generate', name: 'AI Music Generator', category: 'ai', description: 'Generate music from text prompts using MusicGen-small ONNX models' },
   { url: '/regex/generator', name: 'Regex Generator', category: 'ai', description: 'Generate regular expressions from natural language using AI' },
