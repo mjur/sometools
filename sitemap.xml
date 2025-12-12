@@ -12,6 +12,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://sometools.io/ai/image-caption</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://sometools.io/json/validate</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
