@@ -8,6 +8,7 @@ import { loadONNXRuntime } from '/js/utils/onnx-loader.js';
 const textInput = qs('#text-input');
 const splitModeSelect = qs('#split-mode');
 const imageModelSelect = qs('#image-model');
+const imageStyleInput = qs('#image-style');
 const voiceSelect = qs('#voice-select');
 const videoResolutionSelect = qs('#video-resolution');
 const generateBtn = qs('#generate-btn');
@@ -597,8 +598,15 @@ async function generateImageForSegment(text, segmentIndex, totalSegments) {
     await initImageClient();
   }
   
+  // Build prompt with optional style instruction
+  let prompt = text;
+  if (imageStyleInput && imageStyleInput.value.trim()) {
+    const style = imageStyleInput.value.trim();
+    prompt = `${text}, ${style} style`;
+  }
+  
   const params = {
-    prompt: text,
+    prompt: prompt,
     model: currentImageModel
   };
   
