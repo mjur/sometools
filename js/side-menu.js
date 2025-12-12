@@ -35,6 +35,7 @@ const TOOLS = [
   { url: '/text/html-entities', name: 'HTML Entity Encoder/Decoder', category: 'text', description: 'Convert special characters to/from HTML entities' },
   { url: '/text/case-converter', name: 'String Case Converter', category: 'text', description: 'Convert text between camelCase, snake_case, kebab-case, and more' },
   { url: '/text/statistics', name: 'Text Statistics', category: 'text', description: 'Analyze word count, character count, reading time, and keyword density' },
+  { url: '/text/summarize', name: 'Text Summarizer', category: 'text', description: 'Summarize text using AI with WebLLM models' },
   { url: '/text/lorem', name: 'Lorem Ipsum Generator', category: 'text', description: 'Generate Lorem Ipsum placeholder text with customizable options' },
   { url: '/text/slug', name: 'Slug Generator', category: 'text', description: 'Convert text to URL-friendly slugs for SEO and filenames' },
   { url: '/text/password', name: 'Password Generator', category: 'text', description: 'Generate secure passwords with customizable options' },
