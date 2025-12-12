@@ -683,13 +683,80 @@ on(inputText, 'input', () => {
   });
 });
 
+// Sync output textarea height with left pane
+function syncTextareaHeight() {
+  const leftPane = document.querySelector('.tool .pane:first-child');
+  const rightPane = document.querySelector('.tool .pane:last-child');
+  const outputTextarea = summaryTextarea;
+  
+  if (leftPane && rightPane && outputTextarea) {
+    // Get the computed height of the left pane
+    const leftHeight = leftPane.offsetHeight;
+    
+    // Get heights of elements in right pane
+    const label = rightPane.querySelector('label');
+    const actions = rightPane.querySelector('.actions');
+    const labelHeight = label ? label.offsetHeight + parseFloat(getComputedStyle(label).marginBottom || 0) : 0;
+    const actionsHeight = actions ? actions.offsetHeight + parseFloat(getComputedStyle(actions).marginTop || 0) : 0;
+    
+    // Get padding from right pane
+    const rightPaneStyle = getComputedStyle(rightPane);
+    const paddingTop = parseFloat(rightPaneStyle.paddingTop || 0);
+    const paddingBottom = parseFloat(rightPaneStyle.paddingBottom || 0);
+    
+    // Calculate available height for textarea
+    const textareaHeight = leftHeight - labelHeight - actionsHeight - paddingTop - paddingBottom - 20; // 20px extra margin
+    
+    // Set the textarea height to match
+    if (textareaHeight > 200) {
+      outputTextarea.style.height = `${textareaHeight}px`;
+    } else {
+      outputTextarea.style.height = '200px';
+    }
+  }
+}
+
 // Check cached models on load
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     setTimeout(() => {
       listCachedModels().catch(console.error);
       checkModel().catch(console.error);
+      syncTextareaHeight();
     }, 500);
   });
+  
+  // Sync height on window resize
+  window.addEventListener('resize', () => {
+    setTimeout(syncTextareaHeight, 100);
+  });
+  
+  // Use MutationObserver to sync when left pane content changes (model status, etc.)
+  const leftPane = document.querySelector('.tool .pane:first-child');
+  if (leftPane) {
+    const observer = new MutationObserver(() => {
+      setTimeout(syncTextareaHeight, 100);
+    });
+    observer.observe(leftPane, { 
+      childList: true, 
+      subtree: true, 
+      attributes: true, 
+      attributeFilter: ['style', 'class'],
+      characterData: true
+    });
+  }
+  
+  // Also sync after model status updates
+  if (modelStatus) {
+    const statusObserver = new MutationObserver(() => {
+      setTimeout(syncTextareaHeight, 100);
+    });
+    statusObserver.observe(modelStatus, { 
+      childList: true, 
+      subtree: true, 
+      attributes: true, 
+      attributeFilter: ['style', 'class']
+    });
+  }
 }
 
