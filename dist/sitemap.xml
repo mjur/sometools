@@ -92,6 +92,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://sometools.io/convert/video-audio</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://sometools.io/convert/image</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
