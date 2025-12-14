@@ -27,6 +27,7 @@ const TOOLS = [
   { url: '/convert/image-pdf', name: 'Image to PDF', category: 'convert', description: 'Convert images to PDF files with customizable page settings' },
   { url: '/convert/image', name: 'Image Format Converter', category: 'convert', description: 'Convert images between PNG, JPEG, WebP, SVG, and ICO formats' },
   { url: '/convert/video', name: 'Video Format Converter', category: 'convert', description: 'Convert videos between MP4, WebM, AVI, MOV, and MKV formats' },
+  { url: '/convert/audio-stem-separator', name: 'Audio Stem Separator', category: 'convert', description: 'Separate audio into stems (drums, bass, vocals, other) using Demucs AI model' },
   { url: '/convert/time', name: 'Time & Timezone Parser', category: 'time', description: 'Parse times, normalize to UTC, and convert across common time zones' },
   { url: '/convert/units', name: 'Unit Converter', category: 'convert', description: 'Convert between hundreds of units across all measurement categories', expandable: true },
   { url: '/crypto/hash', name: 'Hash Generator', category: 'crypto', description: 'Generate SHA-1, SHA-256, SHA-384, SHA-512 hashes' },
