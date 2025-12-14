@@ -32,3 +32,6 @@ env/
 .env/
 *.venv
 
+# Demucs repository (cloned by setup script, not needed in repo)
+demucs/
+
