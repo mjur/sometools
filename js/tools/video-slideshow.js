@@ -145,14 +145,14 @@ async function initImageClient() {
     if (!imageClient) {
       console.log('[Video Slideshow] Creating Txt2ImgWorkerClient...');
       try {
-        imageClient = Txt2ImgWorkerClient.createDefault();
+      imageClient = Txt2ImgWorkerClient.createDefault();
         console.log('[Video Slideshow] Client created:', imageClient);
         console.log('[Video Slideshow] Client worker:', imageClient.worker);
         console.log('[Video Slideshow] Worker state:', imageClient.worker ? 'exists' : 'missing');
-        
-        // Add error handlers to worker
-        if (imageClient.worker) {
-          imageClient.worker.addEventListener('error', (error) => {
+      
+      // Add error handlers to worker
+      if (imageClient.worker) {
+        imageClient.worker.addEventListener('error', (error) => {
             console.error('[Video Slideshow] Image worker error event:', error);
             console.error('[Video Slideshow] Worker error message:', error.message);
             console.error('[Video Slideshow] Worker error filename:', error.filename);
@@ -161,11 +161,11 @@ async function initImageClient() {
             console.error('[Video Slideshow] Worker error stack:', error.error?.stack);
             console.error('[Video Slideshow] Full error object:', error.error);
             toast('Image generation worker error - check console for details', 'error');
-          });
-          imageClient.worker.addEventListener('messageerror', (error) => {
-            console.error('[Video Slideshow] Image worker message error:', error);
-            toast('Image generation worker message error', 'error');
-          });
+        });
+        imageClient.worker.addEventListener('messageerror', (error) => {
+          console.error('[Video Slideshow] Image worker message error:', error);
+          toast('Image generation worker message error', 'error');
+        });
         } else {
           console.warn('[Video Slideshow] Worker was not created - worker is null');
           throw new Error('Worker creation failed - worker is null. Please run: npm run build to use the bundled version');
@@ -271,7 +271,7 @@ async function initImageClient() {
               `Loading image model: ${progress.phase || 'processing'}`,
               10 + (progress.pct || 0) * 0.25
             );
-          }
+      }
         );
       } else {
         throw error;

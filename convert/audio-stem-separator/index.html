@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Audio Stem Separator | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Separate audio into stems (drums, bass, vocals, other) using Demucs AI model">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <script type="module" src="/js/header.js"></script>
+  <style>
+    .stem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .stem-card {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      background: var(--bg-secondary);
+    }
+    .stem-card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+      text-transform: capitalize;
+    }
+    .stem-audio {
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+    .stem-actions {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .stem-actions button {
+      flex: 1;
+      padding: 0.5rem;
+      font-size: 0.875rem;
+    }
+    .model-select {
+      margin-top: 1rem;
+    }
+    .model-select select {
+      width: 100%;
+      padding: 0.5rem;
+    }
+    .model-info {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/audio-stem-separator">Audio Stem Separator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Audio Stem Separator</h1>
+    <p>Separate audio tracks into individual stems (drums, bass, vocals, other) using Demucs AI model. Powered by <a href="https://github.com/adefossez/demucs" target="_blank" rel="noopener">Demucs</a>.</p>
+    
+    <div style="background: var(--info-bg, #d1ecf1); border: 1px solid var(--info-border, #0c5460); border-radius: 6px; padding: 1rem; margin: 1rem 0; color: var(--info-text, #0c5460);">
+      <strong>ℹ️ How it works:</strong> This tool uses the Demucs AI model to separate audio into individual stems. The model analyzes the audio and separates it into drums, bass, vocals, and other instruments. Processing may take a few minutes depending on the audio length and your device's performance.
+    </div>
+    
+    <section class="tool">
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label for="audio-input">Upload Audio File</label>
+        <div class="drop-zone" id="drop-zone" style="height: 200px; flex: 0 0 200px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0;">
+          <p>Drag and drop an audio file here, or click to select</p>
+          <p style="font-size: 0.875rem; color: var(--muted); margin-top: 0.5rem;">Supported: MP3, WAV, OGG, M4A, FLAC, AAC, and more</p>
+          <input type="file" id="audio-input" accept="audio/*" style="display: none;">
+        </div>
+        <div id="input-info" style="color: var(--muted); font-size: 0.875rem; margin-top: 0.5rem; display: none;"></div>
+        
+        <div class="options" style="margin-top: 1rem;">
+          <div class="option-group model-select">
+            <label for="model-select">Model:</label>
+            <select id="model-select">
+              <option value="htdemucs-6s" selected>HTDemucs 6s (6 stems: drums, bass, other, vocals, piano, guitar)</option>
+              <option value="htdemucs-4s">HTDemucs 4s (4 stems: drums, bass, other, vocals)</option>
+            </select>
+            <div class="model-info">6s model provides better separation but requires more processing time.</div>
+          </div>
+        </div>
+        
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="process-btn" class="primary" disabled>Separate Stems</button>
+          <button id="clear-btn">Clear</button>
+        </div>
+        
+        <div id="status" style="margin-top: 1rem; color: var(--muted);"></div>
+        <div class="progress-container" id="progress-container" style="display: none; margin-top: 1rem;">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+          </div>
+          <div id="progress-text" style="font-size: 0.875rem; color: var(--muted); margin-top: 0.25rem;"></div>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <label>Original Audio</label>
+        <div id="original-audio-container" style="display: none;">
+          <audio id="original-audio" class="audio-player" controls></audio>
+        </div>
+        <div id="original-placeholder" style="color: var(--muted); padding: 2rem; text-align: center;">
+          Original audio will appear here...
+        </div>
+      </div>
+    </section>
+    
+    <section id="stems-section" style="display: none; margin-top: 2rem;">
+      <h2>Separated Stems</h2>
+      <div class="stem-grid" id="stem-grid"></div>
+      <div class="actions" style="margin-top: 1rem;">
+        <button id="download-all-btn" class="primary" disabled>Download All Stems (ZIP)</button>
+      </div>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/tools/audio-stem-separator.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

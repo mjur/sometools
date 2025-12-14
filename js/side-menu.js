@@ -52,6 +52,7 @@ const TOOLS = [
   { url: '/convert/video', name: 'Video Format Converter', category: 'convert', description: 'Convert videos between MP4, WebM, AVI, MOV, and MKV formats' },
   { url: '/convert/video-audio', name: 'Extract Audio from Video', category: 'convert', description: 'Extract audio tracks from video files and save as MP3, WAV, AAC, and other audio formats' },
   { url: '/convert/audio', name: 'Audio Format Converter', category: 'convert', description: 'Convert audio files between MP3, WAV, OGG, M4A, FLAC, AAC, and Opus formats' },
+  { url: '/convert/audio-stem-separator', name: 'Audio Stem Separator', category: 'convert', description: 'Separate audio into stems (drums, bass, vocals, other) using Demucs AI model' },
   { url: '/convert/time', name: 'Time & Timezone Parser', category: 'time', description: 'Parse times, normalize to UTC, and convert across common time zones' },
   { url: '/time/timestamp', name: 'Unix Timestamp Converter', category: 'time', description: 'Convert Unix timestamps to dates and vice versa' },
   { url: '/time/iso8601', name: 'ISO 8601 Parser', category: 'time', description: 'Parse and format ISO 8601 date strings' },
