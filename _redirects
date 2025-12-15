@@ -2,6 +2,20 @@
 # Handle unit conversion URLs and SPA routing
 /convert/units/*/index.html /convert/units/*/index.html 200
 
+# Handle time tool URLs
+/time/date-calc /time/date-calc/index.html 200
+/time/date-calc/ /time/date-calc/index.html 200
+/time/date-calc/* /time/date-calc/index.html 200
+/time/iso8601 /time/iso8601/index.html 200
+/time/iso8601/ /time/iso8601/index.html 200
+/time/iso8601/* /time/iso8601/index.html 200
+/time/timestamp /time/timestamp/index.html 200
+/time/timestamp/ /time/timestamp/index.html 200
+/time/timestamp/* /time/timestamp/index.html 200
+/time/cron /time/cron/index.html 200
+/time/cron/ /time/cron/index.html 200
+/time/cron/* /time/cron/index.html 200
+
 # Fallback for any missing pages (optional - uncomment if needed)
 # /* /index.html 200
 

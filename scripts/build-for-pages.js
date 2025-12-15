@@ -201,6 +201,20 @@ if (fs.existsSync(redirectsSource)) {
   const redirectsContent = `# Cloudflare Pages redirects
 # Handle unit conversion URLs
 /convert/units/*/index.html /convert/units/*/index.html 200
+
+# Handle time tool URLs
+/time/date-calc /time/date-calc/index.html 200
+/time/date-calc/ /time/date-calc/index.html 200
+/time/date-calc/* /time/date-calc/index.html 200
+/time/iso8601 /time/iso8601/index.html 200
+/time/iso8601/ /time/iso8601/index.html 200
+/time/iso8601/* /time/iso8601/index.html 200
+/time/timestamp /time/timestamp/index.html 200
+/time/timestamp/ /time/timestamp/index.html 200
+/time/timestamp/* /time/timestamp/index.html 200
+/time/cron /time/cron/index.html 200
+/time/cron/ /time/cron/index.html 200
+/time/cron/* /time/cron/index.html 200
 `;
   fs.writeFileSync(redirectsDest, redirectsContent);
   console.log('  Created default _redirects');
