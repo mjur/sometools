@@ -19,6 +19,7 @@ const staticDirs = [
   'js',
   'assets',
   'convert',
+  'time',
   'ai',
   'utils',
   'crypto',
