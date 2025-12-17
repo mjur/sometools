@@ -11,6 +11,7 @@ const previewContainer = qs('#preview-container');
 const imageInfo = qs('#image-info');
 const outputArea = qs('#output-area');
 const removeBgBtn = qs('#remove-bg');
+const useOutputBtn = qs('#use-output');
 const downloadBtn = qs('#download');
 const clearBtn = qs('#clear');
 const transparentBg = qs('#transparent-bg');
@@ -259,8 +260,86 @@ function displayResult(resultCanvas) {
     outputArea.appendChild(outputImg);
     
     downloadBtn.disabled = false;
+    useOutputBtn.disabled = false;
     toast('Background removed! Click on the image to refine the selection.');
   }, 'image/png');
+}
+
+// Use output as new input
+function useOutputAsInput() {
+  if (!resultBlob) {
+    toast('No output available to use as input');
+    return;
+  }
+
+  try {
+    // Create image from result blob
+    const img = new Image();
+    const resultUrl = URL.createObjectURL(resultBlob);
+    
+    img.onload = () => {
+      // Set as new original image
+      originalImage = img;
+      
+      // Update preview canvas
+      if (canvas) {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+      } else {
+        // Create new canvas if it doesn't exist
+        canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.style.maxWidth = '100%';
+        canvas.style.maxHeight = 'calc(100% - 2rem)';
+        canvas.style.objectFit = 'contain';
+        canvas.style.cursor = 'crosshair';
+        canvas.style.border = '2px solid var(--accent)';
+        canvas.style.margin = '0 auto';
+        canvas.style.display = 'block';
+        
+        ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        
+        previewContainer.innerHTML = '';
+        previewContainer.appendChild(canvas);
+        previewContainer.appendChild(imageInfo);
+        
+        canvas.addEventListener('click', handleCanvasClick);
+      }
+      
+      // Update image info
+      imageInfo.textContent = `${img.width} × ${img.height} px`;
+      
+      // Clear output area
+      outputArea.innerHTML = '<p>Output used as input. Process again to refine.</p>';
+      outputArea.style.backgroundImage = 'none';
+      outputArea.style.backgroundColor = 'var(--bg-elev)';
+      
+      // Reset buttons
+      downloadBtn.disabled = true;
+      useOutputBtn.disabled = true;
+      resultBlob = null;
+      
+      // Update preview background
+      updatePreviewBackground();
+      
+      toast('Output set as new input. You can now refine the background removal.');
+      
+      URL.revokeObjectURL(resultUrl);
+    };
+    
+    img.onerror = () => {
+      toast('Failed to load output as input', 'error');
+      URL.revokeObjectURL(resultUrl);
+    };
+    
+    img.src = resultUrl;
+  } catch (error) {
+    console.error('Error using output as input:', error);
+    toast(`Error: ${error.message}`, 'error');
+  }
 }
 
 // File input handler
@@ -388,6 +467,8 @@ function removeBackground() {
 
 on(removeBgBtn, 'click', removeBackground);
 
+on(useOutputBtn, 'click', useOutputAsInput);
+
 on(clearBtn, 'click', () => {
   currentFile = null;
   resultBlob = null;
@@ -402,6 +483,7 @@ on(clearBtn, 'click', () => {
   outputArea.style.backgroundColor = 'var(--bg-elev)';
   removeBgBtn.disabled = true;
   downloadBtn.disabled = true;
+  useOutputBtn.disabled = true;
   fileInput.value = '';
   if (canvas) {
     canvas.remove();
