@@ -1,43 +1,43 @@
-/* Design System - Base Styles */
+/* Design System - Base Styles - Industrial Theme */
 :root {
-  /* Light theme colors (default) */
-  --bg: #ffffff;
-  --bg-elev: #f5f5f5;
+  /* Light theme colors (default) - Industrial palette */
+  --bg: #f8f8f8;
+  --bg-elev: #e8e8e8;
   --text: #1a1a1a;
-  --muted: #666666;
-  --accent: #0066cc;
-  --error: #d32f2f;
-  --ok: #2e7d32;
-  --border: #e0e0e0;
-  --shadow: rgba(0, 0, 0, 0.1);
+  --muted: #555555;
+  --accent: #2c3e50;
+  --error: #c0392b;
+  --ok: #27ae60;
+  --border: #bdc3c7;
+  --shadow: rgba(0, 0, 0, 0.15);
   --focus-ring: 2px solid var(--accent);
 }
 
-/* Explicit light theme (when data-theme="light" is set) */
+/* Explicit light theme (when data-theme="light" is set) - Industrial */
 html[data-theme="light"] {
-  --bg: #ffffff !important;
-  --bg-elev: #f5f5f5 !important;
+  --bg: #f8f8f8 !important;
+  --bg-elev: #e8e8e8 !important;
   --text: #1a1a1a !important;
-  --muted: #666666 !important;
-  --accent: #0066cc !important;
-  --error: #d32f2f !important;
-  --ok: #2e7d32 !important;
-  --border: #e0e0e0 !important;
-  --shadow: rgba(0, 0, 0, 0.1) !important;
+  --muted: #555555 !important;
+  --accent: #2c3e50 !important;
+  --error: #c0392b !important;
+  --ok: #27ae60 !important;
+  --border: #bdc3c7 !important;
+  --shadow: rgba(0, 0, 0, 0.15) !important;
   --focus-ring: 2px solid var(--accent) !important;
 }
 
-/* Dark theme */
+/* Dark theme - Industrial */
 html[data-theme="dark"] {
   --bg: #1a1a1a !important;
-  --bg-elev: #2d2d2d !important;
+  --bg-elev: #2c2c2c !important;
   --text: #e0e0e0 !important;
-  --muted: #999999 !important;
-  --accent: #4a9eff !important;
-  --error: #f44336 !important;
-  --ok: #4caf50 !important;
-  --border: #404040 !important;
-  --shadow: rgba(0, 0, 0, 0.3) !important;
+  --muted: #888888 !important;
+  --accent: #7f8c8d !important;
+  --error: #e74c3c !important;
+  --ok: #2ecc71 !important;
+  --border: #34495e !important;
+  --shadow: rgba(0, 0, 0, 0.4) !important;
 }
 
 * {
@@ -84,16 +84,17 @@ body {
 .p-6 { padding: 1.5rem; }
 .p-8 { padding: 2rem; }
 
-/* Header */
+/* Header - Industrial */
 header {
   background-color: var(--bg-elev);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
   padding: 1rem 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+  box-shadow: 0 2px 4px var(--shadow);
 }
 
 header h1 {
@@ -122,7 +123,7 @@ header a:hover {
 nav[aria-label="Breadcrumb"] {
   padding: 0.75rem 2rem;
   background-color: var(--bg);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
   font-size: 0.875rem;
 }
 
@@ -254,8 +255,8 @@ textarea {
   font-size: 0.875rem;
   line-height: 1.6;
   padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 2px solid var(--border);
+  border-radius: 0;
   background-color: var(--bg);
   color: var(--text);
   resize: vertical;
@@ -277,7 +278,7 @@ textarea {
 textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.2);
 }
 
 textarea:disabled {
@@ -285,14 +286,14 @@ textarea:disabled {
   cursor: not-allowed;
 }
 
-/* Pre/Output */
+/* Pre/Output - Industrial */
 pre {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
   font-size: 0.875rem;
   line-height: 1.6;
   padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 2px solid var(--border);
+  border-radius: 0;
   background-color: var(--bg-elev);
   color: var(--text);
   overflow-x: auto;
@@ -317,14 +318,14 @@ pre.error {
   background-color: rgba(211, 47, 47, 0.05);
 }
 
-/* Buttons */
+/* Buttons - Industrial */
 button {
   font-family: inherit;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   padding: 0.5rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 2px solid var(--border);
+  border-radius: 0;
   background-color: var(--bg-elev);
   color: var(--text);
   cursor: pointer;
@@ -332,11 +333,13 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  box-shadow: 0 2px 4px var(--shadow);
 }
 
 button:hover:not(:disabled) {
   background-color: var(--bg);
   border-color: var(--accent);
+  box-shadow: 0 3px 6px var(--shadow);
 }
 
 button:active:not(:disabled) {
@@ -348,14 +351,14 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Button-styled links */
+/* Button-styled links - Industrial */
 a.button-link {
   font-family: inherit;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   padding: 0.5rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 2px solid var(--border);
+  border-radius: 0;
   background-color: var(--bg-elev);
   color: var(--text);
   cursor: pointer;
@@ -364,6 +367,7 @@ a.button-link {
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
+  box-shadow: 0 2px 4px var(--shadow);
 }
 
 a.button-link:hover {
@@ -379,11 +383,13 @@ button.primary {
   background-color: var(--accent);
   color: white;
   border-color: var(--accent);
+  box-shadow: 0 3px 6px var(--shadow);
 }
 
 button.primary:hover:not(:disabled) {
-  background-color: #0052a3;
-  border-color: #0052a3;
+  background-color: #1a252f;
+  border-color: #1a252f;
+  box-shadow: 0 4px 8px var(--shadow);
 }
 
 button.secondary {
@@ -402,13 +408,13 @@ button.ghost {
   flex-wrap: wrap;
 }
 
-/* Select, Input */
+/* Select, Input - Industrial */
 select, input[type="text"], input[type="number"] {
   font-family: inherit;
   font-size: 0.875rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 2px solid var(--border);
+  border-radius: 0;
   background-color: var(--bg);
   color: var(--text);
   transition: border-color 0.2s;
@@ -417,7 +423,7 @@ select, input[type="text"], input[type="number"] {
 select:focus, input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.2);
 }
 
 /* Checkbox, Radio */
@@ -436,21 +442,22 @@ label {
   cursor: pointer;
 }
 
-/* Tabs */
+/* Tabs - Industrial */
 .tabs {
   display: flex;
-  gap: 0.5rem;
-  border-bottom: 1px solid var(--border);
+  gap: 0;
+  border-bottom: 2px solid var(--border);
   margin-bottom: 1rem;
 }
 
 .tabs button {
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   border-radius: 0;
   background: transparent;
   padding: 0.75rem 1rem;
-  margin-bottom: -1px;
+  margin-bottom: -2px;
+  box-shadow: none;
 }
 
 .tabs button.active {
@@ -488,11 +495,12 @@ label {
 }
 
 .faq summary {
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   padding: 0.75rem;
   background-color: var(--bg-elev);
-  border-radius: 6px;
+  border-radius: 0;
+  border: 2px solid var(--border);
   user-select: none;
 }
 
@@ -501,28 +509,27 @@ label {
 }
 
 .faq details[open] summary {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  border-bottom: none;
 }
 
 .faq details p {
   padding: 0.75rem;
   background-color: var(--bg-elev);
-  border-top: 1px solid var(--border);
-  border-bottom-left-radius: 6px;
-  border-bottom-right-radius: 6px;
+  border: 2px solid var(--border);
+  border-top: none;
+  border-radius: 0;
   margin: 0;
 }
 
-/* Toast */
+/* Toast - Industrial */
 .toast {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
   padding: 1rem 1.5rem;
   background-color: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 2px solid var(--border);
+  border-radius: 0;
   box-shadow: 0 4px 12px var(--shadow);
   z-index: 1000;
   animation: slideIn 0.3s ease-out;
@@ -550,18 +557,19 @@ label {
   background-color: rgba(211, 47, 47, 0.1);
 }
 
-/* Theme toggle */
+/* Theme toggle - Industrial */
 .theme-toggle {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   padding: 0.5rem;
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
+  box-shadow: 0 2px 4px var(--shadow);
 }
 
 /* Home page specific */
@@ -574,8 +582,8 @@ label {
 
 .tool-card {
   padding: 1.5rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 2px solid var(--border);
+  border-radius: 0;
   background-color: var(--bg-elev);
   text-decoration: none;
   color: var(--text);
@@ -583,6 +591,7 @@ label {
   transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
   cursor: pointer;
+  box-shadow: 0 2px 4px var(--shadow);
 }
 
 .tool-card[draggable="true"] {
@@ -632,9 +641,10 @@ label {
 }
 
 .tool-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px var(--shadow);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px var(--shadow);
   border-color: var(--accent);
+  border-width: 3px;
 }
 
 .tool-card h2 {
