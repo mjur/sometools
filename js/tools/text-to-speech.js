@@ -38,6 +38,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const progressPercent = qs('#progress-percent');
   const progressBar = qs('#progress-bar');
   
+  // Disable generate button initially until model is loaded
+  if (generateBtn) {
+    generateBtn.disabled = true;
+  }
+  
   // Get voice selector elements for Kokoro WebGPU
   const voiceSelectKokoro = qs('#voice-select-kokoro');
   const voiceSelectGroup = qs('#voice-select-group');
@@ -79,18 +84,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize voice selector - always show for Kokoro WebGPU
   if (voiceSelectGroup) {
     voiceSelectGroup.style.display = 'block';
-    // Load voices for default model
+    // Show message that model needs to be loaded
     if (voiceSelectKokoro) {
-      voiceSelectKokoro.innerHTML = '<option value="">Loading voices...</option>';
+      voiceSelectKokoro.innerHTML = '<option value="">Model not loaded - click "Download Model" first</option>';
       voiceSelectKokoro.style.display = 'block';
+      voiceSelectKokoro.disabled = true;
     }
-    // Load the model and voices on page load
-    loadTTSModel().then(() => {
-      // Voices will be populated in loadTTSModel
-    }).catch(err => {
-      console.error('Failed to load default model:', err);
-      if (voiceSelectKokoro) {
-        voiceSelectKokoro.innerHTML = '<option value="">Failed to load voices</option>';
+  }
+  
+  // Download Model button
+  const downloadModelBtn = qs('#download-model-btn');
+  if (downloadModelBtn) {
+    on(downloadModelBtn, 'click', async () => {
+      downloadModelBtn.disabled = true;
+      downloadModelBtn.textContent = 'Downloading Model...';
+      try {
+        await loadTTSModel();
+        downloadModelBtn.textContent = 'Model Loaded';
+        downloadModelBtn.style.display = 'none';
+        if (generateBtn) generateBtn.disabled = false;
+        if (voiceSelectKokoro) voiceSelectKokoro.disabled = false;
+      } catch (err) {
+        console.error('Failed to load model:', err);
+        status.textContent = `Failed to load model: ${err.message}`;
+        status.className = 'status-message error';
+        downloadModelBtn.disabled = false;
+        downloadModelBtn.textContent = 'Download Model';
       }
     });
   }
@@ -1014,11 +1033,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Generate speech using AI model
   async function generateSpeechWithAI(text) {
-    // Always try to load the model first
-    const model = await loadTTSModel();
-    
-    if (!model) {
-      throw new Error('TTS model not available. Please check console for errors.');
+    // Check if model is loaded - don't auto-load
+    if (TTS_MODEL_CONFIG.type === 'transformers') {
+      if (!kokoroModel) {
+        throw new Error('Model not loaded. Please click "Download Model" first.');
+      }
+    } else {
+      if (!ttsSession) {
+        throw new Error('Model not loaded. Please click "Download Model" first.');
+      }
     }
     
     // Handle kokoro-js models (Kokoro WebGPU)
