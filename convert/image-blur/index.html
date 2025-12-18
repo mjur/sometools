@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Image Blur Tool | Blur Parts of Images | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Blur parts of images or apply blur effects. Select areas to blur or blur the entire image.">
+  <link rel="canonical" href="https://sometools.io/convert/image-blur">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Image Blur Tool">
+  <meta property="og:description" content="Blur parts of images or apply blur effects.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Image Blur Tool",
+        "item": "https://sometools.io/convert/image-blur"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/image-blur">Image Blur Tool</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Image Blur Tool</h1>
+    <p>Blur parts of images or apply blur effects. Select areas to blur or blur the entire image.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="blur-intensity">Blur Intensity</label>
+        <input type="range" id="blur-intensity" min="1" max="50" value="10" step="1">
+        <span id="blur-value">10</span>
+      </div>
+      <div class="option-group">
+        <label for="brush-size">Brush Size</label>
+        <input type="range" id="brush-size" min="10" max="200" value="50" step="5">
+        <span id="brush-value">50</span>
+      </div>
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="full-image"> Blur Entire Image
+        </label>
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label for="file-input">Upload Image</label>
+        <div class="drop-zone" id="drop-zone" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0;">
+          <p>Drag and drop an image here, or click to select</p>
+          <p class="text-sm text-muted">Supported: PNG, JPEG, WebP, GIF</p>
+          <input type="file" id="file-input" accept="image/*" style="display: none;">
+        </div>
+        <div id="image-preview" style="display: none; height: 400px; flex: 0 0 400px; flex-direction: column; margin: 0; border: 2px solid var(--border); background-color: var(--bg-elev); padding: 0.75rem; overflow: auto; position: relative;">
+          <div id="preview-container" style="width: 100%; height: calc(100% - 2rem); display: flex; align-items: center; justify-content: center; position: relative; overflow: auto;">
+          </div>
+          <p id="image-info" class="text-sm text-muted" style="margin-top: 0.5rem; text-align: center;"></p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="reset" class="secondary" disabled>Reset</button>
+          <button id="clear" class="secondary">Clear</button>
+        </div>
+        <p class="text-sm text-muted" style="margin-top: 0.5rem; text-align: center; font-style: italic;">
+          Click and drag on the image to blur with the brush
+        </p>
+      </div>
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label>Result (Blurred Image)</label>
+        <div id="output-area" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--muted); overflow: auto; margin: 0; border: 2px solid var(--border); background-color: var(--bg-elev); padding: 0.75rem; position: relative;">
+          <p>Upload an image to blur</p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="download" class="secondary" disabled>Download</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my image sent to a server?</summary>
+        <p>No. All processing happens locally in your browser. Your images never leave your device.</p>
+      </details>
+      <details>
+        <summary>What image formats are supported?</summary>
+        <p>We support PNG, JPEG, WebP, and GIF formats.</p>
+      </details>
+      <details>
+        <summary>How do I blur with the brush?</summary>
+        <p>Click and drag on the image to paint blur effects in real-time. The brush applies blur as you paint, giving you immediate visual feedback. Adjust brush size and blur intensity to get the effect you want.</p>
+      </details>
+      <details>
+        <summary>What is blur intensity?</summary>
+        <p>Blur intensity controls how strong the blur effect is. Lower values (1-10) create a subtle blur, while higher values (30-50) create a very strong blur effect. Adjust based on your needs.</p>
+      </details>
+      <details>
+        <summary>What is brush size?</summary>
+        <p>Brush size controls the diameter of the blur brush. Smaller brushes (10-30) are good for detailed work, while larger brushes (100-200) are good for blurring large areas quickly.</p>
+      </details>
+      <details>
+        <summary>Can I blur the entire image at once?</summary>
+        <p>Yes, check the "Blur Entire Image" checkbox and then click anywhere on the image to apply blur to the whole image at once.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/convert/image-crop">Image Cropper</a></li>
+        <li><a href="/convert/image-resize">Image Resizer</a></li>
+        <li><a href="/convert/image-bg-remove">Background Remover</a></li>
+        <li><a href="/convert/image">Image Format Converter</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/image-blur.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
