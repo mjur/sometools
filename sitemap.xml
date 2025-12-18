@@ -137,6 +137,21 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://sometools.io/convert/image-bg-remove</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://sometools.io/convert/image-blur</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://sometools.io/convert/image-watermark</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://sometools.io/convert/time</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
