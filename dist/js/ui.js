@@ -126,8 +126,20 @@ export function initTheme() {
 export function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
   const newTheme = current === 'dark' ? 'light' : 'dark';
+  
+  // Force style recalculation by temporarily removing and re-adding
+  document.documentElement.removeAttribute('data-theme');
+  // Force a reflow
+  void document.documentElement.offsetHeight;
+  // Set the new theme
   document.documentElement.setAttribute('data-theme', newTheme);
   localStorage.setItem('theme', newTheme);
+  
+  // Force another reflow to ensure CSS updates
+  requestAnimationFrame(() => {
+    void document.documentElement.offsetHeight;
+  });
+  
   return newTheme;
 }
 

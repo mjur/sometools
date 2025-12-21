@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Barcode Generator | Generate Barcodes | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate various barcode formats including Code 128, EAN-13, and more.">
+  <link rel="canonical" href="https://sometools.io/utils/barcode">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Barcode Generator">
+  <meta property="og:description" content="Generate various barcode formats.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Barcode Generator",
+        "item": "https://sometools.io/utils/barcode"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/barcode">Barcode Generator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Barcode Generator</h1>
+    <p>Generate various barcode formats including Code 128, EAN-13, and more.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="barcode-type">Barcode Type</label>
+        <select id="barcode-type">
+          <option value="CODE128">Code 128</option>
+          <option value="EAN13">EAN-13</option>
+          <option value="EAN8">EAN-8</option>
+          <option value="CODE39">Code 39</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label for="input">Data to Encode</label>
+          <div class="actions" style="margin: 0;">
+            <button id="generate" class="primary">Generate</button>
+            <button id="copy-input">Copy</button>
+          </div>
+        </div>
+        <textarea id="input" placeholder="Enter data to encode as barcode"></textarea>
+      </div>
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label>Barcode</label>
+          <div class="actions" style="margin: 0;">
+            <button id="download">Download</button>
+          </div>
+        </div>
+        <div id="barcode-container" style="display: flex; justify-content: center; align-items: center; min-height: 200px; background: white; border: 1px solid var(--border); border-radius: 4px; padding: 1rem;">
+          <p style="color: var(--muted);">Enter data above to generate barcode</p>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What barcode formats are supported?</summary>
+        <p>Currently supports Code 128, EAN-13, EAN-8, and Code 39 formats.</p>
+      </details>
+      <details>
+        <summary>What is Code 128?</summary>
+        <p>Code 128 is a high-density linear barcode symbology that can encode all 128 ASCII characters.</p>
+      </details>
+      <details>
+        <summary>What is EAN-13?</summary>
+        <p>EAN-13 is a 13-digit barcode standard used for retail products worldwide.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/utils/qr">QR Code Generator</a></li>
+        <li><a href="/utils/qr-scanner">QR Code Scanner</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/barcode-generator.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

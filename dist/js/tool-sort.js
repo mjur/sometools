@@ -1,12 +1,13 @@
 // Tool card drag and drop sorting functionality
 import { qs, on } from '/js/ui.js';
 
-const STORAGE_KEY = 'toolset-tool-order';
+const STORAGE_KEY_PREFIX = 'toolset-order-';
 
 // Get saved tool order from localStorage
-function getSavedOrder() {
+function getSavedOrder(category) {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const key = STORAGE_KEY_PREFIX + category;
+    const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : null;
   } catch (e) {
     console.error('Error loading saved tool order:', e);
@@ -15,164 +16,143 @@ function getSavedOrder() {
 }
 
 // Save tool order to localStorage
-function saveOrder(toolIds) {
+function saveOrder(category, toolIds) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toolIds));
+    const key = STORAGE_KEY_PREFIX + category;
+    localStorage.setItem(key, JSON.stringify(toolIds));
   } catch (e) {
     console.error('Error saving tool order:', e);
   }
 }
 
 // Get the element after which to insert the dragged element
-function getDragAfterElement(container, y) {
+function getDragAfterElement(container, x, y) {
   const draggableElements = [...container.querySelectorAll('.tool-card:not(.dragging)')];
   
   if (draggableElements.length === 0) return null;
   
   return draggableElements.reduce((closest, child) => {
     const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
+    // Calculate distance to center of box
+    const offsetX = x - (box.left + box.width / 2);
+    const offsetY = y - (box.top + box.height / 2);
     
-    // If dragging above the middle of this element, insert before it
-    if (offset < 0 && offset > closest.offset) {
-      return { offset: offset, element: child };
-    } 
-    // If dragging below the middle, we want to insert after it
-    // But we'll handle this by checking if we're past all elements
-    return closest;
-  }, { offset: Number.NEGATIVE_INFINITY }).element;
+    // Simple distance check might be better for grid
+    const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+    
+    if (distance < closest.distance) {
+      return { distance: distance, element: child };
+    } else {
+      return closest;
+    }
+  }, { distance: Number.POSITIVE_INFINITY }).element;
 }
 
 // Initialize drag and drop sorting
 export function initToolCardSorting() {
-  const toolGrid = qs('#tool-grid');
-  if (!toolGrid) return;
-
-  // Get all tool cards
-  let cards = Array.from(toolGrid.querySelectorAll('.tool-card'));
+  const toolGrids = document.querySelectorAll('.tool-grid[data-sortable="true"]');
   
-  // Restore saved order if available
-  const savedOrder = getSavedOrder();
-  if (savedOrder && savedOrder.length === cards.length) {
-    // Reorder cards based on saved order
-    const cardMap = new Map(cards.map(card => [card.href, card]));
-    savedOrder.forEach(href => {
-      const card = cardMap.get(href);
-      if (card) {
-        toolGrid.appendChild(card);
-      }
-    });
-    // Refresh cards array after reordering
-    cards = Array.from(toolGrid.querySelectorAll('.tool-card'));
-  }
-
-  // Make cards draggable
-  cards.forEach(card => {
-    card.draggable = true;
-    card.setAttribute('draggable', 'true');
+  toolGrids.forEach(toolGrid => {
+    // Get category from parent section
+    const section = toolGrid.closest('.category-section');
+    const category = section ? section.getAttribute('data-category') : 'default';
     
-    // Add drag handle visual indicator
-    if (!card.querySelector('.drag-handle')) {
-      const dragHandle = document.createElement('div');
-      dragHandle.className = 'drag-handle';
-      dragHandle.innerHTML = '⋮⋮';
-      dragHandle.setAttribute('aria-label', 'Drag to reorder');
-      card.insertBefore(dragHandle, card.firstChild);
-    }
-
-    // Drag start
-    on(card, 'dragstart', (e) => {
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', card.href);
-      card.classList.add('dragging');
-      // Set a small delay to allow the drag to start
-      setTimeout(() => {
-        card.style.opacity = '0.5';
-      }, 0);
-    });
-
-    // Drag end
-    on(card, 'dragend', (e) => {
-      card.classList.remove('dragging');
-      card.style.opacity = '';
-      // Remove any leftover drag-over classes
-      const allCards = toolGrid.querySelectorAll('.tool-card');
-      allCards.forEach(c => c.classList.remove('drag-over'));
-    });
-
-    // Drag over - handle on each card
-    on(card, 'dragover', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
+    // Get all tool cards in this grid
+    let cards = Array.from(toolGrid.querySelectorAll('.tool-card'));
+    
+    // Restore saved order if available
+    const savedOrder = getSavedOrder(category);
+    if (savedOrder && savedOrder.length === cards.length) {
+      // Reorder cards based on saved order
+      const cardMap = new Map(cards.map(card => [card.getAttribute('href'), card]));
       
-      const dragging = toolGrid.querySelector('.dragging');
-      if (!dragging || dragging === card) return;
-
-      // Get the bounding rect of this card
-      const cardRect = card.getBoundingClientRect();
-      const cardCenter = cardRect.top + cardRect.height / 2;
-      const mouseY = e.clientY;
-
-      // If mouse is above the center of this card, insert before it
-      // If mouse is below the center, insert after it
-      if (mouseY < cardCenter) {
-        // Insert before this card
-        toolGrid.insertBefore(dragging, card);
-      } else {
-        // Insert after this card
-        if (card.nextSibling) {
-          toolGrid.insertBefore(dragging, card.nextSibling);
-        } else {
-          toolGrid.appendChild(dragging);
+      // Clear grid
+      cards.forEach(card => card.remove());
+      
+      // Append in saved order
+      savedOrder.forEach(href => {
+        const card = cardMap.get(href);
+        if (card) {
+          toolGrid.appendChild(card);
         }
-      }
-    });
-
-    // Drag leave
-    on(card, 'dragleave', (e) => {
-      // Only remove if we're actually leaving the card
-      if (!card.contains(e.relatedTarget)) {
-        card.classList.remove('drag-over');
-      }
-    });
-
-    // Drop
-    on(card, 'drop', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      card.classList.remove('drag-over');
+      });
       
-      // Save new order
-      const newOrder = Array.from(toolGrid.querySelectorAll('.tool-card')).map(c => c.href);
-      saveOrder(newOrder);
+      // Append any new cards that weren't in saved order
+      cards.forEach(card => {
+        if (!savedOrder.includes(card.getAttribute('href'))) {
+          toolGrid.appendChild(card);
+        }
+      });
+      
+      // Refresh cards array
+      cards = Array.from(toolGrid.querySelectorAll('.tool-card'));
+    }
+
+    // Make cards draggable
+    cards.forEach(card => {
+      card.draggable = true;
+      card.setAttribute('draggable', 'true');
+      
+      // Add drag handle visual indicator if not present
+      if (!card.querySelector('.drag-handle')) {
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '⋮⋮';
+        dragHandle.setAttribute('aria-label', 'Drag to reorder');
+        card.insertBefore(dragHandle, card.firstChild);
+      }
+
+      // Drag start
+      on(card, 'dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.getAttribute('href'));
+        card.classList.add('dragging');
+        // Set a small delay to allow the drag to start
+        setTimeout(() => {
+          card.style.opacity = '0.5';
+        }, 0);
+      });
+
+      // Drag end
+      on(card, 'dragend', (e) => {
+        card.classList.remove('dragging');
+        card.style.opacity = '';
+        const allCards = toolGrid.querySelectorAll('.tool-card');
+        allCards.forEach(c => c.classList.remove('drag-over'));
+        
+        // Save new order
+        const newOrder = Array.from(toolGrid.querySelectorAll('.tool-card')).map(c => c.getAttribute('href'));
+        saveOrder(category, newOrder);
+      });
+      
+      // Drag over - allow dropping on cards
+      on(card, 'dragover', (e) => {
+        e.preventDefault();
+        const dragging = toolGrid.querySelector('.dragging');
+        if (!dragging || dragging === card) return;
+        
+        // Find insert position
+        const box = card.getBoundingClientRect();
+        const next = (e.clientX - box.left) > (box.width / 2);
+        
+        if (next) {
+          card.after(dragging);
+        } else {
+          card.before(dragging);
+        }
+      });
     });
-  });
-  
-  // Also handle drop on the grid container itself (for empty spaces)
-  on(toolGrid, 'dragover', (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
     
-    const dragging = toolGrid.querySelector('.dragging');
-    if (!dragging) return;
-    
-    // If dragging over empty space, append to end
-    const afterElement = getDragAfterElement(toolGrid, e.clientY);
-    if (afterElement == null) {
-      toolGrid.appendChild(dragging);
-    } else {
-      toolGrid.insertBefore(dragging, afterElement);
-    }
-  });
-  
-  on(toolGrid, 'drop', (e) => {
-    e.preventDefault();
-    const dragging = toolGrid.querySelector('.dragging');
-    if (dragging) {
-      // Save new order
-      const newOrder = Array.from(toolGrid.querySelectorAll('.tool-card')).map(c => c.href);
-      saveOrder(newOrder);
-    }
+    // Drag over container
+    on(toolGrid, 'dragover', (e) => {
+      e.preventDefault();
+      const dragging = toolGrid.querySelector('.dragging');
+      if (!dragging) return;
+      
+      // If dropping into empty space or end of list
+      if (e.target === toolGrid) {
+        toolGrid.appendChild(dragging);
+      }
+    });
   });
 }

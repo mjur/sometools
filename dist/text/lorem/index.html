@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lorem Ipsum Generator | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate Lorem Ipsum placeholder text with customizable options.">
+  <link rel="canonical" href="https://example.com/text/lorem">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Lorem Ipsum Generator">
+  <meta property="og:description" content="Generate Lorem Ipsum placeholder text.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://example.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Lorem Ipsum Generator",
+        "item": "https://example.com/text/lorem"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/text/lorem">Lorem Ipsum Generator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Lorem Ipsum Generator</h1>
+    <p>Generate Lorem Ipsum placeholder text with customizable options.</p>
+    
+    <div class="options" style="margin-bottom: 1rem;">
+      <div class="option-group">
+        <label for="type">Type:</label>
+        <select id="type">
+          <option value="words">Words</option>
+          <option value="sentences">Sentences</option>
+          <option value="paragraphs" selected>Paragraphs</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label for="count">Count:</label>
+        <input type="number" id="count" value="5" min="1" max="1000">
+      </div>
+      <div class="option-group">
+        <label>
+          <input type="checkbox" id="start-with-lorem">
+          Start with "Lorem ipsum dolor sit amet"
+        </label>
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+          <label>Generated Text</label>
+          <div class="actions" style="margin: 0;">
+            <button id="generate" class="primary">Generate</button>
+            <button id="copy">Copy</button>
+            <button id="clear">Clear</button>
+          </div>
+        </div>
+        <textarea id="output" readonly placeholder="Generated Lorem Ipsum text will appear here"></textarea>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What is Lorem Ipsum?</summary>
+        <p>Lorem Ipsum is placeholder text commonly used in design and publishing to demonstrate the visual form of a document without relying on meaningful content.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/lorem.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

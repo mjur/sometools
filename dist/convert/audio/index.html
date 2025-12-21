@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Audio Format Converter | Convert MP3, WAV, OGG, M4A | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Convert audio files between MP3, WAV, OGG, M4A, FLAC, AAC, and Opus formats.">
+  <link rel="canonical" href="https://sometools.io/convert/audio">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Audio Format Converter">
+  <meta property="og:description" content="Convert audio files between MP3, WAV, OGG, M4A, FLAC, AAC, and Opus formats.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Audio Format Converter",
+        "item": "https://sometools.io/convert/audio"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/audio">Audio Format Converter</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Audio Format Converter</h1>
+    <p>Convert audio files between MP3, WAV, OGG, M4A, FLAC, AAC, and Opus formats. All processing happens locally in your browser.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="output-format">Output Format</label>
+        <select id="output-format">
+          <option value="mp3">MP3</option>
+          <option value="wav">WAV</option>
+          <option value="ogg">OGG</option>
+          <option value="m4a">M4A</option>
+          <option value="flac">FLAC</option>
+          <option value="aac">AAC</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label for="quality">Quality</label>
+        <select id="quality">
+          <option value="high">High</option>
+          <option value="medium" selected>Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="file-input">Upload Audio</label>
+        <div class="drop-zone" id="drop-zone" style="height: 300px; flex: 0 0 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0;">
+          <p>Drag and drop an audio file here, or click to select</p>
+          <p class="text-sm text-muted">Supported: MP3, WAV, OGG, M4A, FLAC, AAC, Opus, WebM, and more</p>
+          <input type="file" id="file-input" accept="audio/*" style="display: none;">
+        </div>
+        <div id="audio-preview-container" style="display: none; height: 300px; flex: 0 0 300px; display: flex; flex-direction: column; margin: 0; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-elev); padding: 0.75rem; overflow: hidden; align-items: center; justify-content: center;">
+          <audio id="preview-audio" controls style="width: 100%; max-height: calc(100% - 2rem);"></audio>
+          <p id="audio-info" class="text-sm text-muted" style="margin-top: 0.5rem; text-align: center;"></p>
+          <div style="width: 100%; display: flex; justify-content: flex-start; margin-top: 0.5rem;">
+            <button id="convert" class="primary" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">Convert</button>
+          </div>
+        </div>
+      </div>
+      <div class="pane">
+        <label>Conversion Status</label>
+        <div id="status" style="padding: 1rem; background: var(--bg-elev); border-radius: 6px; border: 1px solid var(--border); min-height: 100px;">
+          <p style="color: var(--muted); margin: 0;">Select an audio file to begin conversion</p>
+        </div>
+        <div class="progress-bar" id="progress-bar" style="display: none; margin-top: 0.5rem;">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div id="progress-text" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-subtle);"></div>
+      </div>
+    </section>
+    
+    <section class="tool" id="output-section" style="display: none;">
+      <div class="pane" style="grid-column: 1 / -1;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label>Converted Audio</label>
+          <div class="actions" style="margin: 0;">
+            <button id="download" class="primary">Download</button>
+          </div>
+        </div>
+        <audio id="audio-preview" controls style="width: 100%;"></audio>
+        <div id="output-info" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-subtle);"></div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What audio formats are supported?</summary>
+        <p>Input: MP3, WAV, OGG, M4A, FLAC, AAC, Opus, and WebM audio. Output: MP3, WAV, OGG, M4A, FLAC, AAC, and Opus.</p>
+      </details>
+      <details>
+        <summary>Is my audio file uploaded to a server?</summary>
+        <p>No. All conversion happens entirely in your browser using Web Audio API and FFmpeg.wasm. Your files never leave your device.</p>
+      </details>
+      <details>
+        <summary>What quality settings are available?</summary>
+        <p>High quality uses higher bitrates for better sound quality but larger file sizes. Medium is a good balance. Low uses lower bitrates for smaller files.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/convert/video">Video Format Converter</a></li>
+        <li><a href="/utils/vocal-remover">Vocal Remover</a></li>
+        <li><a href="/utils/text-to-speech">Text to Speech</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/audio-convert.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

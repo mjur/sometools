@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MIME Type Checker | Check MIME Types | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Check MIME types for files and extensions. Look up MIME types by extension or file content.">
+  <link rel="canonical" href="https://sometools.io/utils/mime">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="MIME Type Checker">
+  <meta property="og:description" content="Check MIME types for files and extensions.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "MIME Type Checker",
+        "item": "https://sometools.io/utils/mime"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/mime">MIME Type Checker</a>
+  </nav>
+  
+  <main id="main">
+    <h1>MIME Type Checker</h1>
+    <p>Check MIME types for files and extensions. Look up MIME types by extension or file content.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="extension">By Extension</option>
+          <option value="file">By File</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="tool" id="extension-mode">
+      <div class="pane">
+        <label for="extension">File Extension</label>
+        <input type="text" id="extension" placeholder="e.g., .jpg, .pdf, .json" style="width: 100%; padding: 0.5rem;">
+        <p class="text-sm text-muted" style="margin-top: 0.5rem;">Enter file extension (with or without dot)</p>
+      </div>
+      <div class="pane">
+        <label for="output">MIME Type</label>
+        <textarea id="output" readonly placeholder="MIME type information will appear here" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; min-height: 200px;"></textarea>
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="copy-output">Copy</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="tool" id="file-mode" style="display: none;">
+      <div class="pane">
+        <label for="file-input">Select File</label>
+        <input type="file" id="file-input" style="width: 100%; padding: 0.5rem;">
+      </div>
+      <div class="pane">
+        <label for="file-output">MIME Type</label>
+        <textarea id="file-output" readonly placeholder="MIME type information will appear here" style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; min-height: 200px;"></textarea>
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="copy-file-output">Copy</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What is a MIME type?</summary>
+        <p>MIME (Multipurpose Internet Mail Extensions) type is a standard way to indicate the nature and format of a file. Examples include <code>text/html</code>, <code>image/jpeg</code>, <code>application/json</code>.</p>
+      </details>
+      <details>
+        <summary>How does it work?</summary>
+        <p>You can look up MIME types by file extension or by selecting a file to detect its MIME type based on file content.</p>
+      </details>
+      <details>
+        <summary>Is my file uploaded?</summary>
+        <p>No. File MIME type detection happens entirely in your browser. Files are never sent to a server.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/utils/user-agent">User Agent Parser</a></li>
+        <li><a href="/utils/ip">IP Address Tools</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/mime-checker.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

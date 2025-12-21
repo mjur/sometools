@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pomodoro Timer | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Pomodoro technique timer for focused work sessions with breaks.">
+  <link rel="canonical" href="https://sometools.io/utils/pomodoro">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Pomodoro Timer">
+  <meta property="og:description" content="Pomodoro technique timer for focused work sessions with breaks.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Pomodoro Timer",
+        "item": "https://sometools.io/utils/pomodoro"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/utils/pomodoro">Pomodoro Timer</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Pomodoro Timer</h1>
+    <p>Pomodoro technique timer for focused work sessions with breaks.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="work-duration">Work Duration (minutes)</label>
+        <input type="number" id="work-duration" min="1" max="120" value="25">
+      </div>
+      <div class="option-group">
+        <label for="short-break">Short Break (minutes)</label>
+        <input type="number" id="short-break" min="1" max="30" value="5">
+      </div>
+      <div class="option-group">
+        <label for="long-break">Long Break (minutes)</label>
+        <input type="number" id="long-break" min="1" max="60" value="15">
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane" style="grid-column: 1 / -1; text-align: center;">
+        <div id="status" style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--text-subtle);">
+          Ready to start
+        </div>
+        <div id="display" style="font-size: 4rem; font-weight: bold; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; margin: 2rem 0; color: var(--text);">
+          25:00
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <span id="session-count" style="font-size: 1rem; color: var(--text-subtle);">Session: 0/4</span>
+        </div>
+        <div class="actions" style="justify-content: center; gap: 0.5rem;">
+          <button id="start" class="primary">Start</button>
+          <button id="pause" class="secondary" disabled>Pause</button>
+          <button id="reset" class="secondary">Reset</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What is the Pomodoro Technique?</summary>
+        <p>The Pomodoro Technique is a time management method that uses a timer to break work into intervals, typically 25 minutes, separated by short breaks. After 4 work sessions, take a longer break.</p>
+      </details>
+      <details>
+        <summary>How does it work?</summary>
+        <p>Work for the set duration (default 25 minutes), then take a short break (default 5 minutes). After 4 work sessions, take a long break (default 15 minutes).</p>
+      </details>
+      <details>
+        <summary>Can I customize the durations?</summary>
+        <p>Yes, you can adjust the work duration, short break, and long break times using the options above.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/utils/timer">Timer & Stopwatch</a></li>
+        <li><a href="/time/date-calc">Date Calculator</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/pomodoro.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

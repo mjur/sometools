@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Video Slideshow Generator | Text to Video | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Generate video slideshows from text with AI-generated images and voice narration. Runs entirely in your browser.">
+  <link rel="canonical" href="https://sometools.io/ai/video-slideshow">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="importmap">
+  {
+    "imports": {
+      "@huggingface/transformers": "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.x/dist/transformers.min.js"
+    }
+  }
+  </script>
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Video Slideshow Generator">
+  <meta property="og:description" content="Generate video slideshows from text with AI-generated images and voice narration.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Video Slideshow Generator",
+        "item": "https://sometools.io/ai/video-slideshow"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/ai/video-slideshow">Video Slideshow Generator</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Video Slideshow Generator</h1>
+    <p>Generate video slideshows from text with AI-generated images and voice narration. Each sentence becomes a slide with its own image and audio.</p>
+    
+    <details class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600; list-style: none; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <span>⚠️ Requirements</span>
+          <span style="font-size: 0.875rem; color: var(--muted); font-weight: normal;">(click to expand)</span>
+        </span>
+      </summary>
+      <div style="margin-top: 1rem;">
+        <p><strong>This tool requires:</strong></p>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          <li><strong>WebGPU:</strong> Required for image generation. Chrome 113+, Edge 113+, or Safari 18+</li>
+          <li><strong>Models:</strong> Image generation and TTS models will be downloaded on first use</li>
+          <li><strong>Processing Time:</strong> Video generation can take several minutes depending on text length</li>
+          <li><strong>Memory:</strong> Large videos may require significant browser memory</li>
+        </ul>
+      </div>
+    </details>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="text-input">Input Text</label>
+        <textarea id="text-input" placeholder="Enter the text you want to convert to a video slideshow. Each sentence will become a slide with its own image and narration..." style="min-height: 200px;"></textarea>
+        
+        <div style="margin-top: 1rem;">
+          <label for="split-mode">Text Splitting Mode</label>
+          <select id="split-mode">
+            <option value="sentence" selected>By Sentence (Recommended)</option>
+            <option value="paragraph">By Paragraph</option>
+            <option value="fixed">Fixed Duration (5 seconds per slide)</option>
+          </select>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+          <label for="image-model">Image Generation Model</label>
+          <select id="image-model">
+            <option value="sd-turbo" selected>SD-Turbo (Faster)</option>
+            <option value="janus-pro-1b">Janus-Pro-1B (Better Quality)</option>
+          </select>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+          <label for="image-style">Image Style (Optional)</label>
+          <input type="text" id="image-style" placeholder="e.g., photorealistic, cartoon, watercolor, oil painting, digital art, anime, minimalist..." style="width: 100%;">
+          <small style="display: block; margin-top: 0.25rem; color: var(--muted); font-size: 0.875rem;">Style instructions will be added to each image prompt</small>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+          <label for="voice-select">Voice</label>
+          <select id="voice-select">
+            <option value="af_heart" selected>af_heart (Female, Afrikaans)</option>
+            <option value="af_sky">af_sky (Male, Afrikaans)</option>
+            <option value="af_bella">af_bella (Female, Afrikaans)</option>
+            <option value="am_adam">am_adam (Male, Amharic)</option>
+            <option value="am_michael">am_michael (Male, Amharic)</option>
+            <option value="am_sky">am_sky (Male, Amharic)</option>
+            <option value="ar_sky">ar_sky (Male, Arabic)</option>
+            <option value="cn_xiaoxiao">cn_xiaoxiao (Female, Chinese)</option>
+            <option value="cn_yunxi">cn_yunxi (Male, Chinese)</option>
+            <option value="de_katja">de_katja (Female, German)</option>
+            <option value="es_elvira">es_elvira (Female, Spanish)</option>
+            <option value="fr_denise">fr_denise (Female, French)</option>
+            <option value="hi_madhur">hi_madhur (Male, Hindi)</option>
+            <option value="it_elsa">it_elsa (Female, Italian)</option>
+            <option value="ja_aoi">ja_aoi (Female, Japanese)</option>
+            <option value="ja_akari">ja_akari (Female, Japanese)</option>
+            <option value="ko_injong">ko_injong (Female, Korean)</option>
+            <option value="pl_agnieszka">pl_agnieszka (Female, Polish)</option>
+            <option value="pt_raquel">pt_raquel (Female, Portuguese)</option>
+            <option value="ru_svetlana">ru_svetlana (Female, Russian)</option>
+            <option value="tr_emel">tr_emel (Female, Turkish)</option>
+            <option value="uk_ukrainian_tts">uk_ukrainian_tts (Ukrainian)</option>
+            <option value="vi_banmai">vi_banmai (Female, Vietnamese)</option>
+            <option value="zh_fengge">zh_fengge (Male, Chinese)</option>
+            <option value="zh_xiaoyi">zh_xiaoyi (Female, Chinese)</option>
+          </select>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+          <label for="video-resolution">Video Resolution</label>
+          <select id="video-resolution">
+            <option value="512x512" selected>512x512 (Fastest)</option>
+            <option value="768x768">768x768 (Balanced)</option>
+            <option value="1024x1024">1024x1024 (Best Quality)</option>
+          </select>
+        </div>
+        
+        <div class="actions" style="margin-top: 1.5rem;">
+          <button id="generate-btn" class="primary">Generate Video</button>
+          <button id="abort-btn" class="secondary" disabled>Abort</button>
+          <button id="clear-btn">Clear</button>
+        </div>
+        
+        <div id="progress-container" style="margin-top: 1rem; display: none;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span id="progress-text">Initializing...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <progress id="progress-bar" value="0" max="100" style="width: 100%;"></progress>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <label for="output">Generated Video</label>
+        <div id="output" style="min-height: 300px; display: flex; align-items: center; justify-content: center; background: var(--bg-elev); border-radius: 6px; padding: 1rem;">
+          <p class="text-muted">Generated video will appear here...</p>
+        </div>
+        
+        <div class="actions" style="margin-top: 0.5rem;">
+          <button id="download-btn" disabled>Download Video</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>How does it work?</summary>
+        <p>The tool splits your text into segments (sentences or paragraphs), generates an AI image for each segment, creates voice narration using text-to-speech, and combines everything into a video slideshow using FFmpeg.</p>
+      </details>
+      <details>
+        <summary>How long does it take?</summary>
+        <p>Generation time depends on text length. Each slide requires generating an image (~10-30 seconds) and audio (~5-10 seconds), plus video assembly. A 5-sentence video typically takes 2-5 minutes.</p>
+      </details>
+      <details>
+        <summary>Can I use this offline?</summary>
+        <p>Once models are downloaded and cached, you can use the tool offline. Models are cached in your browser's IndexedDB.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens entirely in your browser. Images, audio, and video are generated locally.</p>
+      </details>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module">
+    try {
+      await import('/js/tools/bundled/web-txt2img-bundle.js');
+    } catch (e) {
+      console.log('Bundled web-txt2img not found.');
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.min.js"></script>
+  <script type="module" src="/js/tools/video-slideshow.js"></script>
+  <script type="module">
+    import { initModelCacheWidget } from '/js/utils/model-cache-widget.js';
+    initModelCacheWidget();
+  </script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+
+

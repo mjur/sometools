@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Image Watermark Tool | Add Watermarks to Images | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Add text or image watermarks to your images. Customize position, size, opacity, and style.">
+  <link rel="canonical" href="https://sometools.io/convert/image-watermark">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Image Watermark Tool">
+  <meta property="og:description" content="Add text or image watermarks to your images.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Image Watermark Tool",
+        "item": "https://sometools.io/convert/image-watermark"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/image-watermark">Image Watermark Tool</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Image Watermark Tool</h1>
+    <p>Add text or image watermarks to your images. Customize position, size, opacity, and style.</p>
+    
+    <div class="options">
+      <div class="option-group">
+        <label for="watermark-type">Watermark Type</label>
+        <select id="watermark-type">
+          <option value="text">Text Watermark</option>
+          <option value="image">Image Watermark</option>
+        </select>
+      </div>
+      <div class="option-group text-options">
+        <label for="watermark-text">Watermark Text</label>
+        <input type="text" id="watermark-text" placeholder="Enter watermark text" value="© Your Name">
+      </div>
+      <div class="option-group text-options">
+        <label for="text-size">Text Size</label>
+        <input type="range" id="text-size" min="12" max="200" value="48" step="2">
+        <span id="text-size-value">48</span>
+      </div>
+      <div class="option-group text-options">
+        <label for="text-color">Text Color</label>
+        <input type="color" id="text-color" value="#ffffff">
+      </div>
+      <div class="option-group image-options" style="display: none;">
+        <label for="watermark-image">Watermark Image</label>
+        <input type="file" id="watermark-image" accept="image/*" style="display: none;">
+        <button type="button" id="select-watermark-image" class="secondary">Select Image</button>
+        <span id="watermark-image-name" class="text-sm text-muted" style="margin-left: 0.5rem;"></span>
+      </div>
+      <div class="option-group image-options" style="display: none;">
+        <label for="image-size">Image Size (%)</label>
+        <input type="range" id="image-size" min="5" max="100" value="20" step="5">
+        <span id="image-size-value">20</span>
+      </div>
+      <div class="option-group">
+        <label for="position">Position</label>
+        <select id="position">
+          <option value="top-left">Top Left</option>
+          <option value="top-center">Top Center</option>
+          <option value="top-right">Top Right</option>
+          <option value="center-left">Center Left</option>
+          <option value="center">Center</option>
+          <option value="center-right">Center Right</option>
+          <option value="bottom-left">Bottom Left</option>
+          <option value="bottom-center">Bottom Center</option>
+          <option value="bottom-right" selected>Bottom Right</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label for="opacity">Opacity</label>
+        <input type="range" id="opacity" min="0.1" max="1" value="0.7" step="0.1">
+        <span id="opacity-value">0.7</span>
+      </div>
+      <div class="option-group">
+        <label for="offset-x">Offset X (px)</label>
+        <input type="number" id="offset-x" value="20" step="5" min="-500" max="500">
+      </div>
+      <div class="option-group">
+        <label for="offset-y">Offset Y (px)</label>
+        <input type="number" id="offset-y" value="20" step="5" min="-500" max="500">
+      </div>
+    </div>
+    
+    <section class="tool">
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label for="file-input">Upload Image</label>
+        <div class="drop-zone" id="drop-zone" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0;">
+          <p>Drag and drop an image here, or click to select</p>
+          <p class="text-sm text-muted">Supported: PNG, JPEG, WebP, GIF</p>
+          <input type="file" id="file-input" accept="image/*" style="display: none;">
+        </div>
+        <div id="image-preview" style="display: none; height: 400px; flex: 0 0 400px; flex-direction: column; margin: 0; border: 2px solid var(--border); background-color: var(--bg-elev); padding: 0.75rem; overflow: auto; position: relative;">
+          <div id="preview-container" style="width: 100%; height: calc(100% - 2rem); display: flex; align-items: center; justify-content: center; position: relative; overflow: auto;">
+            <img id="preview-img" alt="Preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+          </div>
+          <p id="image-info" class="text-sm text-muted" style="margin-top: 0.5rem; text-align: center;"></p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="apply-watermark" class="primary" disabled>Apply Watermark</button>
+          <button id="clear" class="secondary">Clear</button>
+        </div>
+      </div>
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label>Result (With Watermark)</label>
+        <div id="output-area" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--muted); overflow: auto; margin: 0; border: 2px solid var(--border); background-color: var(--bg-elev); padding: 0.75rem; position: relative;">
+          <p>Upload an image to add a watermark</p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="download" class="secondary" disabled>Download</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my image sent to a server?</summary>
+        <p>No. All processing happens locally in your browser. Your images never leave your device.</p>
+      </details>
+      <details>
+        <summary>What image formats are supported?</summary>
+        <p>We support PNG, JPEG, WebP, and GIF formats for both the main image and watermark image.</p>
+      </details>
+      <details>
+        <summary>Can I use both text and image watermarks?</summary>
+        <p>Currently, you can use either text or image watermark at a time. Apply one, then apply the other if needed.</p>
+      </details>
+      <details>
+        <summary>How do I position the watermark?</summary>
+        <p>Use the Position dropdown to select a general position (top-left, center, bottom-right, etc.), then use Offset X and Offset Y to fine-tune the exact placement in pixels.</p>
+      </details>
+      <details>
+        <summary>What is opacity?</summary>
+        <p>Opacity controls how transparent the watermark is. Lower values (0.1-0.3) make the watermark more transparent, while higher values (0.8-1.0) make it more opaque.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/convert/image-crop">Image Cropper</a></li>
+        <li><a href="/convert/image-resize">Image Resizer</a></li>
+        <li><a href="/convert/image-blur">Image Blur Tool</a></li>
+        <li><a href="/convert/image">Image Format Converter</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/image-watermark.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Extract Audio from Video | Video to Audio Converter | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Extract audio tracks from video files. Convert video to audio in MP3, WAV, AAC, and other formats. Runs entirely in your browser.">
+  <link rel="canonical" href="https://sometools.io/convert/video-audio">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Extract Audio from Video">
+  <meta property="og:description" content="Extract audio tracks from video files. Runs entirely in your browser.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Extract Audio from Video",
+        "item": "https://sometools.io/convert/video-audio"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/video-audio">Extract Audio from Video</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Extract Audio from Video</h1>
+    <p>Extract audio tracks from video files and save them as audio files. Supports MP4, WebM, AVI, MOV, and other video formats. Output formats: MP3, WAV, AAC, OGG, M4A, FLAC, and Opus.</p>
+    
+    <details class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600; list-style: none; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <span>ℹ️ How it works</span>
+          <span style="font-size: 0.875rem; color: var(--muted); font-weight: normal;">(click to expand)</span>
+        </span>
+      </summary>
+      <div style="margin-top: 1rem;">
+        <p><strong>This tool:</strong></p>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          <li><strong>Uses FFmpeg.wasm:</strong> Runs FFmpeg entirely in your browser</li>
+          <li><strong>Extracts Audio:</strong> Separates audio track from video file</li>
+          <li><strong>Multiple Formats:</strong> Supports various video and audio formats</li>
+          <li><strong>First Load:</strong> FFmpeg will be downloaded on first use (~30MB)</li>
+          <li><strong>Caching:</strong> FFmpeg is cached in your browser for faster subsequent use</li>
+          <li><strong>Privacy:</strong> All processing happens locally - no data is sent to servers</li>
+        </ul>
+        <p style="margin-top: 1rem; padding: 0.75rem; background: var(--warning-bg, rgba(255, 193, 7, 0.1)); border-left: 3px solid var(--warning, #ffc107); border-radius: 4px;">
+          <strong>Note:</strong> Large video files may take several minutes to process. The processing time depends on video length and file size. For best results, use videos under 500MB.
+        </p>
+      </div>
+    </details>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="file-input">Upload Video</label>
+        <div id="file-upload-area" style="border: 2px dashed var(--border); border-radius: 6px; padding: 2rem; text-align: center; cursor: pointer; background: var(--bg-elev); transition: all 0.2s;">
+          <input type="file" id="file-input" accept="video/*" style="display: none;">
+          <p style="margin: 0; color: var(--muted);">Click to upload or drag and drop</p>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.875rem; color: var(--muted);">Supports MP4, WebM, AVI, MOV, MKV, and more</p>
+        </div>
+        <div id="video-preview" style="margin-top: 1rem; display: none;">
+          <video id="preview-video" controls style="max-width: 100%; max-height: 400px; border-radius: 6px; border: 1px solid var(--border);"></video>
+          <div id="video-info" style="margin-top: 0.5rem; padding: 0.75rem; background: var(--bg-elev); border-radius: 6px; font-size: 0.875rem; color: var(--muted);">
+          </div>
+        </div>
+        
+        <label for="output-format" style="margin-top: 1rem; display: block;">Output Audio Format</label>
+        <select id="output-format" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+          <option value="mp3">MP3 (Recommended)</option>
+          <option value="wav">WAV (Uncompressed)</option>
+          <option value="aac">AAC</option>
+          <option value="m4a">M4A</option>
+          <option value="ogg">OGG</option>
+          <option value="opus">Opus</option>
+          <option value="flac">FLAC (Lossless)</option>
+        </select>
+        
+        <label for="audio-quality" style="margin-top: 1rem; display: block;">Audio Quality</label>
+        <select id="audio-quality" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+          <option value="192k">192 kbps (High Quality)</option>
+          <option value="128k">128 kbps (Good Quality)</option>
+          <option value="96k">96 kbps (Standard)</option>
+          <option value="64k">64 kbps (Low - Smaller File)</option>
+        </select>
+        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--muted);">Note: Quality setting only applies to lossy formats (MP3, AAC, OGG, Opus). WAV and FLAC are always lossless.</p>
+        
+        <div id="status" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-elev); border-radius: 6px; font-size: 0.875rem; color: var(--muted);">
+          Ready
+        </div>
+        
+        <div class="actions" style="margin-top: 1.5rem;">
+          <button id="extract-btn" class="primary" disabled>Extract Audio</button>
+          <button id="clear-btn">Clear</button>
+        </div>
+        
+        <div id="progress-container" style="margin-top: 1rem; display: none;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span id="progress-text">Processing...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <progress id="progress-bar" value="0" max="100" style="width: 100%;"></progress>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <label for="output">Extracted Audio</label>
+        <div id="output" style="min-height: 200px; padding: 1rem; background: var(--bg-elev); border-radius: 6px; border: 1px solid var(--border);">
+          <p class="text-muted" id="output-placeholder">Upload a video and click "Extract Audio" to get the audio track</p>
+          <div id="audio-result" style="display: none;">
+            <audio id="audio-preview" controls style="width: 100%; margin-bottom: 1rem;"></audio>
+            <div id="audio-info" style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg); border-radius: 6px; font-size: 0.875rem; color: var(--muted);">
+            </div>
+            <button id="download-btn" class="primary" style="width: 100%;">Download Audio</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>What video formats are supported?</summary>
+        <p>Most common video formats are supported including MP4, WebM, AVI, MOV, MKV, FLV, and more. The tool uses FFmpeg which supports a wide variety of video codecs.</p>
+      </details>
+      <details>
+        <summary>What audio formats can I export to?</summary>
+        <p>You can export to MP3, WAV, AAC, M4A, OGG, Opus, and FLAC formats. MP3 is recommended for compatibility and file size balance.</p>
+      </details>
+      <details>
+        <summary>How long does it take?</summary>
+        <p>Processing time depends on video length and file size. A 5-minute video typically takes 30-60 seconds. First-time FFmpeg loading takes 30-60 seconds to download (~30MB).</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens entirely in your browser. The video file never leaves your computer.</p>
+      </details>
+      <details>
+        <summary>Can I extract audio from multiple videos?</summary>
+        <p>Currently, the tool processes one video at a time. You can process multiple videos sequentially by uploading them one by one.</p>
+      </details>
+      <details>
+        <summary>What if my video has multiple audio tracks?</summary>
+        <p>The tool extracts the first audio track by default. For videos with multiple tracks, you may need to use more advanced video editing software.</p>
+      </details>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/video-audio.js"></script>
+  <script type="module">
+    import { initModelCacheWidget } from '/js/utils/model-cache-widget.js';
+    initModelCacheWidget();
+  </script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Image OCR - Extract Text from Images | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Extract text from images using OCR (Optical Character Recognition). Runs entirely in your browser with Tesseract.js.">
+  <link rel="canonical" href="https://sometools.io/ai/image-ocr">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Image OCR - Extract Text from Images">
+  <meta property="og:description" content="Extract text from images using OCR. Runs entirely in your browser.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Image OCR",
+        "item": "https://sometools.io/ai/image-ocr"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/ai/image-ocr">Image OCR</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Image OCR - Extract Text from Images</h1>
+    <p>Extract text from images using OCR (Optical Character Recognition). Powered by <a href="https://github.com/naptha/tesseract.js" target="_blank" rel="noopener">Tesseract.js</a>. Runs entirely in your browser - no data is sent to servers.</p>
+    
+    <details class="info-box" style="padding: 1rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600; list-style: none; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <span>ℹ️ How it works</span>
+          <span style="font-size: 0.875rem; color: var(--muted); font-weight: normal;">(click to expand)</span>
+        </span>
+      </summary>
+      <div style="margin-top: 1rem;">
+        <p><strong>This tool:</strong></p>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          <li><strong>Uses Tesseract.js:</strong> A pure JavaScript port of the Tesseract OCR engine</li>
+          <li><strong>Runs in Browser:</strong> All processing happens locally - no server required</li>
+          <li><strong>First Load:</strong> OCR engine will be downloaded on first use (~5-10MB)</li>
+          <li><strong>Caching:</strong> Engine is cached in your browser for faster subsequent use</li>
+          <li><strong>Privacy:</strong> All processing happens locally - no data is sent to servers</li>
+        </ul>
+        <p style="margin-top: 1rem; padding: 0.75rem; background: var(--warning-bg, rgba(255, 193, 7, 0.1)); border-left: 3px solid var(--warning, #ffc107); border-radius: 4px;">
+          <strong>Best Results:</strong> Works best with clear, high-contrast images containing printed text. Handwritten text, low-quality images, or complex layouts may produce less accurate results. For best accuracy, use images with:
+          <ul style="margin: 0.5rem 0 0 1.5rem;">
+            <li>High resolution and good contrast</li>
+            <li>Clear, printed text (not handwritten)</li>
+            <li>Simple layouts without complex backgrounds</li>
+            <li>Standard fonts and languages</li>
+          </ul>
+        </p>
+      </div>
+    </details>
+    
+    <section class="tool">
+      <div class="pane">
+        <label for="file-input">Upload Image</label>
+        <div id="file-upload-area" style="border: 2px dashed var(--border); border-radius: 6px; padding: 2rem; text-align: center; cursor: pointer; background: var(--bg-elev); transition: all 0.2s;">
+          <input type="file" id="file-input" accept="image/*" style="display: none;">
+          <p style="margin: 0; color: var(--muted);">Click to upload or drag and drop</p>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.875rem; color: var(--muted);">Supports JPG, PNG, GIF, WebP</p>
+        </div>
+        <div id="image-preview" style="margin-top: 1rem; display: none;">
+          <img id="preview-img" style="max-width: 100%; max-height: 400px; border-radius: 6px; border: 1px solid var(--border);">
+        </div>
+        
+        <label for="language-select" style="margin-top: 1rem; display: block;">Language</label>
+        <select id="language-select" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+          <option value="eng">English</option>
+          <option value="spa">Spanish</option>
+          <option value="fra">French</option>
+          <option value="deu">German</option>
+          <option value="ita">Italian</option>
+          <option value="por">Portuguese</option>
+          <option value="chi_sim">Chinese (Simplified)</option>
+          <option value="chi_tra">Chinese (Traditional)</option>
+          <option value="jpn">Japanese</option>
+          <option value="kor">Korean</option>
+          <option value="rus">Russian</option>
+          <option value="ara">Arabic</option>
+          <option value="hin">Hindi</option>
+        </select>
+        
+        <div id="ocr-status" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-elev); border-radius: 6px; font-size: 0.875rem; color: var(--muted);">
+          Ready
+        </div>
+        
+        <div class="actions" style="margin-top: 1.5rem;">
+          <button id="extract-btn" class="primary" disabled>Extract Text</button>
+          <button id="clear-btn">Clear</button>
+        </div>
+        
+        <div id="progress-container" style="margin-top: 1rem; display: none;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span id="progress-text">Processing...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <progress id="progress-bar" value="0" max="100" style="width: 100%;"></progress>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <label for="output">Extracted Text</label>
+        <div id="output" style="min-height: 200px; padding: 1rem; background: var(--bg-elev); border-radius: 6px; border: 1px solid var(--border);">
+          <p class="text-muted" id="output-placeholder">Upload an image and click "Extract Text" to get the text content</p>
+          <div id="text-result" style="display: none;">
+            <textarea id="extracted-text" readonly style="width: 100%; min-height: 300px; padding: 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: monospace; font-size: 0.9rem; resize: vertical;"></textarea>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+              <button id="copy-btn" class="secondary">Copy Text</button>
+              <button id="download-btn" class="secondary">Download as TXT</button>
+            </div>
+            <div id="confidence-info" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-elev); border-radius: 6px; font-size: 0.875rem; color: var(--muted);">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>How accurate is the OCR?</summary>
+        <p>Accuracy depends on image quality, text clarity, and language. Clear, high-contrast images with printed text typically achieve 90-95% accuracy. Handwritten text, low-quality images, or complex layouts may have lower accuracy.</p>
+      </details>
+      <details>
+        <summary>What image formats are supported?</summary>
+        <p>JPG, PNG, GIF, and WebP formats are supported. The image will be automatically processed by the OCR engine.</p>
+      </details>
+      <details>
+        <summary>How long does it take?</summary>
+        <p>First-time OCR engine loading takes 10-30 seconds to download (~5-10MB). Subsequent uses are faster (5-15 seconds) as the engine is cached in your browser.</p>
+      </details>
+      <details>
+        <summary>Is my data sent to a server?</summary>
+        <p>No. All processing happens entirely in your browser. The OCR engine is downloaded once and cached locally.</p>
+      </details>
+      <details>
+        <summary>What languages are supported?</summary>
+        <p>Many languages are supported including English, Spanish, French, German, Chinese, Japanese, Korean, Arabic, Hindi, and more. Select the language from the dropdown before extracting text.</p>
+      </details>
+      <details>
+        <summary>Can I use this offline?</summary>
+        <p>Once the OCR engine is downloaded and cached, you can use the tool offline. The engine is stored in your browser's IndexedDB.</p>
+      </details>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/image-ocr.js"></script>
+  <script type="module">
+    import { initModelCacheWidget } from '/js/utils/model-cache-widget.js';
+    initModelCacheWidget();
+  </script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

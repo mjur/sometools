@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Image Cropper | Crop Images with Visual Interface | SomeTools</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Crop images with a visual interface. Drag to select the area you want to keep.">
+  <link rel="canonical" href="https://sometools.io/convert/image-crop">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/tool.css">
+  <link rel="preload" href="/css/base.css" as="style">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/download-16x16.ico" sizes="16x16" type="image/x-icon">
+  <link rel="icon" href="/assets/download-32x32.ico" sizes="32x32" type="image/x-icon">
+  <link rel="icon" href="/assets/download-48x48.ico" sizes="48x48" type="image/x-icon">
+  <link rel="icon" href="/assets/download-64x64.ico" sizes="64x64" type="image/x-icon">
+  <link rel="icon" href="/assets/download-128x128.ico" sizes="128x128" type="image/x-icon">
+  <link rel="icon" href="/assets/download-256x256.ico" sizes="256x256" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/assets/download-256x256.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script type="module" src="/js/analytics.js"></script>
+  <meta property="og:title" content="Image Cropper">
+  <meta property="og:description" content="Crop images with a visual interface.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://sometools.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Image Cropper",
+        "item": "https://sometools.io/convert/image-crop"
+      }
+    ]
+  }
+  </script>
+  <style>
+    .crop-container {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      max-height: 500px;
+      overflow: hidden;
+      border: 2px solid var(--accent);
+      border-radius: 6px;
+    }
+    .crop-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      cursor: crosshair;
+    }
+    .crop-selection {
+      position: absolute;
+      border: 2px dashed white;
+      background: transparent;
+      cursor: move;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    }
+    .crop-handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: white;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      cursor: nwse-resize;
+    }
+    .crop-handle.nw { top: -6px; left: -6px; cursor: nwse-resize; }
+    .crop-handle.ne { top: -6px; right: -6px; cursor: nesw-resize; }
+    .crop-handle.sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+    .crop-handle.se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <header>
+    <a href="/">
+      <h1>SomeTools</h1>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+      <span id="theme-icon">🌙</span>
+    </button>
+  </header>
+  
+  <nav aria-label="Breadcrumb">
+    <a href="/">Home</a>
+    <a href="/convert/image-crop">Image Cropper</a>
+  </nav>
+  
+  <main id="main">
+    <h1>Image Cropper</h1>
+    <p>Crop images with a visual interface. Drag to select the area you want to keep.</p>
+    
+    <section class="tool">
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label for="file-input">Upload Image</label>
+        <div class="drop-zone" id="drop-zone" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin: 0;">
+          <p>Drag and drop an image here, or click to select</p>
+          <p class="text-sm text-muted">Supported: PNG, JPEG, WebP, GIF</p>
+          <input type="file" id="file-input" accept="image/*" style="display: none;">
+        </div>
+        <div id="crop-area" style="display: none; padding: 1rem; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-elev); margin: 0;">
+          <div class="crop-container" id="crop-container">
+            <img id="crop-img" alt="Crop" style="max-width: 100%; max-height: 500px; display: block;">
+            <div class="crop-overlay" id="crop-overlay"></div>
+            <div class="crop-selection" id="crop-selection" style="display: none;">
+              <div class="crop-handle nw"></div>
+              <div class="crop-handle ne"></div>
+              <div class="crop-handle sw"></div>
+              <div class="crop-handle se"></div>
+            </div>
+          </div>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="crop" class="primary" disabled>Crop</button>
+          <button id="clear" class="secondary">Clear</button>
+        </div>
+      </div>
+      <div class="pane" style="display: flex; flex-direction: column;">
+        <label>Cropped Image</label>
+        <div id="output-area" style="height: 400px; flex: 0 0 400px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--muted); overflow: auto; margin: 0; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-elev); padding: 0.75rem; position: relative;">
+          <p>Upload an image to crop</p>
+        </div>
+        <div class="actions" style="margin-top: 1rem;">
+          <button id="download" class="secondary" disabled>Download</button>
+        </div>
+      </div>
+    </section>
+    
+    <section class="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h">FAQ</h2>
+      <details>
+        <summary>Is my image sent to a server?</summary>
+        <p>No. All processing happens locally in your browser.</p>
+      </details>
+      <details>
+        <summary>How do I crop an image?</summary>
+        <p>After uploading, click and drag on the image to select the area you want to keep. You can resize the selection by dragging the corner handles.</p>
+      </details>
+      <details>
+        <summary>Can I move the crop selection?</summary>
+        <p>Yes, click and drag the selection box to move it around the image.</p>
+      </details>
+    </section>
+    
+    <section class="related-tools">
+      <h2>Related Tools</h2>
+      <ul>
+        <li><a href="/convert/image-resize">Image Resizer</a></li>
+        <li><a href="/convert/image">Image Format Converter</a></li>
+      </ul>
+    </section>
+  </main>
+  
+  <script type="module" src="/js/header.js"></script>
+  <script type="module" src="/js/tools/image-crop.js"></script>
+  <script type="module">
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    initNotesWidget();
+  </script>
+</body>
+</html>
+

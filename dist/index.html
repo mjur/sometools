@@ -39,7 +39,7 @@
       <h1>SomeTools</h1>
     </a>
     <div class="search-box">
-      <input type="text" id="search" placeholder="Search tools..." aria-label="Search tools">
+      <input type="text" id="search" placeholder="Search tools (⌘K)..." aria-label="Search tools">
     </div>
     <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
       <span id="theme-icon">🌙</span>
@@ -49,203 +49,421 @@
   <main id="main">
     <p>Fast tools that run entirely in your browser.</p>
     
-    <div class="tool-grid" id="tool-grid" data-sortable="true">
-      <a href="/ai/chat" class="tool-card" data-category="ai" data-name="webllm chatbot local ai chat">
-        <h2>WebLLM Chatbot</h2>
-        <p>Chat with local AI models in your browser using WebLLM, with model download and cache controls</p>
-      </a>
-      
-      <a href="/regex/generator" class="tool-card" data-category="ai" data-name="regex generator">
-        <h2>Regex Generator</h2>
-        <p>Generate regular expressions from natural language using AI (WebLLM)</p>
-      </a>
-      
-      <a href="/utils/grammar-check" class="tool-card" data-category="ai" data-name="grammar checker spelling checker ai">
-        <h2>Grammar & Spelling Checker</h2>
-        <p>Check spelling and grammar using AI, with highlighting and auto-fix</p>
-      </a>
-      
-      <a href="/utils/ai-detector" class="tool-card" data-category="ai" data-name="ai detector ai text detection modernbert">
-        <h2>AI Text Detector</h2>
-        <p>Detect AI-generated text using ModernBERT ONNX model</p>
-      </a>
-      
-      <a href="/ai/image-generate" class="tool-card" data-category="ai" data-name="ai image generator text to image stable diffusion webgpu">
-        <h2>AI Image Generator</h2>
-        <p>Generate images from text prompts using SD-Turbo and Janus-Pro-1B models with WebGPU</p>
-      </a>
-      
-      <a href="/ai/music-generate" class="tool-card" data-category="ai" data-name="ai music generator text to music musicgen">
-        <h2>AI Music Generator</h2>
-        <p>Generate music from text prompts using MusicGen-small ONNX models</p>
-      </a>
-      
-      <a href="/json/validate" class="tool-card" data-category="json" data-name="json validator">
-        <h2>JSON Validator</h2>
-        <p>Validate JSON with instant feedback and error pointers</p>
-      </a>
-      
-      <a href="/json/format" class="tool-card" data-category="json" data-name="json formatter">
-        <h2>JSON Formatter</h2>
-        <p>Format and beautify JSON with customizable indentation</p>
-      </a>
-      
-      <a href="/json/schema" class="tool-card" data-category="json" data-name="json schema validator">
-        <h2>JSON Schema Validator</h2>
-        <p>Validate JSON against JSON Schema locally</p>
-      </a>
-      
-      <a href="/json/schema-generate" class="tool-card" data-category="json" data-name="json schema generator">
-        <h2>JSON Schema Generator</h2>
-        <p>Generate JSON Schema from JSON data locally</p>
-      </a>
-      
-      <a href="/json/yaml" class="tool-card" data-category="json" data-name="json yaml toml converter">
-        <h2>JSON ↔ YAML ↔ TOML Converter</h2>
-        <p>Convert between JSON, YAML, and TOML formats</p>
-      </a>
-      
-      <a href="/json/openapi" class="tool-card" data-category="json" data-name="openapi viewer swagger">
-        <h2>OpenAPI Viewer</h2>
-        <p>View and explore OpenAPI/Swagger specifications locally</p>
-      </a>
-      
-      <a href="/convert/csv" class="tool-card" data-category="convert" data-name="csv tsv converter">
-        <h2>CSV/TSV Converter</h2>
-        <p>Convert between CSV, TSV, and JSON formats</p>
-      </a>
-      
-      <a href="/sql/format" class="tool-card" data-category="sql" data-name="sql formatter">
-        <h2>SQL Formatter</h2>
-        <p>Format and beautify SQL queries with customizable indentation</p>
-      </a>
-      
-      <a href="/yaml/validate" class="tool-card" data-category="yaml" data-name="yaml validator">
-        <h2>YAML Validator</h2>
-        <p>Validate YAML syntax with instant feedback</p>
-      </a>
-      
-      <a href="/text/base64" class="tool-card" data-category="text" data-name="base64 encoder decoder">
-        <h2>Base64 Encode/Decode</h2>
-        <p>Encode and decode Base64 strings with URL-safe option</p>
-      </a>
-      
-      <a href="/text/url" class="tool-card" data-category="text" data-name="url encode decode">
-        <h2>URL Encode/Decode</h2>
-        <p>Encode and decode URL strings locally</p>
-      </a>
-      
-      <a href="/convert/image-pdf" class="tool-card" data-category="convert" data-name="image to pdf converter">
-        <h2>Image to PDF</h2>
-        <p>Convert images (JPG, PNG, GIF, WebP) to PDF files with customizable page settings</p>
-      </a>
-      
-      <a href="/convert/image" class="tool-card" data-category="convert" data-name="image format converter png jpeg webp svg ico">
-        <h2>Image Format Converter</h2>
-        <p>Convert images between PNG, JPEG, WebP, SVG, and ICO formats</p>
-      </a>
-      
-      <a href="/convert/video" class="tool-card" data-category="convert" data-name="video format converter mp4 webm avi mov mkv">
-        <h2>Video Format Converter</h2>
-        <p>Convert videos between MP4, WebM, AVI, MOV, and MKV formats</p>
-      </a>
-      
-      <a href="/convert/time" class="tool-card" data-category="time" data-name="time timezone parser converter">
-        <h2>Time & Timezone Parser</h2>
-        <p>Parse times, normalize to UTC, and convert across common time zones</p>
-      </a>
-      
-      <a href="/convert/units" class="tool-card" data-category="convert" data-name="unit converter measurement converter length area volume mass temperature speed energy power">
-        <h2>Unit Converter</h2>
-        <p>Convert between hundreds of units across length, area, volume, mass, time, temperature, speed, energy, and more</p>
-      </a>
-      
-      <a href="/crypto/hash" class="tool-card" data-category="crypto" data-name="hash generator">
-        <h2>Hash Generator</h2>
-        <p>Generate SHA-1, SHA-256, SHA-384, SHA-512 hashes</p>
-      </a>
-      
-      <a href="/crypto/uuid" class="tool-card" data-category="crypto" data-name="uuid generator">
-        <h2>UUID Generator</h2>
-        <p>Generate UUIDs in versions 1, 2, 3, 4, and 5</p>
-      </a>
-      
-      <a href="/crypto/jwt" class="tool-card" data-category="crypto" data-name="jwt decoder token">
-        <h2>JWT Decoder</h2>
-        <p>Decode JWT tokens to view header, payload, and signature</p>
-      </a>
-      
-      <a href="/utils/random" class="tool-card" data-category="utils" data-name="random number generator">
-        <h2>Random Number Generator</h2>
-        <p>Generate random numbers with customizable range and count</p>
-      </a>
-      
-      <a href="/utils/shuffler" class="tool-card" data-category="utils" data-name="list shuffler">
-        <h2>List Shuffler</h2>
-        <p>Shuffle lists of items with customizable delimiters</p>
-      </a>
-      
-      <a href="/utils/calculator" class="tool-card" data-category="utils" data-name="calculator simple advanced scientific">
-        <h2>Calculator</h2>
-        <p>Simple, advanced, and scientific calculator with history and memory functions</p>
-      </a>
-      
-      <a href="/utils/notes" class="tool-card" data-category="utils" data-name="notes">
-        <h2>Notes</h2>
-        <p>Create and manage notes saved locally. Download individual notes or all as ZIP</p>
-      </a>
-      
-      <a href="/utils/text-to-speech" class="tool-card" data-category="utils" data-name="text to speech tts audio">
-        <h2>Text to Speech</h2>
-        <p>Convert text to speech with various voices and download audio files</p>
-      </a>
-      
-      <a href="/utils/vocal-remover" class="tool-card" data-category="utils" data-name="vocal remover remove vocals karaoke instrumental">
-        <h2>Vocal Remover</h2>
-        <p>Remove vocals from audio tracks using center channel extraction</p>
-      </a>
-      
-      <a href="/convert/audio-stem-separator" class="tool-card" data-category="convert" data-name="audio stem separator demucs drums bass vocals separation">
-        <h2>Audio Stem Separator</h2>
-        <p>Separate audio into stems (drums, bass, vocals, other) using Demucs AI model</p>
-      </a>
-      
-      <a href="/utils/color-contrast" class="tool-card" data-category="utils" data-name="color contrast checker wcag accessibility">
-        <h2>Color Contrast Checker</h2>
-        <p>Check color contrast ratios for WCAG accessibility compliance</p>
-      </a>
-      
-      <a href="/utils/compression" class="tool-card" data-category="utils" data-name="compression estimator gzip brotli">
-        <h2>Compression Estimator</h2>
-        <p>Estimate gzip and brotli compression sizes</p>
-      </a>
-      
-      <a href="/utils/mock-data" class="tool-card" data-category="utils" data-name="mock data generator">
-        <h2>Mock Data Generator</h2>
-        <p>Generate mock JSON data from JSON Schema</p>
-      </a>
-      
-      <a href="/utils/qr" class="tool-card" data-category="utils" data-name="qr code generator">
-        <h2>QR Code Generator</h2>
-        <p>Generate QR codes from text or URLs</p>
-      </a>
-      
-      <a href="/diff/text" class="tool-card" data-category="text" data-name="text diff">
-        <h2>Text Diff</h2>
-        <p>Compare two texts side-by-side with word/char granularity</p>
-      </a>
-      
-      <a href="/regex/tester" class="tool-card" data-category="text" data-name="regex tester">
-        <h2>Regex Tester</h2>
-        <p>Test regular expressions with match highlighting and groups</p>
-      </a>
-    </div>
+    <div id="all-tools-container">
     
-    <section class="faq" aria-labelledby="cache-h" style="margin-top: 2rem;">
-      <h2 id="cache-h">Cached Models</h2>
-      <p style="margin-bottom: 1rem; color: var(--muted);">Manage AI models cached in your browser across all tools.</p>
-      <div id="model-cache-widget" style="margin-top: 1rem;"></div>
-    </section>
+      <!-- AI Category -->
+      <div class="category-section" data-category="ai">
+        <h2 class="category-header">AI Tools</h2>
+        <div class="tool-grid" data-sortable="true">
+          <a href="/ai/chat" class="tool-card" data-category="ai" data-name="webllm chatbot local ai chat">
+            <h2><span class="tool-icon">💬</span> WebLLM Chatbot</h2>
+            <p>Chat with local AI models in your browser using WebLLM, with model download and cache controls</p>
+          </a>
+          
+          <a href="/regex/generator" class="tool-card" data-category="ai" data-name="regex generator">
+            <h2><span class="tool-icon">🧠</span> Regex Generator</h2>
+            <p>Generate regular expressions from natural language using AI (WebLLM)</p>
+          </a>
+          
+          <a href="/utils/ai-detector" class="tool-card" data-category="ai" data-name="ai detector ai text detection modernbert">
+            <h2><span class="tool-icon">🕵️</span> AI Text Detector</h2>
+            <p>Detect AI-generated text using ModernBERT ONNX model</p>
+          </a>
+          
+          <a href="/ai/image-generate" class="tool-card" data-category="ai" data-name="ai image generator text to image stable diffusion webgpu">
+            <h2><span class="tool-icon">🎨</span> AI Image Generator</h2>
+            <p>Generate images from text prompts using SD-Turbo and Janus-Pro-1B models with WebGPU</p>
+          </a>
+          
+          <a href="/ai/image-caption" class="tool-card" data-category="ai" data-name="image caption generator ai image description transformers">
+            <h2><span class="tool-icon">📝</span> Image Caption Generator</h2>
+            <p>Generate AI-powered captions for images using vit-gpt2-image-captioning model</p>
+          </a>
+          
+          <a href="/ai/image-ocr" class="tool-card" data-category="ai" data-name="image ocr text extraction optical character recognition tesseract">
+            <h2><span class="tool-icon">👁️</span> Image OCR</h2>
+            <p>Extract text from images using OCR (Optical Character Recognition) with Tesseract.js</p>
+          </a>
+          
+          <a href="/ai/video-slideshow" class="tool-card" data-category="ai" data-name="video slideshow generator text to video ai images narration">
+            <h2><span class="tool-icon">🎬</span> Video Slideshow Generator</h2>
+            <p>Generate video slideshows from text with AI images and voice narration</p>
+          </a>
+          
+          <a href="/ai/music-generate" class="tool-card" data-category="ai" data-name="ai music generator text to music musicgen">
+            <h2><span class="tool-icon">🎵</span> AI Music Generator</h2>
+            <p>Generate music from text prompts using MusicGen-small ONNX models</p>
+          </a>
+          
+          <a href="/text/summarize" class="tool-card" data-category="ai" data-name="text summarizer ai summarize">
+            <h2><span class="tool-icon">📑</span> Text Summarizer</h2>
+            <p>Summarize text using AI with WebLLM models</p>
+          </a>
+          
+          <a href="/utils/text-to-speech" class="tool-card" data-category="ai" data-name="text to speech tts audio">
+            <h2><span class="tool-icon">🗣️</span> Text to Speech</h2>
+            <p>Convert text to speech with various voices and download audio files</p>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Image Category -->
+      <div class="category-section" data-category="image">
+        <h2 class="category-header">Image Tools</h2>
+        <div class="tool-grid" data-sortable="true">
+          <a href="/convert/image-pdf" class="tool-card" data-category="convert" data-name="image to pdf converter">
+            <h2><span class="tool-icon">📄</span> Image to PDF</h2>
+            <p>Convert images (JPG, PNG, GIF, WebP) to PDF files with customizable page settings</p>
+          </a>
+          
+          <a href="/convert/image" class="tool-card" data-category="convert" data-name="image format converter png jpeg webp svg ico">
+            <h2><span class="tool-icon">🔄</span> Image Format Converter</h2>
+            <p>Convert images between PNG, JPEG, WebP, SVG, and ICO formats</p>
+          </a>
+          
+          <a href="/convert/image-resize" class="tool-card" data-category="convert" data-name="image resizer resize aspect ratio">
+            <h2><span class="tool-icon">📏</span> Image Resizer</h2>
+            <p>Resize images while preserving aspect ratio</p>
+          </a>
+          
+          <a href="/convert/image-compress" class="tool-card" data-category="convert" data-name="image compressor jpeg png optimization">
+            <h2><span class="tool-icon">🗜️</span> Image Compressor</h2>
+            <p>Compress JPEG and PNG images to reduce file size</p>
+          </a>
+          
+          <a href="/convert/color-picker" class="tool-card" data-category="convert" data-name="color extractor extract colors hex rgb hsl">
+            <h2><span class="tool-icon">🎨</span> Color Extractor</h2>
+            <p>Extract colors from images and convert between color formats</p>
+          </a>
+          
+          <a href="/convert/image-metadata" class="tool-card" data-category="convert" data-name="image metadata viewer exif data">
+            <h2><span class="tool-icon">ℹ️</span> Image Metadata Viewer</h2>
+            <p>View EXIF and other metadata from images</p>
+          </a>
+          
+          <a href="/convert/image-crop" class="tool-card" data-category="convert" data-name="image cropper crop images">
+            <h2><span class="tool-icon">✂️</span> Image Cropper</h2>
+            <p>Crop images with a visual interface</p>
+          </a>
+          
+          <a href="/convert/image-bg-remove" class="tool-card" data-category="convert" data-name="background remover remove background color">
+            <h2><span class="tool-icon">🎭</span> Background Remover</h2>
+            <p>Remove backgrounds from images using color-based techniques</p>
+          </a>
+          
+          <a href="/convert/image-blur" class="tool-card" data-category="convert" data-name="image blur tool blur parts of images">
+            <h2><span class="tool-icon">💧</span> Image Blur Tool</h2>
+            <p>Blur parts of images or apply blur effects</p>
+          </a>
+          
+          <a href="/convert/image-watermark" class="tool-card" data-category="convert" data-name="image watermark tool add watermarks">
+            <h2><span class="tool-icon">©</span> Image Watermark Tool</h2>
+            <p>Add text or image watermarks to images</p>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Convert Category -->
+      <div class="category-section" data-category="convert">
+        <h2 class="category-header">Converter Tools</h2>
+        <div class="tool-grid" data-sortable="true">
+          <a href="/convert/csv" class="tool-card" data-category="convert" data-name="csv tsv converter">
+            <h2><span class="tool-icon">📊</span> CSV/TSV Converter</h2>
+            <p>Convert between CSV, TSV, and JSON formats</p>
+          </a>
+          
+          <a href="/convert/video" class="tool-card" data-category="convert" data-name="video format converter mp4 webm avi mov mkv">
+            <h2><span class="tool-icon">🎞️</span> Video Format Converter</h2>
+            <p>Convert videos between MP4, WebM, AVI, MOV, and MKV formats</p>
+          </a>
+          
+          <a href="/convert/video-audio" class="tool-card" data-category="convert" data-name="extract audio from video video to audio mp3 wav">
+            <h2><span class="tool-icon">🔊</span> Extract Audio from Video</h2>
+            <p>Extract audio tracks from video files and save as MP3, WAV, AAC, and other audio formats</p>
+          </a>
+          
+          <a href="/convert/audio" class="tool-card" data-category="convert" data-name="audio format converter mp3 wav ogg m4a flac aac opus">
+            <h2><span class="tool-icon">🎧</span> Audio Format Converter</h2>
+            <p>Convert audio files between MP3, WAV, OGG, M4A, FLAC, AAC, and Opus formats</p>
+          </a>
+          
+          <a href="/convert/audio-stem-separator" class="tool-card" data-category="convert" data-name="audio stem separator demucs drums bass vocals separation">
+            <h2><span class="tool-icon">🎹</span> Audio Stem Separator</h2>
+            <p>Separate audio into stems (drums, bass, vocals, other) using Demucs AI model</p>
+          </a>
+          
+          <a href="/convert/units" class="tool-card" data-category="convert" data-name="unit converter measurement converter length area volume mass temperature speed energy power">
+            <h2><span class="tool-icon">⚖️</span> Unit Converter</h2>
+            <p>Convert between hundreds of units across length, area, volume, mass, time, temperature, speed, energy, and more</p>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Dev Tools Category (Text + Code + Crypto) -->
+      <div class="category-section" data-category="dev-tools">
+        <h2 class="category-header">Dev Tools</h2>
+        <div class="tool-grid" data-sortable="true">
+          <a href="/text/base64" class="tool-card" data-category="text" data-name="base64 encoder decoder">
+            <h2><span class="tool-icon">🧬</span> Base64 Encode/Decode</h2>
+            <p>Encode and decode Base64 strings with URL-safe option</p>
+          </a>
+          
+          <a href="/text/url" class="tool-card" data-category="text" data-name="url encode decode">
+            <h2><span class="tool-icon">🔗</span> URL Encode/Decode</h2>
+            <p>Encode and decode URL strings locally</p>
+          </a>
+          
+          <a href="/text/markdown" class="tool-card" data-category="text" data-name="markdown editor preview">
+            <h2><span class="tool-icon">✍️</span> Markdown Editor</h2>
+            <p>Edit Markdown with live preview and HTML export</p>
+          </a>
+          
+          <a href="/text/html-entities" class="tool-card" data-category="text" data-name="html entity encoder decoder">
+            <h2><span class="tool-icon">🔡</span> HTML Entity Encoder/Decoder</h2>
+            <p>Convert special characters to/from HTML entities</p>
+          </a>
+          
+          <a href="/text/case-converter" class="tool-card" data-category="text" data-name="string case converter camelcase snakecase kebabcase">
+            <h2><span class="tool-icon">🔠</span> String Case Converter</h2>
+            <p>Convert text between camelCase, snake_case, kebab-case, and more</p>
+          </a>
+          
+          <a href="/text/statistics" class="tool-card" data-category="text" data-name="text statistics word count reading time">
+            <h2><span class="tool-icon">📈</span> Text Statistics</h2>
+            <p>Analyze word count, character count, reading time, and keyword density</p>
+          </a>
+          
+          <a href="/text/lorem" class="tool-card" data-category="text" data-name="lorem ipsum generator placeholder text">
+            <h2><span class="tool-icon">📝</span> Lorem Ipsum Generator</h2>
+            <p>Generate Lorem Ipsum placeholder text with customizable options</p>
+          </a>
+          
+          <a href="/text/slug" class="tool-card" data-category="text" data-name="slug generator url friendly seo">
+            <h2><span class="tool-icon">🐌</span> Slug Generator</h2>
+            <p>Convert text to URL-friendly slugs for SEO and filenames</p>
+          </a>
+          
+          <a href="/text/password" class="tool-card" data-category="text" data-name="password generator secure password">
+            <h2><span class="tool-icon">🔐</span> Password Generator</h2>
+            <p>Generate secure passwords with customizable options</p>
+          </a>
+          
+          <a href="/diff/text" class="tool-card" data-category="text" data-name="text diff">
+            <h2><span class="tool-icon">↔️</span> Text Diff</h2>
+            <p>Compare two texts side-by-side with word/char granularity</p>
+          </a>
+          
+          <a href="/regex/tester" class="tool-card" data-category="text" data-name="regex tester">
+            <h2><span class="tool-icon">🔍</span> Regex Tester</h2>
+            <p>Test regular expressions with match highlighting and groups</p>
+          </a>
+          
+          <a href="/code/minify" class="tool-card" data-category="code" data-name="code minifier javascript css html">
+            <h2><span class="tool-icon">📦</span> Code Minifier</h2>
+            <p>Minify JavaScript, CSS, and HTML code to reduce file size</p>
+          </a>
+          
+          <a href="/code/beautify" class="tool-card" data-category="code" data-name="code beautifier formatter javascript css html">
+            <h2><span class="tool-icon">💅</span> Code Beautifier</h2>
+            <p>Beautify and format JavaScript, CSS, and HTML code</p>
+          </a>
+          
+          <a href="/crypto/hash" class="tool-card" data-category="crypto" data-name="hash generator">
+            <h2><span class="tool-icon">#️⃣</span> Hash Generator</h2>
+            <p>Generate SHA-1, SHA-256, SHA-384, SHA-512 hashes</p>
+          </a>
+          
+          <a href="/crypto/uuid" class="tool-card" data-category="crypto" data-name="uuid generator">
+            <h2><span class="tool-icon">🆔</span> UUID Generator</h2>
+            <p>Generate UUIDs in versions 1, 2, 3, 4, and 5</p>
+          </a>
+          
+          <a href="/crypto/jwt" class="tool-card" data-category="crypto" data-name="jwt decoder token">
+            <h2><span class="tool-icon">🎫</span> JWT Decoder</h2>
+            <p>Decode JWT tokens to view header, payload, and signature</p>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Data Formats Category (JSON + YAML) -->
+      <div class="category-section" data-category="data-formats">
+        <h2 class="category-header">Data Formats</h2>
+        <div class="tool-grid" data-sortable="true">
+          <a href="/json/validate" class="tool-card" data-category="json" data-name="json validator">
+            <h2><span class="tool-icon">✅</span> JSON Validator</h2>
+            <p>Validate JSON with instant feedback and error pointers</p>
+          </a>
+          
+          <a href="/json/format" class="tool-card" data-category="json" data-name="json formatter">
+            <h2><span class="tool-icon">📋</span> JSON Formatter</h2>
+            <p>Format and beautify JSON with customizable indentation</p>
+          </a>
+          
+          <a href="/json/schema" class="tool-card" data-category="json" data-name="json schema validator">
+            <h2><span class="tool-icon">📜</span> JSON Schema Validator</h2>
+            <p>Validate JSON against JSON Schema locally</p>
+          </a>
+          
+          <a href="/json/schema-generate" class="tool-card" data-category="json" data-name="json schema generator">
+            <h2><span class="tool-icon">🏗️</span> JSON Schema Generator</h2>
+            <p>Generate JSON Schema from JSON data locally</p>
+          </a>
+          
+          <a href="/json/yaml" class="tool-card" data-category="json" data-name="json yaml toml converter">
+            <h2><span class="tool-icon">🔄</span> JSON ↔ YAML ↔ TOML</h2>
+            <p>Convert between JSON, YAML, and TOML formats</p>
+          </a>
+          
+          <a href="/json/openapi" class="tool-card" data-category="json" data-name="openapi viewer swagger">
+            <h2><span class="tool-icon">👁️</span> OpenAPI Viewer</h2>
+            <p>View and explore OpenAPI/Swagger specifications locally</p>
+          </a>
+          
+          <a href="/yaml/validate" class="tool-card" data-category="yaml" data-name="yaml validator">
+            <h2><span class="tool-icon">✅</span> YAML Validator</h2>
+            <p>Validate YAML syntax with instant feedback</p>
+          </a>
+          
+          <a href="/sql/format" class="tool-card" data-category="sql" data-name="sql formatter">
+            <h2><span class="tool-icon">🗃️</span> SQL Formatter</h2>
+            <p>Format and beautify SQL queries with customizable indentation</p>
+          </a>
+          
+          <a href="/code/xml" class="tool-card" data-category="code" data-name="xml validator formatter">
+            <h2><span class="tool-icon">📰</span> XML Validator & Formatter</h2>
+            <p>Validate and format XML documents with proper indentation</p>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Time Category -->
+      <div class="category-section" data-category="time">
+        <h2 class="category-header">Time Tools</h2>
+        <div class="tool-grid" data-sortable="true">
+          <a href="/convert/time" class="tool-card" data-category="time" data-name="time timezone parser converter">
+            <h2><span class="tool-icon">🌍</span> Time & Timezone Parser</h2>
+            <p>Parse times, normalize to UTC, and convert across common time zones</p>
+          </a>
+          
+          <a href="/time/timestamp" class="tool-card" data-category="time" data-name="unix timestamp converter">
+            <h2><span class="tool-icon">⏱️</span> Unix Timestamp Converter</h2>
+            <p>Convert Unix timestamps to dates and vice versa</p>
+          </a>
+          
+          <a href="/time/iso8601" class="tool-card" data-category="time" data-name="iso 8601 parser">
+            <h2><span class="tool-icon">📅</span> ISO 8601 Parser</h2>
+            <p>Parse and format ISO 8601 date strings</p>
+          </a>
+          
+          <a href="/time/date-calc" class="tool-card" data-category="time" data-name="date calculator">
+            <h2><span class="tool-icon">➕</span> Date Calculator</h2>
+            <p>Calculate differences between dates and add/subtract time</p>
+          </a>
+          
+          <a href="/time/cron" class="tool-card" data-category="time" data-name="cron expression generator">
+            <h2><span class="tool-icon">⏲️</span> Cron Expression Generator</h2>
+            <p>Generate and validate cron expressions</p>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Utils Category -->
+      <div class="category-section" data-category="utils">
+        <h2 class="category-header">Utilities</h2>
+        <div class="tool-grid" data-sortable="true">
+          <a href="/utils/random" class="tool-card" data-category="utils" data-name="random number generator">
+            <h2><span class="tool-icon">🎲</span> Random Number Generator</h2>
+            <p>Generate random numbers with customizable range and count</p>
+          </a>
+          
+          <a href="/utils/shuffler" class="tool-card" data-category="utils" data-name="list shuffler">
+            <h2><span class="tool-icon">🔀</span> List Shuffler</h2>
+            <p>Shuffle lists of items with customizable delimiters</p>
+          </a>
+          
+          <a href="/utils/calculator" class="tool-card" data-category="utils" data-name="calculator simple advanced scientific">
+            <h2><span class="tool-icon">🧮</span> Calculator</h2>
+            <p>Simple, advanced, and scientific calculator with history and memory functions</p>
+          </a>
+          
+          <a href="/utils/bmi-calculator" class="tool-card" data-category="utils" data-name="bmi calculator body mass index health">
+            <h2><span class="tool-icon">⚖️</span> BMI Calculator</h2>
+            <p>Calculate Body Mass Index with basic measurements or advanced body composition metrics</p>
+          </a>
+          
+          <a href="/utils/loan-calculator" class="tool-card" data-category="utils" data-name="loan calculator mortgage amortization schedule">
+            <h2><span class="tool-icon">💰</span> Loan Calculator</h2>
+            <p>Calculate loan and mortgage payments with detailed amortization schedule. Export to Excel format.</p>
+          </a>
+          
+          <a href="/utils/notes" class="tool-card" data-category="utils" data-name="notes">
+            <h2><span class="tool-icon">📓</span> Notes</h2>
+            <p>Create and manage notes saved locally. Download individual notes or all as ZIP</p>
+          </a>
+          
+          <a href="/utils/vocal-remover" class="tool-card" data-category="utils" data-name="vocal remover remove vocals karaoke instrumental">
+            <h2><span class="tool-icon">🎤</span> Vocal Remover</h2>
+            <p>Remove vocals from audio tracks using center channel extraction</p>
+          </a>
+          
+          <a href="/utils/color-contrast" class="tool-card" data-category="utils" data-name="color contrast checker wcag accessibility">
+            <h2><span class="tool-icon">👁️</span> Color Contrast Checker</h2>
+            <p>Check color contrast ratios for WCAG accessibility compliance</p>
+          </a>
+          
+          <a href="/utils/compression" class="tool-card" data-category="utils" data-name="compression estimator gzip brotli">
+            <h2><span class="tool-icon">📉</span> Compression Estimator</h2>
+            <p>Estimate gzip and brotli compression sizes</p>
+          </a>
+          
+          <a href="/utils/mock-data" class="tool-card" data-category="utils" data-name="mock data generator">
+            <h2><span class="tool-icon">🧪</span> Mock Data Generator</h2>
+            <p>Generate mock JSON data from JSON Schema</p>
+          </a>
+          
+          <a href="/utils/qr" class="tool-card" data-category="utils" data-name="qr code generator">
+            <h2><span class="tool-icon">🏁</span> QR Code Generator</h2>
+            <p>Generate QR codes from text or URLs</p>
+          </a>
+          
+          <a href="/utils/qr-scanner" class="tool-card" data-category="utils" data-name="qr code scanner">
+            <h2><span class="tool-icon">📷</span> QR Code Scanner</h2>
+            <p>Scan QR codes from webcam or uploaded images</p>
+          </a>
+          
+          <a href="/utils/barcode" class="tool-card" data-category="utils" data-name="barcode generator">
+            <h2><span class="tool-icon">🏷️</span> Barcode Generator</h2>
+            <p>Generate various barcode formats</p>
+          </a>
+          
+          <a href="/utils/timer" class="tool-card" data-category="utils" data-name="timer stopwatch">
+            <h2><span class="tool-icon">⏱️</span> Timer & Stopwatch</h2>
+            <p>Simple timer and stopwatch with countdown and elapsed time tracking</p>
+          </a>
+          
+          <a href="/utils/pomodoro" class="tool-card" data-category="utils" data-name="pomodoro timer">
+            <h2><span class="tool-icon">🍅</span> Pomodoro Timer</h2>
+            <p>Pomodoro technique timer for focused work sessions with breaks</p>
+          </a>
+          
+          <a href="/utils/ip" class="tool-card" data-category="utils" data-name="ip address tools">
+            <h2><span class="tool-icon">🌐</span> IP Address Tools</h2>
+            <p>IP address lookup, subnet calculator, and IP address utilities</p>
+          </a>
+          
+          <a href="/utils/user-agent" class="tool-card" data-category="utils" data-name="user agent parser">
+            <h2><span class="tool-icon">🕵️</span> User Agent Parser</h2>
+            <p>Parse and analyze user agent strings</p>
+          </a>
+          
+          <a href="/utils/mime" class="tool-card" data-category="utils" data-name="mime type checker">
+            <h2><span class="tool-icon">📎</span> MIME Type Checker</h2>
+            <p>Check MIME types for files and extensions</p>
+          </a>
+        </div>
+      </div>
+      
+    </div>
     
     <section class="faq" aria-labelledby="faq-h">
       <h2 id="faq-h">Frequently Asked Questions</h2>
@@ -269,35 +487,22 @@
   </main>
   
   <script type="module">
-    import { on, toggleTheme, qs } from '/js/ui.js';
+    import { on, qs } from '/js/ui.js';
     import { initToolCardSorting } from '/js/tool-sort.js';
     
     // Initialize drag and drop for tool cards
     initToolCardSorting();
     
-    // Theme toggle
-    const themeToggle = qs('#theme-toggle');
-    const themeIcon = qs('#theme-icon');
-    
-    if (themeToggle) {
-      on(themeToggle, 'click', () => {
-        const newTheme = toggleTheme();
-        themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-      });
-      
-      // Update icon on load
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      themeIcon.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
-    }
-    
     // Search functionality
     const searchInput = qs('#search');
     const toolGrid = qs('#tool-grid');
+    const allToolsContainer = qs('#all-tools-container');
     
-    if (searchInput && toolGrid) {
+    if (searchInput && allToolsContainer) {
       on(searchInput, 'input', (e) => {
         const query = e.target.value.toLowerCase();
-        const cards = Array.from(toolGrid.querySelectorAll('.tool-card'));
+        const cards = Array.from(allToolsContainer.querySelectorAll('.tool-card'));
+        const sections = Array.from(allToolsContainer.querySelectorAll('.category-section'));
         
         cards.forEach(card => {
           const name = card.getAttribute('data-name') || '';
@@ -313,6 +518,13 @@
           
           card.style.display = matches ? '' : 'none';
         });
+        
+        // Hide/show category sections based on visible tools
+        sections.forEach(section => {
+          const visibleCards = Array.from(section.querySelectorAll('.tool-card'))
+            .filter(card => card.style.display !== 'none');
+          section.style.display = visibleCards.length > 0 ? '' : 'none';
+        });
       });
       
       // Keyboard shortcut for search
@@ -326,12 +538,14 @@
   </script>
   <script type="module">
     import { initModelCacheWidget } from '/js/utils/model-cache-widget.js';
-    const container = document.getElementById('model-cache-widget');
-    if (container) {
-      initModelCacheWidget(container);
-    }
+    import { initNotesWidget } from '/js/utils/notes-widget.js';
+    
+    // Initialize model cache widget (floating icon)
+    initModelCacheWidget();
+    
+    // Initialize notes widget (floating icon)
+    initNotesWidget();
   </script>
   <script type="module" src="/js/header.js"></script>
 </body>
 </html>
-

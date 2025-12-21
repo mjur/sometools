@@ -12,6 +12,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://sometools.io/ai/image-caption</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://sometools.io/ai/image-ocr</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -92,12 +97,12 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://sometools.io/convert/video-audio</loc>
+    <loc>https://sometools.io/convert/audio-stem-separator</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://sometools.io/convert/audio-stem-separator</loc>
+    <loc>https://sometools.io/convert/video-audio</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -128,6 +133,21 @@
   </url>
   <url>
     <loc>https://sometools.io/convert/image-crop</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://sometools.io/convert/image-bg-remove</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://sometools.io/convert/image-blur</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://sometools.io/convert/image-watermark</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
