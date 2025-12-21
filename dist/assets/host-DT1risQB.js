@@ -288,7 +288,7 @@ class SDTurboAdapter {
     async generate(params) {
         if (!this.loaded)
             return { ok: false, reason: 'model_not_loaded', message: 'Call loadModel() first' };
-        const { prompt, width = 512, height = 512, signal, onProgress, seed } = params;
+        const { prompt, width = 512, height = 512, signal, onProgress, seed, num_inference_steps = 1 } = params;
         if (!prompt || !prompt.trim())
             return { ok: false, reason: 'unsupported_option', message: 'Prompt is required' };
         if (width !== 512 || height !== 512) {
@@ -298,7 +298,7 @@ class SDTurboAdapter {
         const ort = this.ort;
         try {
             // Tokenizer (injected or dynamic)
-            onProgress?.({ phase: 'tokenizing', pct: 10 });
+            onProgress?.({ phase: 'tokenizing', pct: 5 });
             if (!this.tokenizerFn) {
                 if (this.tokenizerProvider)
                     this.tokenizerFn = await this.tokenizerProvider();
@@ -312,7 +312,7 @@ class SDTurboAdapter {
             const tok = this.tokenizerFn;
             const { input_ids } = await tok(prompt, { padding: true, max_length: 77, truncation: true, return_tensor: false });
             // Text encoder
-            onProgress?.({ phase: 'encoding', pct: 25 });
+            onProgress?.({ phase: 'encoding', pct: 15 });
             const ids = Int32Array.from(input_ids);
             let encOut;
             try {
@@ -328,39 +328,50 @@ class SDTurboAdapter {
             }
             // Latents
             const latent_shape = [1, 4, 64, 64];
-            const sigma = 14.6146;
             const vae_scaling_factor = 0.18215;
-            const latent = new ort.Tensor(randn_latents(latent_shape, sigma, seed), latent_shape);
-            const latent_model_input = scale_model_inputs(ort, latent, sigma);
-            // UNet
-            onProgress?.({ phase: 'denoising', pct: 70 });
-            if (signal?.aborted) {
-                onProgress?.({ phase: 'complete', aborted: true, pct: 0 });
-                return { ok: false, reason: 'cancelled' };
+            let latent = new ort.Tensor(randn_latents(latent_shape, 14.6146, seed), latent_shape);
+            
+            // Generate timestep schedule
+            const timesteps = generateTimesteps(num_inference_steps);
+            const sigmas = timestepsToSigmas(timesteps);
+            
+            // Denoising loop
+            for (let i = 0; i < num_inference_steps; i++) {
+                const step_pct = 20 + Math.floor((i / num_inference_steps) * 70);
+                onProgress?.({ phase: 'denoising', pct: step_pct, message: `Step ${i + 1}/${num_inference_steps}` });
+                
+                if (signal?.aborted) {
+                    onProgress?.({ phase: 'complete', aborted: true, pct: 0 });
+                    return { ok: false, reason: 'cancelled' };
+                }
+                
+                const sigma = sigmas[i];
+                const latent_model_input = scale_model_inputs(ort, latent, sigma);
+                const tstep = [BigInt(timesteps[i])];
+                
+                const feed = {
+                    sample: latent_model_input,
+                    timestep: new ort.Tensor('int64', tstep, [1]),
+                    encoder_hidden_states: last_hidden_state,
+                };
+                
+                let out_sample;
+                try {
+                    out_sample = await this.sessions.unet.run(feed);
+                    out_sample = out_sample.out_sample ?? out_sample;
+                }
+                catch (e) {
+                    throw new Error(`unet.run failed at step ${i}: ${e instanceof Error ? e.message : String(e)}`);
+                }
+                
+                // Scheduler step
+                const sigma_next = i < num_inference_steps - 1 ? sigmas[i + 1] : 0;
+                latent = schedulerStep(ort, out_sample, latent, sigma, sigma_next, i === num_inference_steps - 1 ? vae_scaling_factor : 1.0);
             }
-            const tstep = [BigInt(999)];
-            const feed = {
-                sample: latent_model_input,
-                timestep: new ort.Tensor('int64', tstep, [1]),
-                encoder_hidden_states: last_hidden_state,
-            };
-            let out_sample;
-            try {
-                out_sample = await this.sessions.unet.run(feed);
-                // Some builds return object with key out_sample; others return first output value
-                out_sample = out_sample.out_sample ?? out_sample;
-            }
-            catch (e) {
-                throw new Error(`unet.run failed: ${e instanceof Error ? e.message : String(e)}`);
-            }
+            
             if (typeof last_hidden_state.dispose === 'function')
                 last_hidden_state.dispose();
-            if (signal?.aborted) {
-                onProgress?.({ phase: 'complete', aborted: true, pct: 0 });
-                return { ok: false, reason: 'cancelled' };
-            }
-            // Scheduler step
-            const new_latents = step(ort, out_sample, latent, sigma, vae_scaling_factor);
+            
             // VAE decode
             onProgress?.({ phase: 'decoding', pct: 95 });
             if (signal?.aborted) {
@@ -369,7 +380,7 @@ class SDTurboAdapter {
             }
             let vaeOut;
             try {
-                vaeOut = await this.sessions.vae_decoder.run({ latent_sample: new_latents });
+                vaeOut = await this.sessions.vae_decoder.run({ latent_sample: latent });
             }
             catch (e) {
                 throw new Error(`vae_decoder.run failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -449,17 +460,33 @@ function scale_model_inputs(ort, t, sigma) {
         d_o[i] = d_i[i] / divi;
     return new ort.Tensor(d_o, t.dims);
 }
-function step(ort, model_output, sample, sigma, vae_scaling_factor) {
+// Generate timestep schedule (linearly spaced from 999 to 0)
+function generateTimesteps(num_steps) {
+    if (num_steps === 1) return [999];
+    const timesteps = [];
+    for (let i = 0; i < num_steps; i++) {
+        const t = Math.round(999 - (i * 999 / (num_steps - 1)));
+        timesteps.push(Math.max(0, t));
+    }
+    return timesteps;
+}
+// Convert timesteps to sigmas
+function timestepsToSigmas(timesteps) {
+    // Simplified sigma schedule for SD-Turbo
+    // Original sigma at t=999 is ~14.6146, at t=0 is 0
+    return timesteps.map(t => 14.6146 * (t / 999));
+}
+// Euler scheduler step for multi-step generation
+function schedulerStep(ort, model_output, sample, sigma, sigma_next, scale_factor = 1.0) {
     const d_o = new Float32Array(model_output.data.length);
-    const prev_sample = new ort.Tensor(d_o, model_output.dims);
-    const sigma_hat = sigma * (0 + 1);
+    const sigma_hat = sigma;
     for (let i = 0; i < model_output.data.length; i++) {
         const pred_original_sample = sample.data[i] - sigma_hat * model_output.data[i];
         const derivative = (sample.data[i] - pred_original_sample) / sigma_hat;
-        const dt = 0 - sigma_hat;
-        d_o[i] = (sample.data[i] + derivative * dt) / vae_scaling_factor;
+        const dt = sigma_next - sigma_hat;
+        d_o[i] = (sample.data[i] + derivative * dt) / scale_factor;
     }
-    return prev_sample;
+    return new ort.Tensor(d_o, model_output.dims);
 }
 async function tensorToPngBlob(t) {
     // t: [1, 3, H, W]

@@ -31,6 +31,9 @@ const clearOutputBtn = qs('#clear-output');
 const modelSelect = qs('#model-select');
 const seedInput = qs('#seed');
 const seedGroup = qs('#seed-group');
+const inferenceStepsInput = qs('#inference-steps');
+const stepsValueSpan = qs('#steps-value');
+const stepsGroup = qs('#steps-group');
 const output = qs('#output');
 const modelStatus = qs('#model-status');
 const progressContainer = qs('#progress-container');
@@ -548,7 +551,7 @@ async function loadModel() {
     // Note: WebGPU requires .mjs wrapper files which may not be available in the bundle
     let result;
     // Configure WASM paths - ONNX Runtime looks for specific file names
-    // Since the worker is at /js/tools/bundled/assets/host-O6WzXidB.js
+    // Since the worker is at /js/tools/bundled/assets/host-DT1risQB.js
     // and WASM files are in the same directory, we can use relative paths
     // or absolute paths. Let's try both directory path and file mappings.
     const wasmPathsConfig = '/js/tools/bundled/assets/';
@@ -739,6 +742,14 @@ async function generateImage() {
       }
     }
     
+    // Add inference steps for SD-Turbo
+    if (currentModel === 'sd-turbo' && inferenceStepsInput.value) {
+      const steps = parseInt(inferenceStepsInput.value, 10);
+      if (!isNaN(steps) && steps >= 1 && steps <= 4) {
+        params.num_inference_steps = steps;
+      }
+    }
+    
     const { promise, abort } = client.generate(
       params,
       (progress) => {
@@ -771,7 +782,8 @@ async function generateImage() {
       saveStateWithStorage({
         prompt,
         model: currentModel,
-        seed: seedInput.value || null
+        seed: seedInput.value || null,
+        steps: inferenceStepsInput.value || null
       }, 'image-generate-state');
     } else {
       throw new Error(actualResult.reason || actualResult.message || 'Generation failed');
@@ -879,11 +891,13 @@ on(purgeAllCacheBtn, 'click', purgeAllCaches);
 
 // Model change handler
 on(modelSelect, 'change', () => {
-  // Update seed input visibility based on selected model
+  // Update seed and steps input visibility based on selected model
   if (modelSelect.value === 'sd-turbo') {
     seedGroup.style.display = 'flex';
+    stepsGroup.style.display = 'flex';
   } else {
     seedGroup.style.display = 'none';
+    stepsGroup.style.display = 'none';
   }
   
   // If a different model is loaded, show a message but allow loading
@@ -892,6 +906,20 @@ on(modelSelect, 'change', () => {
     modelStatus.textContent = 'Model changed. Click "Load Model" to switch.';
   }
 });
+
+// Inference steps slider handler
+on(inferenceStepsInput, 'input', () => {
+  stepsValueSpan.textContent = inferenceStepsInput.value;
+});
+
+// Initial UI visibility - run once on load
+if (modelSelect.value === 'sd-turbo') {
+  seedGroup.style.display = 'flex';
+  stepsGroup.style.display = 'flex';
+} else {
+  seedGroup.style.display = 'none';
+  stepsGroup.style.display = 'none';
+}
 
 // Keyboard shortcut
 on(document, 'keydown', (e) => {
@@ -903,13 +931,18 @@ on(document, 'keydown', (e) => {
   }
 });
 
-// Load state
+// Load state - but only restore prompt and seed, not model
+// Let the HTML default <option selected> control the initial model selection
 const storageKey = 'image-generate-state';
 const state = loadStateWithStorage(storageKey);
 if (state?.prompt) {
   promptInput.value = state.prompt;
-  if (state.model) modelSelect.value = state.model;
+  // Don't restore model - use HTML default
   if (state.seed) seedInput.value = state.seed;
+  if (state.steps) {
+    inferenceStepsInput.value = state.steps;
+    stepsValueSpan.textContent = state.steps;
+  }
 }
 
 // Initialize on load

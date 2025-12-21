@@ -21,7 +21,7 @@
   <script type="importmap">
   {
     "imports": {
-      "@huggingface/transformers": "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.x/dist/transformers.min.js"
+      "@huggingface/transformers": "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2/dist/transformers.min.js"
     }
   }
   </script>
@@ -116,13 +116,18 @@
       <div class="option-group">
         <label for="model-select">Model:</label>
         <select id="model-select">
-          <option value="sd-turbo">SD-Turbo (512×512, seeded)</option>
+          <option value="sd-turbo" selected>SD-Turbo (512×512, seeded)</option>
           <option value="janus-pro-1b">Janus-Pro-1B (WebGPU-only)</option>
         </select>
       </div>
       <div class="option-group" id="seed-group">
         <label for="seed">Seed (optional):</label>
         <input type="number" id="seed" placeholder="Random" min="0" step="1">
+      </div>
+      <div class="option-group" id="steps-group">
+        <label for="inference-steps">Inference Steps: <span id="steps-value">1</span></label>
+        <input type="range" id="inference-steps" min="1" max="4" value="1" step="1">
+        <small class="text-muted">More steps = better quality, slower generation</small>
       </div>
     </div>
     
@@ -190,6 +195,10 @@
       <details>
         <summary>Can I use seeds for reproducible results?</summary>
         <p>Yes, SD-Turbo supports seeds for deterministic generation. Enter a number in the seed field. Janus-Pro-1B does not support seeds.</p>
+      </details>
+      <details>
+        <summary>What are inference steps?</summary>
+        <p>Inference steps control the number of denoising iterations. SD-Turbo supports 1-4 steps: 1 step is fastest (10-30 sec), while 4 steps produces higher quality images but takes longer. Janus-Pro-1B doesn't use adjustable steps.</p>
       </details>
       <details>
         <summary>Is my data sent to a server?</summary>

@@ -31,9 +31,7 @@ async function fetchArrayBufferWithCacheProgress(url, modelId, onProgress, expec
         const cache = await caches.open(CACHE_NAME);
         const cached = await cache.match(req);
         if (cached) {
-            // Skip progress reporting for cached files - they load instantly
             const buf = await cached.arrayBuffer();
-            // Only report progress once at the end for cached files
             onProgress?.(buf.byteLength, buf.byteLength);
             if (modelId)
                 noteModelUrl(modelId, req.url);
@@ -246,124 +244,35 @@ class SDTurboAdapter {
                 pct: 0,
                 accuracy: 'exact',
             });
-            // Check if all models are cached to optimize loading
-            let allCached = true;
-            if (typeof caches !== 'undefined') {
-                const cache = await caches.open(CACHE_NAME);
-                for (const key of Object.keys(models)) {
-                    const model = models[key];
-                    const cached = await cache.match(new Request(`${base}/${model.url}`));
-                    if (!cached) {
-                        allCached = false;
-                        break;
-                    }
-                }
-            } else {
-                allCached = false;
-            }
-            
-            // If all cached, load and create sessions in parallel for speed
-            if (allCached) {
-                // Minimal progress reporting for cached models to reduce choppiness
-                options.onProgress?.({
-                    phase: 'loading',
-                    message: 'Loading models from cache...',
-                    bytesDownloaded: 0,
-                    totalBytesExpected: GRAND_APPROX,
-                    pct: 10,
-                    accuracy: 'exact',
-                });
-                
-                // Load all model buffers in parallel (instant for cached)
-                const loadPromises = Object.keys(models).map(async (key) => {
-                    const model = models[key];
-                    const expectedTotal = model.sizeMB * 1024 * 1024;
-                    const buf = await fetchArrayBufferWithCacheProgress(`${base}/${model.url}`, this.id, null, expectedTotal);
-                    return { key, model, buf };
-                });
-                
-                const loaded = await Promise.all(loadPromises);
-                bytesDownloaded = loaded.reduce((sum, item) => sum + item.buf.byteLength, 0);
-                
-                // Single progress update before session creation
-                options.onProgress?.({
-                    phase: 'loading',
-                    message: 'Initializing models...',
-                    bytesDownloaded,
-                    totalBytesExpected: GRAND_APPROX,
-                    pct: 20,
-                    accuracy: 'exact',
-                });
-                
-                // Create sessions sequentially (WebGPU doesn't support parallel session creation)
-                // Reduce progress updates to avoid choppiness - only update every other session or at key points
-                const sessions = [];
-                const totalSessions = loaded.length;
-                for (let i = 0; i < loaded.length; i++) {
-                    const { key, model, buf } = loaded[i];
-                    const start = performance.now();
-                    const sess = await ort.InferenceSession.create(buf, { ...opt, ...model.opt });
-                    const ms = performance.now() - start;
-                    this.sessions[key] = sess;
-                    sessions.push({ key, sess, ms, model });
-                    
-                    // Only update progress at key milestones to reduce choppiness
-                    // Update at 1/3, 2/3, and completion
-                    const sessionIndex = i + 1;
-                    if (sessionIndex === totalSessions || sessionIndex === Math.ceil(totalSessions / 3) || sessionIndex === Math.ceil(totalSessions * 2 / 3)) {
-                        const pct = 20 + Math.round((sessionIndex / totalSessions) * 75);
-                        options.onProgress?.({
-                            phase: 'loading',
-                            message: sessionIndex === totalSessions ? 'Models ready' : `Initializing models... (${sessionIndex}/${totalSessions})`,
-                            bytesDownloaded,
-                            totalBytesExpected: GRAND_APPROX,
-                            pct,
-                            accuracy: 'exact',
-                        });
-                    }
-                }
-                
-                // Final progress update
-                options.onProgress?.({
-                    phase: 'loading',
-                    message: 'Models ready',
-                    bytesDownloaded,
-                    totalBytesExpected: GRAND_APPROX,
-                    pct: 100,
-                    accuracy: 'exact',
-                });
-            } else {
-                // Sequential loading for non-cached models (with progress reporting)
-                for (const key of Object.keys(models)) {
-                    const model = models[key];
-                    options.onProgress?.({ phase: 'loading', message: `loading ${model.url}...`, bytesDownloaded });
-                    const expectedTotal = model.sizeMB * 1024 * 1024;
-                    const buf = await fetchArrayBufferWithCacheProgress(`${base}/${model.url}`, this.id, (loaded, total) => {
-                        const pct = Math.min(100, Math.round(((bytesDownloaded + loaded) / GRAND_APPROX) * 100));
-                        options.onProgress?.({
-                            phase: 'loading',
-                            message: `loading ${model.url}...`,
-                            pct,
-                            bytesDownloaded: bytesDownloaded + loaded,
-                            totalBytesExpected: GRAND_APPROX,
-                            asset: model.url,
-                            accuracy: 'exact',
-                        });
-                    }, expectedTotal);
-                    bytesDownloaded += buf.byteLength;
-                    const start = performance.now();
-                    const sess = await ort.InferenceSession.create(buf, { ...opt, ...model.opt });
-                    const ms = performance.now() - start;
+            for (const key of Object.keys(models)) {
+                const model = models[key];
+                options.onProgress?.({ phase: 'loading', message: `downloading ${model.url}...`, bytesDownloaded });
+                const expectedTotal = model.sizeMB * 1024 * 1024;
+                const buf = await fetchArrayBufferWithCacheProgress(`${base}/${model.url}`, this.id, (loaded, total) => {
+                    const pct = Math.min(100, Math.round(((bytesDownloaded + loaded) / GRAND_APPROX) * 100));
                     options.onProgress?.({
                         phase: 'loading',
-                        message: `${model.url} ready in ${ms.toFixed(1)}ms`,
-                        bytesDownloaded,
+                        message: `downloading ${model.url}...`,
+                        pct,
+                        bytesDownloaded: bytesDownloaded + loaded,
                         totalBytesExpected: GRAND_APPROX,
                         asset: model.url,
                         accuracy: 'exact',
                     });
-                    this.sessions[key] = sess;
-                }
+                }, expectedTotal);
+                bytesDownloaded += buf.byteLength;
+                const start = performance.now();
+                const sess = await ort.InferenceSession.create(buf, { ...opt, ...model.opt });
+                const ms = performance.now() - start;
+                options.onProgress?.({
+                    phase: 'loading',
+                    message: `${model.url} ready in ${ms.toFixed(1)}ms`,
+                    bytesDownloaded,
+                    totalBytesExpected: GRAND_APPROX,
+                    asset: model.url,
+                    accuracy: 'exact',
+                });
+                this.sessions[key] = sess;
             }
             this.loaded = true;
             return { ok: true, backendUsed: chosen, bytesDownloaded };
@@ -379,7 +288,7 @@ class SDTurboAdapter {
     async generate(params) {
         if (!this.loaded)
             return { ok: false, reason: 'model_not_loaded', message: 'Call loadModel() first' };
-        const { prompt, width = 512, height = 512, signal, onProgress, seed } = params;
+        const { prompt, width = 512, height = 512, signal, onProgress, seed, num_inference_steps = 1 } = params;
         if (!prompt || !prompt.trim())
             return { ok: false, reason: 'unsupported_option', message: 'Prompt is required' };
         if (width !== 512 || height !== 512) {
@@ -389,7 +298,7 @@ class SDTurboAdapter {
         const ort = this.ort;
         try {
             // Tokenizer (injected or dynamic)
-            onProgress?.({ phase: 'tokenizing', pct: 10 });
+            onProgress?.({ phase: 'tokenizing', pct: 5 });
             if (!this.tokenizerFn) {
                 if (this.tokenizerProvider)
                     this.tokenizerFn = await this.tokenizerProvider();
@@ -403,7 +312,7 @@ class SDTurboAdapter {
             const tok = this.tokenizerFn;
             const { input_ids } = await tok(prompt, { padding: true, max_length: 77, truncation: true, return_tensor: false });
             // Text encoder
-            onProgress?.({ phase: 'encoding', pct: 25 });
+            onProgress?.({ phase: 'encoding', pct: 15 });
             const ids = Int32Array.from(input_ids);
             let encOut;
             try {
@@ -419,39 +328,50 @@ class SDTurboAdapter {
             }
             // Latents
             const latent_shape = [1, 4, 64, 64];
-            const sigma = 14.6146;
             const vae_scaling_factor = 0.18215;
-            const latent = new ort.Tensor(randn_latents(latent_shape, sigma, seed), latent_shape);
-            const latent_model_input = scale_model_inputs(ort, latent, sigma);
-            // UNet
-            onProgress?.({ phase: 'denoising', pct: 70 });
-            if (signal?.aborted) {
-                onProgress?.({ phase: 'complete', aborted: true, pct: 0 });
-                return { ok: false, reason: 'cancelled' };
+            let latent = new ort.Tensor(randn_latents(latent_shape, 14.6146, seed), latent_shape);
+            
+            // Generate timestep schedule
+            const timesteps = generateTimesteps(num_inference_steps);
+            const sigmas = timestepsToSigmas(timesteps);
+            
+            // Denoising loop
+            for (let i = 0; i < num_inference_steps; i++) {
+                const step_pct = 20 + Math.floor((i / num_inference_steps) * 70);
+                onProgress?.({ phase: 'denoising', pct: step_pct, message: `Step ${i + 1}/${num_inference_steps}` });
+                
+                if (signal?.aborted) {
+                    onProgress?.({ phase: 'complete', aborted: true, pct: 0 });
+                    return { ok: false, reason: 'cancelled' };
+                }
+                
+                const sigma = sigmas[i];
+                const latent_model_input = scale_model_inputs(ort, latent, sigma);
+                const tstep = [BigInt(timesteps[i])];
+                
+                const feed = {
+                    sample: latent_model_input,
+                    timestep: new ort.Tensor('int64', tstep, [1]),
+                    encoder_hidden_states: last_hidden_state,
+                };
+                
+                let out_sample;
+                try {
+                    out_sample = await this.sessions.unet.run(feed);
+                    out_sample = out_sample.out_sample ?? out_sample;
+                }
+                catch (e) {
+                    throw new Error(`unet.run failed at step ${i}: ${e instanceof Error ? e.message : String(e)}`);
+                }
+                
+                // Scheduler step
+                const sigma_next = i < num_inference_steps - 1 ? sigmas[i + 1] : 0;
+                latent = schedulerStep(ort, out_sample, latent, sigma, sigma_next, i === num_inference_steps - 1 ? vae_scaling_factor : 1.0);
             }
-            const tstep = [BigInt(999)];
-            const feed = {
-                sample: latent_model_input,
-                timestep: new ort.Tensor('int64', tstep, [1]),
-                encoder_hidden_states: last_hidden_state,
-            };
-            let out_sample;
-            try {
-                out_sample = await this.sessions.unet.run(feed);
-                // Some builds return object with key out_sample; others return first output value
-                out_sample = out_sample.out_sample ?? out_sample;
-            }
-            catch (e) {
-                throw new Error(`unet.run failed: ${e instanceof Error ? e.message : String(e)}`);
-            }
+            
             if (typeof last_hidden_state.dispose === 'function')
                 last_hidden_state.dispose();
-            if (signal?.aborted) {
-                onProgress?.({ phase: 'complete', aborted: true, pct: 0 });
-                return { ok: false, reason: 'cancelled' };
-            }
-            // Scheduler step
-            const new_latents = step(ort, out_sample, latent, sigma, vae_scaling_factor);
+            
             // VAE decode
             onProgress?.({ phase: 'decoding', pct: 95 });
             if (signal?.aborted) {
@@ -460,7 +380,7 @@ class SDTurboAdapter {
             }
             let vaeOut;
             try {
-                vaeOut = await this.sessions.vae_decoder.run({ latent_sample: new_latents });
+                vaeOut = await this.sessions.vae_decoder.run({ latent_sample: latent });
             }
             catch (e) {
                 throw new Error(`vae_decoder.run failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -540,17 +460,33 @@ function scale_model_inputs(ort, t, sigma) {
         d_o[i] = d_i[i] / divi;
     return new ort.Tensor(d_o, t.dims);
 }
-function step(ort, model_output, sample, sigma, vae_scaling_factor) {
+// Generate timestep schedule (linearly spaced from 999 to 0)
+function generateTimesteps(num_steps) {
+    if (num_steps === 1) return [999];
+    const timesteps = [];
+    for (let i = 0; i < num_steps; i++) {
+        const t = Math.round(999 - (i * 999 / (num_steps - 1)));
+        timesteps.push(Math.max(0, t));
+    }
+    return timesteps;
+}
+// Convert timesteps to sigmas
+function timestepsToSigmas(timesteps) {
+    // Simplified sigma schedule for SD-Turbo
+    // Original sigma at t=999 is ~14.6146, at t=0 is 0
+    return timesteps.map(t => 14.6146 * (t / 999));
+}
+// Euler scheduler step for multi-step generation
+function schedulerStep(ort, model_output, sample, sigma, sigma_next, scale_factor = 1.0) {
     const d_o = new Float32Array(model_output.data.length);
-    const prev_sample = new ort.Tensor(d_o, model_output.dims);
-    const sigma_hat = sigma * (0 + 1);
+    const sigma_hat = sigma;
     for (let i = 0; i < model_output.data.length; i++) {
         const pred_original_sample = sample.data[i] - sigma_hat * model_output.data[i];
         const derivative = (sample.data[i] - pred_original_sample) / sigma_hat;
-        const dt = 0 - sigma_hat;
-        d_o[i] = (sample.data[i] + derivative * dt) / vae_scaling_factor;
+        const dt = sigma_next - sigma_hat;
+        d_o[i] = (sample.data[i] + derivative * dt) / scale_factor;
     }
-    return prev_sample;
+    return new ort.Tensor(d_o, model_output.dims);
 }
 async function tensorToPngBlob(t) {
     // t: [1, 3, H, W]
@@ -608,27 +544,7 @@ async function getTokenizer() {
         }
         _tokInstance = await g.AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch16');
         _tokInstance.pad_token_id = 0;
-        return async (text, opts) => {
-            // Transformers.js tokenizer needs to be called with encode method or as a function
-            // Handle both cases and ensure proper padding/truncation
-            const result = await _tokInstance(text, opts);
-            // Ensure input_ids is an array and has the correct length
-            let input_ids = result.input_ids || result;
-            if (Array.isArray(input_ids[0])) {
-                input_ids = input_ids[0]; // Flatten if nested
-            }
-            // Ensure proper length (77 for CLIP)
-            const maxLength = opts?.max_length || 77;
-            if (input_ids.length < maxLength) {
-                // Pad with pad_token_id (0 for CLIP)
-                const padId = _tokInstance.pad_token_id || 0;
-                input_ids = [...input_ids, ...Array(maxLength - input_ids.length).fill(padId)];
-            } else if (input_ids.length > maxLength) {
-                // Truncate
-                input_ids = input_ids.slice(0, maxLength);
-            }
-            return { input_ids };
-        };
+        return (text, opts) => _tokInstance(text, opts);
     }
     let AutoTokenizerMod = null;
     let env = null;
@@ -661,27 +577,7 @@ async function getTokenizer() {
         revision: 'main'
     });
     _tokInstance.pad_token_id = 0;
-    return async (text, opts) => {
-        // Transformers.js tokenizer needs to be called with encode method or as a function
-        // Handle both cases and ensure proper padding/truncation
-        const result = await _tokInstance(text, opts);
-        // Ensure input_ids is an array and has the correct length
-        let input_ids = result.input_ids || result;
-        if (Array.isArray(input_ids[0])) {
-            input_ids = input_ids[0]; // Flatten if nested
-        }
-        // Ensure proper length (77 for CLIP)
-        const maxLength = opts?.max_length || 77;
-        if (input_ids.length < maxLength) {
-            // Pad with pad_token_id (0 for CLIP)
-            const padId = _tokInstance.pad_token_id || 0;
-            input_ids = [...input_ids, ...Array(maxLength - input_ids.length).fill(padId)];
-        } else if (input_ids.length > maxLength) {
-            // Truncate
-            input_ids = input_ids.slice(0, maxLength);
-        }
-        return { input_ids };
-    };
+    return (text, opts) => _tokInstance(text, opts);
 }
 
 class JanusProAdapter {
@@ -698,15 +594,12 @@ class JanusProAdapter {
         return c.webgpu ? ['webgpu'] : [];
     }
     async load(options) {
-        console.log('[Janus] load() called with options:', { backendPreference: options.backendPreference, hasOnProgress: !!options.onProgress });
         const preferred = options.backendPreference;
         if (!preferred.includes('webgpu')) {
-            console.log('[Janus] WebGPU not in preferred backends, returning error');
             return { ok: false, reason: 'backend_unavailable', message: 'Janus requires WebGPU' };
         }
         // Dynamic import of Transformers.js (optional peer). Error clearly if missing.
         let hf = null;
-        console.log('[Janus] Attempting to load Transformers.js...');
         // First try a normal bare-specifier import (works when installed and bundled by Vite)
         try {
             hf = await import('./transformers_web-txt2img-R1QVQ2mR.js').catch(() => null);
@@ -729,93 +622,9 @@ class JanusProAdapter {
         if (!hf) {
             const g = globalThis;
             hf = g.transformers || g.HFTransformers || g.HuggingFaceTransformers || null;
-            console.log('[Janus] Using global transformers:', {
-                hasTransformers: !!g.transformers,
-                hasHFTransformers: !!g.HFTransformers,
-                hasHuggingFaceTransformers: !!g.HuggingFaceTransformers,
-                hf: !!hf,
-                hfType: typeof hf,
-                hfIsSameAsGlobal: hf === g.transformers,
-                hfKeys: hf ? Object.keys(hf).slice(0, 50) : [],
-                hfKeysWithAuto: hf ? Object.keys(hf).filter(k => k.includes('Auto') || k.includes('Multi') || k.includes('Processor')).slice(0, 20) : [],
-                hasAutoProcessor: !!(hf && hf.AutoProcessor),
-                AutoProcessorType: hf ? typeof hf.AutoProcessor : 'undefined',
-                // Check if it's on the prototype or somewhere else
-                hasAutoProcessorInProto: !!(hf && Object.getPrototypeOf(hf) && Object.getPrototypeOf(hf).AutoProcessor),
-                allPropertyNames: hf ? Object.getOwnPropertyNames(hf).filter(k => k.includes('Auto') || k.includes('Multi') || k.includes('Processor')).slice(0, 20) : [],
-                // Direct property access test
-                directAutoProcessor: hf ? hf['AutoProcessor'] : undefined,
-                directAutoProcessorType: hf ? typeof hf['AutoProcessor'] : 'undefined'
-            });
-            
-            // If AutoProcessor is missing, try to get it from the module directly
-            if (hf && !hf.AutoProcessor) {
-                console.log('[Janus] AutoProcessor missing from hf, checking globalThis directly...');
-                if (globalThis.AutoProcessor) {
-                    console.log('[Janus] Found AutoProcessor on globalThis, assigning to hf');
-                    hf.AutoProcessor = globalThis.AutoProcessor;
-                }
-                if (globalThis.MultiModalityCausalLM) {
-                    hf.MultiModalityCausalLM = globalThis.MultiModalityCausalLM;
-                }
-            }
         }
         if (!hf) {
             return { ok: false, reason: 'internal_error', message: 'Missing @huggingface/transformers. Install it (npm i @huggingface/transformers) or include it via a <script> to expose global "transformers".' };
-        }
-        // Debug: Verify hf has required classes before using them
-        console.log('[Janus] hf verification:', {
-            hf: !!hf,
-            hasAutoProcessor: !!(hf && hf.AutoProcessor),
-            AutoProcessorType: hf ? typeof hf.AutoProcessor : 'undefined',
-            hasFromPretrained: !!(hf && hf.AutoProcessor && typeof hf.AutoProcessor.from_pretrained === 'function'),
-            hasMultiModalityCausalLM: !!(hf && hf.MultiModalityCausalLM),
-            MultiModalityCausalLMType: hf ? typeof hf.MultiModalityCausalLM : 'undefined',
-            hfKeys: hf ? Object.keys(hf).filter(k => k.includes('Auto') || k.includes('Multi') || k.includes('Processor')).slice(0, 15) : [],
-            allHfKeys: hf ? Object.keys(hf).slice(0, 30) : [],
-            hfIsGlobalTransformers: hf === globalThis.transformers,
-            globalThisHasAutoProcessor: !!globalThis.AutoProcessor,
-            globalThisTransformersHasAutoProcessor: !!(globalThis.transformers && globalThis.transformers.AutoProcessor)
-        });
-        
-        // If AutoProcessor is missing, try to get it from globalThis directly
-        if (hf && !hf.AutoProcessor) {
-            console.log('[Janus] AutoProcessor missing from hf, checking globalThis directly...');
-            
-            // Try to get AutoProcessor from globalThis
-            let autoProcessor = globalThis.AutoProcessor;
-            let multiModalityCausalLM = globalThis.MultiModalityCausalLM;
-            
-            // Also check globalThis.transformers
-            if (!autoProcessor && globalThis.transformers && globalThis.transformers.AutoProcessor) {
-                autoProcessor = globalThis.transformers.AutoProcessor;
-            }
-            if (!multiModalityCausalLM && globalThis.transformers && globalThis.transformers.MultiModalityCausalLM) {
-                multiModalityCausalLM = globalThis.transformers.MultiModalityCausalLM;
-            }
-            
-            if (autoProcessor || multiModalityCausalLM) {
-                console.log('[Janus] Found classes on globalThis, creating new hf object...');
-                // Create a new object with all properties from hf plus the missing classes
-                const newHf = Object.assign({}, hf);
-                if (autoProcessor) {
-                    newHf.AutoProcessor = autoProcessor;
-                    console.log('[Janus] Added AutoProcessor to new hf object');
-                }
-                if (multiModalityCausalLM) {
-                    newHf.MultiModalityCausalLM = multiModalityCausalLM;
-                    console.log('[Janus] Added MultiModalityCausalLM to new hf object');
-                }
-                // Copy any other properties that might be missing
-                if (globalThis.transformers && globalThis.transformers !== hf) {
-                    Object.assign(newHf, globalThis.transformers);
-                }
-                hf = newHf;
-                console.log('[Janus] After creating new hf object:', {
-                    hasAutoProcessor: !!(hf && hf.AutoProcessor),
-                    hasMultiModalityCausalLM: !!(hf && hf.MultiModalityCausalLM)
-                });
-            }
         }
         // WebGPU adapter + shader-f16 capability check (for dtype selection)
         let fp16_supported = false;
@@ -869,35 +678,7 @@ class JanusProAdapter {
                     options.onProgress?.({ phase: 'loading', message: x?.status ?? 'loading…' });
                 }
             };
-            // Debug: Check what hf contains
-            console.log('[Janus] hf check:', {
-                hfExists: !!hf,
-                hfType: typeof hf,
-                hasAutoProcessor: !!(hf && hf.AutoProcessor),
-                AutoProcessorType: hf ? typeof hf.AutoProcessor : 'undefined',
-                hasFromPretrained: !!(hf && hf.AutoProcessor && hf.AutoProcessor.from_pretrained),
-                hfKeys: hf ? Object.keys(hf).filter(k => k.includes('Auto') || k.includes('Multi') || k.includes('Processor')).slice(0, 10) : []
-            });
-            if (!hf || !hf.AutoProcessor) {
-                return { ok: false, reason: 'internal_error', message: `hf.AutoProcessor is undefined. hf=${!!hf}, hf.AutoProcessor=${!!(hf && hf.AutoProcessor)}` };
-            }
-            console.log('[Janus] Calling AutoProcessor.from_pretrained with model_id:', model_id);
-            console.log('[Janus] progress_callback type:', typeof progress_callback);
-            
-            // Enhanced progress callback with logging
-            const loggedProgressCallback = (progress) => {
-                console.log('[Janus] Processor progress:', progress);
-                if (progress_callback) {
-                    progress_callback(progress);
-                }
-            };
-            
-            const processorP = hf.AutoProcessor.from_pretrained(model_id, { progress_callback: loggedProgressCallback }).catch((error) => {
-                console.error('[Janus] AutoProcessor.from_pretrained error:', error);
-                console.error('[Janus] Error stack:', error.stack);
-                throw error;
-            });
-            
+            const processorP = hf.AutoProcessor.from_pretrained(model_id, { progress_callback });
             const dtype = fp16_supported
                 ? { prepare_inputs_embeds: 'q4', language_model: 'q4f16', lm_head: 'fp16', gen_head: 'fp16', gen_img_embeds: 'fp16', image_decode: 'fp32' }
                 : { prepare_inputs_embeds: 'fp32', language_model: 'q4', lm_head: 'fp32', gen_head: 'fp32', gen_img_embeds: 'fp32', image_decode: 'fp32' };
@@ -911,70 +692,8 @@ class JanusProAdapter {
                 image_decode: 'webgpu',
             };
             options.onProgress?.({ phase: 'loading', message: 'Loading Janus-Pro-1B model…' });
-            
-            console.log('[Janus] Calling MultiModalityCausalLM.from_pretrained with model_id:', model_id);
-            console.log('[Janus] dtype:', dtype);
-            console.log('[Janus] device:', device);
-            
-            // Enhanced progress callback for model
-            const loggedModelProgressCallback = (progress) => {
-                console.log('[Janus] Model progress:', progress);
-                if (progress_callback) {
-                    progress_callback(progress);
-                }
-            };
-            
-            const modelP = hf.MultiModalityCausalLM.from_pretrained(model_id, { dtype, device, progress_callback: loggedModelProgressCallback }).catch((error) => {
-                console.error('[Janus] MultiModalityCausalLM.from_pretrained error:', error);
-                console.error('[Janus] Error stack:', error.stack);
-                throw error;
-            });
-            
-            // Add timeout and better error handling
-            console.log('[Janus] Starting processor and model loading...');
-            const processorStartTime = Date.now();
-            const modelStartTime = Date.now();
-            
-            // Add a timeout wrapper (30 minutes should be enough for large model downloads)
-            const TIMEOUT_MS = 30 * 60 * 1000;
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => {
-                    reject(new Error(`Model loading timed out after ${TIMEOUT_MS / 1000 / 60} minutes`));
-                }, TIMEOUT_MS);
-            });
-            
-            // Wrap promises with timeout and logging
-            const processorWithLogging = Promise.race([
-                processorP.then(
-                    (result) => {
-                        console.log('[Janus] Processor loaded in', Date.now() - processorStartTime, 'ms');
-                        return result;
-                    },
-                    (error) => {
-                        console.error('[Janus] Processor load failed:', error);
-                        throw error;
-                    }
-                ),
-                timeoutPromise
-            ]);
-            
-            const modelWithLogging = Promise.race([
-                modelP.then(
-                    (result) => {
-                        console.log('[Janus] Model loaded in', Date.now() - modelStartTime, 'ms');
-                        return result;
-                    },
-                    (error) => {
-                        console.error('[Janus] Model load failed:', error);
-                        throw error;
-                    }
-                ),
-                timeoutPromise
-            ]);
-            
-            console.log('[Janus] Waiting for both processor and model to load...');
-            const [processor, model] = await Promise.all([processorWithLogging, modelWithLogging]);
-            console.log('[Janus] Both processor and model loaded successfully');
+            const modelP = hf.MultiModalityCausalLM.from_pretrained(model_id, { dtype, device, progress_callback });
+            const [processor, model] = await Promise.all([processorP, modelP]);
             // Ensure a final 100% event for UIs even if callbacks were cached/quick
             if (typeof TOTAL_BYTES_APPROX === 'number') {
                 lastBytes = Math.max(lastBytes, TOTAL_BYTES_APPROX);
@@ -1285,36 +1004,20 @@ function handleAbortTimeout() {
 }
 function onMessage(ev) {
     const msg = ev.data;
-    console.log('[Worker] Received message:', msg);
-    if (!msg || typeof msg !== 'object' || !('kind' in msg)) {
-        console.log('[Worker] Invalid message format, ignoring');
+    if (!msg || typeof msg !== 'object' || !('kind' in msg))
         return;
-    }
-    console.log('[Worker] Handling message kind:', msg.kind);
     switch (msg.kind) {
         case 'detect': {
-            console.log('[Worker] Handling detect request');
             detectCapabilities()
-                .then((v) => {
-                    console.log('[Worker] detectCapabilities result:', v);
-                    post({ id: msg.id, type: 'result', ok: true, data: v });
-                })
-                .catch((e) => {
-                    console.error('[Worker] detectCapabilities error:', e);
-                    post({ id: msg.id, type: 'result', ok: false, reason: 'internal_error', message: String(e) });
-                });
+                .then((v) => post({ id: msg.id, type: 'result', ok: true, data: v }))
+                .catch((e) => post({ id: msg.id, type: 'result', ok: false, reason: 'internal_error', message: String(e) }));
             break;
         }
         case 'listModels': {
-            console.log('[Worker] Handling listModels request');
             try {
-                const models = listSupportedModels();
-                console.log('[Worker] listSupportedModels returned:', models);
-                post({ id: msg.id, type: 'result', ok: true, data: models });
-                console.log('[Worker] Sent listModels response');
+                post({ id: msg.id, type: 'result', ok: true, data: listSupportedModels() });
             }
             catch (e) {
-                console.error('[Worker] listModels error:', e);
                 post({ id: msg.id, type: 'result', ok: false, reason: 'internal_error', message: String(e) });
             }
             break;

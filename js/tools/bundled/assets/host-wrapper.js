@@ -14,7 +14,8 @@ try {
   console.log('[Worker] Async IIFE starting...');
   try {
     // Load Transformers.js and make it available globally
-    const transformersModule = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.x/dist/transformers.min.js');
+    // Fallback to older version if 3.0.0-alpha.19 still has issues, but trying standard v3 first as alphas are unstable
+    const transformersModule = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2/dist/transformers.min.js');
     
     // Log what we got from the module
     console.log('[Worker] Transformers module keys:', {
@@ -53,6 +54,9 @@ try {
     }
     if (transformersModule.env) {
       transformers.env = transformersModule.env;
+    }
+    if (transformersModule.pipeline) {
+      transformers.pipeline = transformersModule.pipeline;
     }
     
     // Final verification - check if properties are actually on the object
@@ -106,10 +110,30 @@ try {
         keys: globalThis.transformers ? Object.keys(globalThis.transformers).filter(k => k.includes('Auto') || k.includes('Multi') || k.includes('Processor')).slice(0, 15) : []
     });
     
+    // Explicitly find pipeline
+    let pipelineFn = transformersModule.pipeline;
+    if (!pipelineFn && transformersModule.default && transformersModule.default.pipeline) {
+      pipelineFn = transformersModule.default.pipeline;
+    }
+    
+    if (pipelineFn) {
+      transformers.pipeline = pipelineFn;
+      console.log('[Worker] Found pipeline function');
+    } else {
+      console.error('[Worker] Could not find pipeline function in module exports:', Object.keys(transformersModule));
+    }
+
+    // Explicitly find TextToImagePipeline
+    if (transformersModule.TextToImagePipeline) {
+      transformers.TextToImagePipeline = transformersModule.TextToImagePipeline;
+    }
+
     // Set individual globals for direct access (for SD-Turbo tokenizer)
     globalThis.AutoTokenizer = transformers.AutoTokenizer;
     globalThis.AutoProcessor = transformers.AutoProcessor;
     globalThis.MultiModalityCausalLM = transformers.MultiModalityCausalLM;
+    globalThis.TextToImagePipeline = transformers.TextToImagePipeline;
+    globalThis.pipeline = transformers.pipeline;
     globalThis.env = transformers.env;
     
     // Verify accessibility as the Janus adapter expects
@@ -146,12 +170,12 @@ try {
     }
     
     // Now import and execute the actual worker code
-    console.log('[Worker] Loading host-O6WzXidB.js...');
+    console.log('[Worker] Loading host-DT1risQB.js...');
     try {
-      await import('./host-O6WzXidB.js');
-      console.log('[Worker] host-O6WzXidB.js loaded successfully');
+      await import('./host-DT1risQB.js');
+      console.log('[Worker] host-DT1risQB.js loaded successfully');
     } catch (importErr) {
-      console.error('[Worker] Failed to import host-O6WzXidB.js:', importErr);
+      console.error('[Worker] Failed to import host-DT1risQB.js:', importErr);
       console.error('[Worker] Import error details:', {
         message: importErr.message,
         stack: importErr.stack,
@@ -170,7 +194,7 @@ try {
     // The worker will handle the error when it tries to use the tokenizer
     try {
       console.log('[Worker] Attempting to load worker without Transformers.js...');
-      await import('./host-O6WzXidB.js');
+      await import('./host-DT1risQB.js');
       console.log('[Worker] Worker loaded without Transformers.js');
     } catch (workerErr) {
       console.error('[Worker] Failed to load worker:', workerErr);
