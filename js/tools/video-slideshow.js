@@ -400,48 +400,46 @@ async function loadTTS() {
       device,
       dtype,
       progress_callback: (progress) => {
-        clearInterval(progressInterval); // Clear the periodic updates when real progress comes in
-        progressInterval = null;
+        if (progressInterval) {
+          clearInterval(progressInterval); // Clear the periodic updates when real progress comes in
+          progressInterval = null;
+        }
         
-        // progress might be a number between 0-1 (ratio), 0-100 (percentage), 0-10000 (basis points), or an object
+        // The progress callback can send various formats
+        // Based on the logs, it appears to send file progress where each file contributes
+        // and the total can exceed 100 if it's tracking file count/total
         let progressValue = 0;
         
-        if (typeof progress === 'number' && isFinite(progress)) {
+        if (progress && typeof progress === 'object') {
+          // Check for file property (file: { loaded, total, progress, ... })
+          if (progress.file) {
+            progressValue = progress.progress || 0;
+          }
+          // Check for loaded/total structure
+          else if (typeof progress.loaded === 'number' && typeof progress.total === 'number' && progress.total > 0) {
+            progressValue = (progress.loaded / progress.total) * 100;
+          }
+          // Check for direct progress/ratio/percent properties
+          else if (typeof progress.progress === 'number') {
+            progressValue = progress.progress;
+          } else if (typeof progress.ratio === 'number') {
+            progressValue = progress.ratio * 100;
+          } else if (typeof progress.percent === 'number') {
+            progressValue = progress.percent;
+          }
+        } else if (typeof progress === 'number' && isFinite(progress)) {
           progressValue = progress;
-        } else if (progress && typeof progress.percent === 'number' && isFinite(progress.percent)) {
-          progressValue = progress.percent;
-        } else if (progress && typeof progress.progress === 'number' && isFinite(progress.progress)) {
-          progressValue = progress.progress;
-        } else if (progress && typeof progress.ratio === 'number' && isFinite(progress.ratio)) {
-          progressValue = progress.ratio;
         }
         
-        // Normalize to 0-1 ratio
-        // Handle different formats:
-        // - If value is > 100, it might be in basis points (0-10000) or already multiplied
-        // - If value is > 1 and <= 100, it's likely a percentage (0-100)
-        // - If value is <= 1, it's likely a ratio (0-1)
-        let normalizedRatio = 0;
-        if (progressValue > 100) {
-          // Likely basis points (0-10000) or similar scale
-          normalizedRatio = progressValue / 10000;
-        } else if (progressValue > 1) {
-          // Likely percentage (0-100)
-          normalizedRatio = progressValue / 100;
-        } else {
-          // Likely ratio (0-1)
-          normalizedRatio = progressValue;
-        }
+        // Clamp percentage to 0-100 range
+        // The library may report > 100 when loading multiple files sequentially
+        const clampedPercent = Math.max(0, Math.min(100, progressValue));
         
-        // Clamp to valid range
-        const clampedRatio = Math.max(0, Math.min(1, normalizedRatio));
-        
-        const percent = Math.round(clampedRatio * 100);
         const baseProgress = 40;
         const maxProgress = 70;
-        const calculatedProgress = baseProgress + (clampedRatio * (maxProgress - baseProgress));
-        updateProgress(`Loading TTS model: ${percent}% (downloading/processing...)`, calculatedProgress);
-        console.log(`[Video Slideshow] TTS model loading progress: ${percent}% (raw: ${progressValue}, normalized: ${clampedRatio})`);
+        const calculatedProgress = baseProgress + ((clampedPercent / 100) * (maxProgress - baseProgress));
+        updateProgress(`Loading TTS model: ${Math.round(clampedPercent)}%`, calculatedProgress);
+        console.log(`[Video Slideshow] TTS model loading progress: ${Math.round(clampedPercent)}% (raw:`, progress, `)`);
       }
     });
     
@@ -1001,3 +999,4 @@ on(abortBtn, 'click', abortGeneration);
 on(clearBtn, 'click', clearInputs);
 on(downloadBtn, 'click', downloadVideo);
 
+// Model change handler - show/hide inference steps based on model

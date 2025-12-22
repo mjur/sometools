@@ -71,7 +71,7 @@ class Txt2ImgWorkerClient {
     static createDefault() {
         // Use the canonical Vite-friendly pattern so the worker is bundled in builds.
         // Publish-safe: point to .js; dev uses a shim at src/worker/host.js
-        const w = new Worker(new URL(/* @vite-ignore */ "/assets/host-O6WzXidB.js", import.meta.url), { type: 'module' });
+        const w = new Worker(new URL(/* @vite-ignore */ "/assets/host-DT1risQB.js", import.meta.url), { type: 'module' });
         return new Txt2ImgWorkerClient(w);
     }
     onMessage(ev) {
@@ -161,7 +161,7 @@ class Txt2ImgWorkerClient {
 }
 function createTxt2ImgWorker() {
     // Publish-safe: point to .js; dev uses a shim at src/worker/host.js
-    return new Worker(new URL(/* @vite-ignore */ "/assets/host-O6WzXidB.js", import.meta.url), { type: 'module' });
+    return new Worker(new URL(/* @vite-ignore */ "/assets/host-DT1risQB.js", import.meta.url), { type: 'module' });
 }
 
 // Expose the client class globally (using WebTxt2ImgClient as alias for compatibility)

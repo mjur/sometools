@@ -31,9 +31,6 @@ const clearOutputBtn = qs('#clear-output');
 const modelSelect = qs('#model-select');
 const seedInput = qs('#seed');
 const seedGroup = qs('#seed-group');
-const inferenceStepsInput = qs('#inference-steps');
-const stepsValueSpan = qs('#steps-value');
-const stepsGroup = qs('#steps-group');
 const output = qs('#output');
 const modelStatus = qs('#model-status');
 const progressContainer = qs('#progress-container');
@@ -742,14 +739,6 @@ async function generateImage() {
       }
     }
     
-    // Add inference steps for SD-Turbo
-    if (currentModel === 'sd-turbo' && inferenceStepsInput.value) {
-      const steps = parseInt(inferenceStepsInput.value, 10);
-      if (!isNaN(steps) && steps >= 1 && steps <= 4) {
-        params.num_inference_steps = steps;
-      }
-    }
-    
     const { promise, abort } = client.generate(
       params,
       (progress) => {
@@ -782,8 +771,7 @@ async function generateImage() {
       saveStateWithStorage({
         prompt,
         model: currentModel,
-        seed: seedInput.value || null,
-        steps: inferenceStepsInput.value || null
+        seed: seedInput.value || null
       }, 'image-generate-state');
     } else {
       throw new Error(actualResult.reason || actualResult.message || 'Generation failed');
@@ -891,13 +879,11 @@ on(purgeAllCacheBtn, 'click', purgeAllCaches);
 
 // Model change handler
 on(modelSelect, 'change', () => {
-  // Update seed and steps input visibility based on selected model
+  // Update seed input visibility based on selected model
   if (modelSelect.value === 'sd-turbo') {
     seedGroup.style.display = 'flex';
-    stepsGroup.style.display = 'flex';
   } else {
     seedGroup.style.display = 'none';
-    stepsGroup.style.display = 'none';
   }
   
   // If a different model is loaded, show a message but allow loading
@@ -907,18 +893,11 @@ on(modelSelect, 'change', () => {
   }
 });
 
-// Inference steps slider handler
-on(inferenceStepsInput, 'input', () => {
-  stepsValueSpan.textContent = inferenceStepsInput.value;
-});
-
 // Initial UI visibility - run once on load
 if (modelSelect.value === 'sd-turbo') {
   seedGroup.style.display = 'flex';
-  stepsGroup.style.display = 'flex';
 } else {
   seedGroup.style.display = 'none';
-  stepsGroup.style.display = 'none';
 }
 
 // Keyboard shortcut
@@ -939,10 +918,6 @@ if (state?.prompt) {
   promptInput.value = state.prompt;
   // Don't restore model - use HTML default
   if (state.seed) seedInput.value = state.seed;
-  if (state.steps) {
-    inferenceStepsInput.value = state.steps;
-    stepsValueSpan.textContent = state.steps;
-  }
 }
 
 // Initialize on load
