@@ -35,6 +35,7 @@ const TOOLS = [
   { url: '/convert/image-watermark', name: '© Image Watermark Tool', category: 'convert', description: 'Add text or image watermarks to images' },
   { url: '/convert/csv', name: '📊 CSV/TSV Converter', category: 'convert', description: 'Convert between CSV, TSV, and JSON formats' },
   { url: '/convert/video', name: '🎞️ Video Format Converter', category: 'convert', description: 'Convert videos between MP4, WebM, AVI, MOV, and MKV formats' },
+  { url: '/convert/video-edit', name: '🎬 Video Editor', category: 'convert', description: 'Trim, rotate, adjust speed, add filters, and edit videos in your browser' },
   { url: '/convert/video-audio', name: '🔊 Extract Audio from Video', category: 'convert', description: 'Extract audio tracks from video files and save as MP3, WAV, AAC, and other audio formats' },
   { url: '/convert/audio', name: '🎧 Audio Format Converter', category: 'convert', description: 'Convert audio files between MP3, WAV, OGG, M4A, FLAC, AAC, and Opus formats' },
   { url: '/convert/audio-stem-separator', name: '🎹 Audio Stem Separator', category: 'convert', description: 'Separate audio into stems (drums, bass, vocals, other) using Demucs AI model' },
