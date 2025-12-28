@@ -1,19 +1,13 @@
 // WebLLM AI Conversation Tool
-// Watch two AI models converse with each other
+// Watch multiple AI models converse with each other
 
 import { toast, on, qs } from '/js/ui.js';
 
 let CreateMLCEngine = null;
 let webllmApi = null;
-let ai1Engine = null;
-let ai2Engine = null;
 let isModelLoading = false;
 let isConversationRunning = false;
 
-const ai1ModelSelect = qs('#ai1-model-select');
-const ai2ModelSelect = qs('#ai2-model-select');
-const ai1SystemPrompt = qs('#ai1-system-prompt');
-const ai2SystemPrompt = qs('#ai2-system-prompt');
 const temperatureInput = qs('#temperature-input');
 const maxTokensInput = qs('#max-tokens-input');
 const maxTurnsInput = qs('#max-turns-input');
@@ -32,11 +26,66 @@ const interjectionPanel = qs('#interjection-panel');
 const interjectionInput = qs('#interjection-input');
 const submitInterjectionBtn = qs('#submit-interjection-btn');
 const cancelInterjectionBtn = qs('#cancel-interjection-btn');
+const addAiBtn = qs('#add-ai-btn');
+const aiConfigsContainer = qs('#ai-configurations-container');
 
 let conversationHistory = [];
 let shouldStopConversation = false;
 let isPaused = false;
 let interjectionMessage = null;
+let aiConfigs = []; // Array of {id, engine, modelSelect, systemPrompt, color}
+let nextAiId = 1;
+
+// Color palette for AIs
+const AI_COLORS = [
+  { bg: 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(59, 130, 246, 0.1) 100%)', border: '#3b82f6', text: '#3b82f6' }, // Blue
+  { bg: 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(16, 185, 129, 0.1) 100%)', border: '#10b981', text: '#10b981' }, // Green
+  { bg: 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(245, 158, 11, 0.1) 100%)', border: '#f59e0b', text: '#f59e0b' }, // Orange
+  { bg: 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(239, 68, 68, 0.1) 100%)', border: '#ef4444', text: '#ef4444' }, // Red
+  { bg: 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(168, 85, 247, 0.1) 100%)', border: '#a855f7', text: '#a855f7' }, // Purple
+  { bg: 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(236, 72, 153, 0.1) 100%)', border: '#ec4899', text: '#ec4899' }, // Pink
+  { bg: 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(20, 184, 166, 0.1) 100%)', border: '#14b8a6', text: '#14b8a6' }, // Teal
+  { bg: 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(99, 102, 241, 0.1) 100%)', border: '#6366f1', text: '#6366f1' }, // Indigo
+];
+
+const MODEL_OPTIONS = `
+  <optgroup label="Smallest Models (Recommended for Quick Start)">
+    <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5 0.5B Instruct (~300MB)</option>
+    <option value="Qwen2-0.5B-Instruct-q4f16_1-MLC">Qwen2 0.5B Instruct (~300MB)</option>
+    <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B Instruct (~600MB)</option>
+    <option value="TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC">TinyLlama 1.1B Chat v1.0 (~600MB)</option>
+    <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">SmolLM2 360M Instruct (~200MB)</option>
+  </optgroup>
+
+  <optgroup label="Small Models (Good Balance)">
+    <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B Instruct (~850MB)</option>
+    <option value="Qwen2-1.5B-Instruct-q4f16_1-MLC">Qwen2 1.5B Instruct (~850MB)</option>
+    <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B Instruct (~1.8GB)</option>
+    <option value="Hermes-3-Llama-3.2-3B-q4f16_1-MLC">Hermes 3 Llama 3.2 3B (~1.8GB)</option>
+    <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5 Mini Instruct (~2.3GB)</option>
+    <option value="Phi-3-mini-4k-instruct-q4f16_1-MLC">Phi-3 Mini 4K Instruct (~2.3GB)</option>
+  </optgroup>
+
+  <optgroup label="Medium Models (Better Quality)">
+    <option value="Llama-3.1-8B-Instruct-q4f16_1-MLC">Llama 3.1 8B Instruct (~4.6GB)</option>
+    <option value="Llama-3-8B-Instruct-q4f16_1-MLC">Llama 3 8B Instruct (~4.6GB)</option>
+    <option value="Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC">Hermes 2 Pro Llama 3 8B (~4.6GB)</option>
+    <option value="Hermes-3-Llama-3.1-8B-q4f16_1-MLC">Hermes 3 Llama 3.1 8B (~4.6GB)</option>
+    <option value="Qwen2.5-7B-Instruct-q4f16_1-MLC">Qwen2.5 7B Instruct (~3.8GB)</option>
+    <option value="Qwen2-7B-Instruct-q4f16_1-MLC">Qwen2 7B Instruct (~3.8GB)</option>
+    <option value="Mistral-7B-Instruct-v0.3-q4f16_1-MLC">Mistral 7B Instruct v0.3 (~3.8GB)</option>
+    <option value="Hermes-2-Pro-Mistral-7B-q4f16_1-MLC">Hermes 2 Pro Mistral 7B (~3.8GB)</option>
+  </optgroup>
+
+  <optgroup label="Specialized Models">
+    <option value="Qwen2.5-Math-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 Math 1.5B Instruct (~850MB)</option>
+    <option value="Qwen2-Math-7B-Instruct-q4f16_1-MLC">Qwen2 Math 7B Instruct (~3.8GB)</option>
+    <option value="Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC">Qwen2.5 Coder 7B Instruct (~3.8GB)</option>
+    <option value="WizardMath-7B-V1.1-q4f16_1-MLC">WizardMath 7B V1.1 (~3.8GB)</option>
+    <option value="DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC">DeepSeek R1 Distill Qwen 7B (~3.8GB)</option>
+    <option value="DeepSeek-R1-Distill-Llama-8B-q4f16_1-MLC">DeepSeek R1 Distill Llama 8B (~4.6GB)</option>
+  </optgroup>
+`;
 
 function checkWebGPUSupport() {
   return typeof navigator !== 'undefined' && !!navigator.gpu;
@@ -76,6 +125,157 @@ async function loadWebLLM() {
   }
 }
 
+function createAiConfig(index) {
+  const aiId = nextAiId++;
+  const color = AI_COLORS[index % AI_COLORS.length];
+  
+  const configDiv = document.createElement('div');
+  configDiv.className = 'ai-config';
+  configDiv.dataset.aiId = aiId;
+  configDiv.style.marginBottom = '1.5rem';
+  configDiv.style.padding = '1rem';
+  configDiv.style.background = 'var(--bg)';
+  configDiv.style.border = `2px solid ${color.border}`;
+  configDiv.style.borderRadius = '8px';
+  
+  const headerDiv = document.createElement('div');
+  headerDiv.style.display = 'flex';
+  headerDiv.style.justifyContent = 'space-between';
+  headerDiv.style.alignItems = 'center';
+  headerDiv.style.marginBottom = '0.75rem';
+  
+  const titleDiv = document.createElement('div');
+  titleDiv.style.fontWeight = '600';
+  titleDiv.style.fontSize = '1rem';
+  titleDiv.style.color = color.text;
+  titleDiv.textContent = `AI ${index + 1}`;
+  
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'secondary';
+  removeBtn.textContent = '× Remove';
+  removeBtn.style.padding = '0.25rem 0.5rem';
+  removeBtn.style.fontSize = '0.875rem';
+  removeBtn.onclick = () => removeAiConfig(aiId);
+  
+  headerDiv.appendChild(titleDiv);
+  if (aiConfigs.length > 1 || index > 0) {
+    headerDiv.appendChild(removeBtn);
+  }
+  
+  const modelLabel = document.createElement('label');
+  modelLabel.textContent = 'Model';
+  modelLabel.style.display = 'block';
+  modelLabel.style.marginBottom = '0.25rem';
+  
+  const modelSelect = document.createElement('select');
+  modelSelect.id = `ai${aiId}-model-select`;
+  modelSelect.innerHTML = MODEL_OPTIONS;
+  if (index === 0) {
+    modelSelect.value = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+  } else if (index === 1) {
+    modelSelect.value = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
+  }
+  modelSelect.style.width = '100%';
+  modelSelect.style.marginBottom = '0.75rem';
+  modelSelect.onchange = () => {
+    const config = aiConfigs.find(c => c.id === aiId);
+    if (config) config.engine = null;
+  };
+  
+  const promptLabel = document.createElement('label');
+  promptLabel.textContent = 'System Instructions';
+  promptLabel.style.display = 'block';
+  promptLabel.style.marginBottom = '0.25rem';
+  
+  const systemPrompt = document.createElement('textarea');
+  systemPrompt.id = `ai${aiId}-system-prompt`;
+  systemPrompt.rows = 3;
+  systemPrompt.placeholder = 'You are a helpful AI assistant. Be concise and informative.';
+  systemPrompt.value = 'You are a helpful AI assistant participating in a conversation. Be concise and informative.';
+  systemPrompt.style.width = '100%';
+  systemPrompt.style.resize = 'vertical';
+  systemPrompt.style.fontSize = '0.875rem';
+  
+  const hintDiv = document.createElement('small');
+  hintDiv.style.color = 'var(--muted)';
+  hintDiv.style.display = 'block';
+  hintDiv.style.marginTop = '0.25rem';
+  hintDiv.textContent = `Define AI ${index + 1}'s personality, role, or expertise`;
+  
+  configDiv.appendChild(headerDiv);
+  configDiv.appendChild(modelLabel);
+  configDiv.appendChild(modelSelect);
+  configDiv.appendChild(promptLabel);
+  configDiv.appendChild(systemPrompt);
+  configDiv.appendChild(hintDiv);
+  
+  const config = {
+    id: aiId,
+    index: index,
+    element: configDiv,
+    modelSelect: modelSelect,
+    systemPrompt: systemPrompt,
+    engine: null,
+    color: color
+  };
+  
+  aiConfigs.push(config);
+  return configDiv;
+}
+
+function removeAiConfig(aiId) {
+  if (aiConfigs.length <= 1) {
+    toast('You need at least one AI for a conversation.', 'error');
+    return;
+  }
+  
+  const configIndex = aiConfigs.findIndex(c => c.id === aiId);
+  if (configIndex === -1) return;
+  
+  const config = aiConfigs[configIndex];
+  config.element.remove();
+  aiConfigs.splice(configIndex, 1);
+  
+  // Update indices and titles
+  aiConfigs.forEach((c, idx) => {
+    c.index = idx;
+    c.color = AI_COLORS[idx % AI_COLORS.length];
+    c.element.style.borderColor = c.color.border;
+    const titleDiv = c.element.querySelector('div div');
+    if (titleDiv) {
+      titleDiv.textContent = `AI ${idx + 1}`;
+      titleDiv.style.color = c.color.text;
+    }
+    const hintDiv = c.element.querySelector('small');
+    if (hintDiv) {
+      hintDiv.textContent = `Define AI ${idx + 1}'s personality, role, or expertise`;
+    }
+  });
+  
+  toast(`AI removed. ${aiConfigs.length} AI${aiConfigs.length > 1 ? 's' : ''} remaining.`, 'success');
+}
+
+function addAiConfig() {
+  if (aiConfigs.length >= AI_COLORS.length) {
+    toast(`Maximum ${AI_COLORS.length} AIs supported.`, 'error');
+    return;
+  }
+  
+  const newConfig = createAiConfig(aiConfigs.length);
+  aiConfigsContainer.appendChild(newConfig);
+  toast(`AI ${aiConfigs.length} added!`, 'success');
+}
+
+function initializeAiConfigs() {
+  // Start with 2 AIs
+  aiConfigsContainer.innerHTML = '';
+  aiConfigs = [];
+  nextAiId = 1;
+  
+  aiConfigsContainer.appendChild(createAiConfig(0));
+  aiConfigsContainer.appendChild(createAiConfig(1));
+}
+
 async function checkModelsStatus() {
   try {
     modelsStatus.textContent = 'Checking models status...';
@@ -90,28 +290,28 @@ async function checkModelsStatus() {
       }
     }
 
-    const ai1Model = ai1ModelSelect.value;
-    const ai2Model = ai2ModelSelect.value;
-
-    if (!ai1Model || !ai2Model) {
-      modelsStatus.textContent = 'Please select models for both AIs.';
-      modelsStatus.style.color = 'var(--error)';
-      return false;
+    let statusText = '';
+    let allCached = true;
+    
+    for (const config of aiConfigs) {
+      const modelValue = config.modelSelect.value;
+      if (!modelValue) {
+        statusText += `AI ${config.index + 1}: No model selected\n`;
+        allCached = false;
+        continue;
+      }
+      
+      const isCached = await webllmApi.hasModelInCache(modelValue);
+      statusText += `AI ${config.index + 1} (${modelValue}): ${isCached ? '✓ Cached' : '✗ Not cached'}\n`;
+      if (!isCached) allCached = false;
     }
 
-    const ai1Cached = await webllmApi.hasModelInCache(ai1Model);
-    const ai2Cached = await webllmApi.hasModelInCache(ai2Model);
-
-    let statusText = '';
-    statusText += `AI 1 (${ai1Model}): ${ai1Cached ? '✓ Cached' : '✗ Not cached'}\n`;
-    statusText += `AI 2 (${ai2Model}): ${ai2Cached ? '✓ Cached' : '✗ Not cached'}`;
-
-    if (ai1Cached && ai2Cached) {
-      modelsStatus.textContent = statusText + '\n\n✓ Both models are ready!';
+    if (allCached) {
+      modelsStatus.textContent = statusText + '\n✓ All models are ready!';
       modelsStatus.style.color = 'var(--ok)';
       return true;
     } else {
-      modelsStatus.textContent = statusText + '\n\n✗ Click "Download & Cache Models" to download missing models.';
+      modelsStatus.textContent = statusText + '\n✗ Click "Download & Cache Models" to download missing models.';
       modelsStatus.style.color = 'var(--error)';
       return false;
     }
@@ -125,14 +325,6 @@ async function checkModelsStatus() {
 async function downloadModels() {
   if (isModelLoading) {
     toast('Models are already loading. Please wait...', 'info');
-    return;
-  }
-
-  const ai1Model = ai1ModelSelect.value;
-  const ai2Model = ai2ModelSelect.value;
-
-  if (!ai1Model || !ai2Model) {
-    toast('Please select models for both AIs.', 'error');
     return;
   }
 
@@ -153,57 +345,35 @@ async function downloadModels() {
       throw new Error('WebLLM CreateMLCEngine is not available. Please refresh the page.');
     }
 
-    // Download AI 1 model
-    modelsStatus.textContent = `Downloading AI 1 model "${ai1Model}"... This may take several minutes.`;
-    modelsStatus.style.color = 'var(--muted)';
-    toast(`Starting download of ${ai1Model}...`, 'info');
-
-    let engine1;
-    try {
-      engine1 = await createEngine(
-        ai1Model,
-        {
-          initProgressCallback: (report) => {
-            if (hasError) return;
-            const progress = report.progress || 0;
-            const text = report.text || '';
-            const percentage = (progress * 100).toFixed(1);
-            modelsStatus.textContent = `AI 1 Model: ${percentage}% - ${text}`;
-          },
-          gpuDevice: null,
-        }
-      );
-    } catch (engineError) {
-      setError(engineError.message);
-      throw engineError;
+    // Track unique models to avoid loading the same model twice
+    const uniqueModels = new Map();
+    for (const config of aiConfigs) {
+      const modelValue = config.modelSelect.value;
+      if (modelValue && !uniqueModels.has(modelValue)) {
+        uniqueModels.set(modelValue, []);
+      }
+      if (modelValue) {
+        uniqueModels.get(modelValue).push(config);
+      }
     }
 
-    ai1Engine = engine1;
-    toast('AI 1 model loaded!', 'success');
-
-    // Check if AI 2 uses the same model
-    if (ai1Model === ai2Model) {
-      ai2Engine = engine1; // Reuse the same engine
-      modelsStatus.textContent = `✓ Both models loaded (using same model: "${ai1Model}")`;
-      modelsStatus.style.color = 'var(--ok)';
-      toast('Both models ready (shared model)!', 'success');
-    } else {
-      // Download AI 2 model
-      modelsStatus.textContent = `Downloading AI 2 model "${ai2Model}"... This may take several minutes.`;
+    // Load each unique model
+    for (const [modelName, configs] of uniqueModels.entries()) {
+      modelsStatus.textContent = `Downloading model "${modelName}"... This may take several minutes.`;
       modelsStatus.style.color = 'var(--muted)';
-      toast(`Starting download of ${ai2Model}...`, 'info');
+      toast(`Starting download of ${modelName}...`, 'info');
 
-      let engine2;
+      let engine;
       try {
-        engine2 = await createEngine(
-          ai2Model,
+        engine = await createEngine(
+          modelName,
           {
             initProgressCallback: (report) => {
               if (hasError) return;
               const progress = report.progress || 0;
               const text = report.text || '';
               const percentage = (progress * 100).toFixed(1);
-              modelsStatus.textContent = `AI 2 Model: ${percentage}% - ${text}`;
+              modelsStatus.textContent = `${modelName}: ${percentage}% - ${text}`;
             },
             gpuDevice: null,
           }
@@ -213,11 +383,17 @@ async function downloadModels() {
         throw engineError;
       }
 
-      ai2Engine = engine2;
-      modelsStatus.textContent = `✓ Both models loaded!\nAI 1: ${ai1Model}\nAI 2: ${ai2Model}`;
-      modelsStatus.style.color = 'var(--ok)';
-      toast('Both models loaded!', 'success');
+      // Assign the engine to all configs using this model
+      for (const config of configs) {
+        config.engine = engine;
+      }
+      
+      toast(`${modelName} loaded!`, 'success');
     }
+
+    modelsStatus.textContent = `✓ All ${uniqueModels.size} unique model(s) loaded!`;
+    modelsStatus.style.color = 'var(--ok)';
+    toast('All models loaded!', 'success');
 
     isModelLoading = false;
     downloadModelsBtn.disabled = false;
@@ -246,13 +422,6 @@ async function downloadModels() {
 }
 
 async function initializeEngines() {
-  const ai1Model = ai1ModelSelect.value;
-  const ai2Model = ai2ModelSelect.value;
-
-  if (!ai1Model || !ai2Model) {
-    throw new Error('Please select models for both AIs.');
-  }
-
   let hasError = false;
   let errorMessage = null;
   const setError = (msg) => {
@@ -266,15 +435,38 @@ async function initializeEngines() {
       throw new Error('WebLLM CreateMLCEngine is not available. Please refresh the page.');
     }
 
-    // Initialize AI 1 engine if not already loaded
-    if (!ai1Engine) {
-      toast('Loading AI 1 model from cache...', 'info');
-      modelsStatus.textContent = 'Loading AI 1 model...';
+    // Track unique models
+    const uniqueModels = new Map();
+    for (const config of aiConfigs) {
+      const modelValue = config.modelSelect.value;
+      if (modelValue && !uniqueModels.has(modelValue)) {
+        uniqueModels.set(modelValue, []);
+      }
+      if (modelValue) {
+        uniqueModels.get(modelValue).push(config);
+      }
+    }
 
-      let engine1;
+    // Load engines for each unique model
+    for (const [modelName, configs] of uniqueModels.entries()) {
+      // Check if any config already has this engine loaded
+      const existingEngine = configs.find(c => c.engine)?.engine;
+      
+      if (existingEngine) {
+        // Reuse existing engine
+        for (const config of configs) {
+          config.engine = existingEngine;
+        }
+        continue;
+      }
+
+      toast(`Loading ${modelName} from cache...`, 'info');
+      modelsStatus.textContent = `Loading ${modelName}...`;
+
+      let engine;
       try {
-        engine1 = await createEngine(
-          ai1Model,
+        engine = await createEngine(
+          modelName,
           {
             initProgressCallback: (report) => {
               if (hasError) return;
@@ -282,7 +474,7 @@ async function initializeEngines() {
               const text = report.text || '';
               if (progress < 1) {
                 const percentage = (progress * 100).toFixed(1);
-                modelsStatus.textContent = `AI 1: Loading ${percentage}% - ${text}`;
+                modelsStatus.textContent = `${modelName}: Loading ${percentage}% - ${text}`;
               }
             },
             gpuDevice: null,
@@ -293,50 +485,15 @@ async function initializeEngines() {
         throw engineError;
       }
 
-      ai1Engine = engine1;
-      toast('AI 1 model loaded!', 'success');
-    }
-
-    // Initialize AI 2 engine if not already loaded
-    if (!ai2Engine) {
-      if (ai1Model === ai2Model) {
-        ai2Engine = ai1Engine; // Reuse the same engine
-        modelsStatus.textContent = `✓ Both models ready (shared: ${ai1Model})`;
-        toast('Both models ready!', 'success');
-      } else {
-        toast('Loading AI 2 model from cache...', 'info');
-        modelsStatus.textContent = 'Loading AI 2 model...';
-
-        let engine2;
-        try {
-          engine2 = await createEngine(
-            ai2Model,
-            {
-              initProgressCallback: (report) => {
-                if (hasError) return;
-                const progress = report.progress || 0;
-                const text = report.text || '';
-                if (progress < 1) {
-                  const percentage = (progress * 100).toFixed(1);
-                  modelsStatus.textContent = `AI 2: Loading ${percentage}% - ${text}`;
-                }
-              },
-              gpuDevice: null,
-            }
-          );
-        } catch (engineError) {
-          setError(engineError.message);
-          throw engineError;
-        }
-
-        ai2Engine = engine2;
-        modelsStatus.textContent = `✓ Both models ready!\nAI 1: ${ai1Model}\nAI 2: ${ai2Model}`;
-        toast('Both models ready!', 'success');
+      for (const config of configs) {
+        config.engine = engine;
       }
+      toast(`${modelName} loaded!`, 'success');
     }
 
+    modelsStatus.textContent = `✓ All models ready!`;
     modelsStatus.style.color = 'var(--ok)';
-    return { ai1Engine, ai2Engine };
+    toast('All models ready!', 'success');
   } catch (e) {
     setError(e.message || 'Unknown error');
     const errorMsg = errorMessage || e.message || 'Unknown error';
@@ -350,30 +507,45 @@ async function initializeEngines() {
   }
 }
 
-function appendMessage(speaker, content) {
+function appendMessage(speaker, content, aiIndex = -1) {
   const messageDiv = document.createElement('div');
-  messageDiv.className = `ai-message ${speaker}`;
+  messageDiv.className = `ai-message`;
   
-  // Special styling for user interjections
+  // Determine styling based on speaker
+  let speakerName;
+  let color;
+  
   if (speaker === 'user') {
+    speakerName = 'You';
     messageDiv.style.background = 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(168, 85, 247, 0.1) 100%)';
     messageDiv.style.borderLeft = '3px solid #a855f7';
+    color = { text: '#a855f7' };
+  } else {
+    const config = aiConfigs[aiIndex];
+    speakerName = `AI ${aiIndex + 1}`;
+    color = config.color;
+    messageDiv.style.background = color.bg;
+    messageDiv.style.borderLeft = `3px solid ${color.border}`;
   }
+  
+  messageDiv.style.marginBottom = '1rem';
+  messageDiv.style.padding = '0.75rem';
+  messageDiv.style.borderRadius = '6px';
+  messageDiv.style.border = '1px solid var(--border)';
   
   const speakerDiv = document.createElement('div');
   speakerDiv.className = 'speaker';
-  if (speaker === 'ai1') {
-    speakerDiv.textContent = 'AI 1';
-  } else if (speaker === 'ai2') {
-    speakerDiv.textContent = 'AI 2';
-  } else {
-    speakerDiv.textContent = 'You';
-    speakerDiv.style.color = '#a855f7';
-  }
+  speakerDiv.textContent = speakerName;
+  speakerDiv.style.fontWeight = '600';
+  speakerDiv.style.marginBottom = '0.25rem';
+  speakerDiv.style.fontSize = '0.875rem';
+  speakerDiv.style.color = color.text;
   
   const contentDiv = document.createElement('div');
   contentDiv.className = 'content';
   contentDiv.textContent = content;
+  contentDiv.style.whiteSpace = 'pre-wrap';
+  contentDiv.style.lineHeight = '1.5';
   
   messageDiv.appendChild(speakerDiv);
   messageDiv.appendChild(contentDiv);
@@ -384,7 +556,7 @@ function appendMessage(speaker, content) {
   return messageDiv;
 }
 
-async function generateResponse(engine, messages, speaker, systemPrompt) {
+async function generateResponse(engine, messages, aiIndex, systemPrompt) {
   try {
     const temperature = parseFloat(temperatureInput.value) || 0.7;
     const maxTokens = parseInt(maxTokensInput.value) || 256;
@@ -431,7 +603,7 @@ async function generateResponse(engine, messages, speaker, systemPrompt) {
     
     return reply.trim();
   } catch (error) {
-    console.error(`Error generating response for ${speaker}:`, error);
+    console.error(`Error generating response for AI ${aiIndex + 1}:`, error);
     throw error;
   }
 }
@@ -443,20 +615,28 @@ async function startConversation() {
     return;
   }
 
+  if (aiConfigs.length === 0) {
+    toast('Please add at least one AI.', 'error');
+    return;
+  }
+
   try {
     // Disable controls
     startConversationBtn.disabled = true;
     pauseConversationBtn.disabled = false;
     stopConversationBtn.disabled = false;
     conversationTopic.disabled = true;
-    ai1ModelSelect.disabled = true;
-    ai2ModelSelect.disabled = true;
-    ai1SystemPrompt.disabled = true;
-    ai2SystemPrompt.disabled = true;
     temperatureInput.disabled = true;
     maxTokensInput.disabled = true;
     maxTurnsInput.disabled = true;
     downloadModelsBtn.disabled = true;
+    addAiBtn.disabled = true;
+    
+    // Disable all AI configs
+    aiConfigs.forEach(config => {
+      config.modelSelect.disabled = true;
+      config.systemPrompt.disabled = true;
+    });
     
     isConversationRunning = true;
     shouldStopConversation = false;
@@ -488,126 +668,64 @@ async function startConversation() {
     topicDiv.innerHTML = `<strong>Topic:</strong> ${topic}`;
     conversationLog.appendChild(topicDiv);
     
-    // Conversation loop
+    // Conversation loop - cycle through all AIs
     for (let turn = 0; turn < maxTurns && !shouldStopConversation; turn++) {
-      // Check for user interjection
-      if (isPaused) {
-        // Wait for user to submit interjection or cancel
-        await waitForInterjection();
+      for (let aiIndex = 0; aiIndex < aiConfigs.length && !shouldStopConversation; aiIndex++) {
+        const config = aiConfigs[aiIndex];
         
-        if (interjectionMessage) {
-          // Add user's interjection to the conversation
-          conversationHistory.push({
-            role: 'user',
-            content: interjectionMessage
-          });
-          appendMessage('user', interjectionMessage);
-          interjectionMessage = null;
+        // Check for user interjection
+        if (isPaused) {
+          await waitForInterjection();
+          
+          if (interjectionMessage) {
+            conversationHistory.push({
+              role: 'user',
+              content: interjectionMessage
+            });
+            appendMessage('user', interjectionMessage);
+            interjectionMessage = null;
+          }
+          
+          isPaused = false;
+          if (shouldStopConversation) break;
         }
         
-        isPaused = false;
-        
         if (shouldStopConversation) break;
-      }
-      
-      // AI 1's turn
-      if (shouldStopConversation) break;
-      
-      modelsStatus.textContent = `Turn ${turn + 1}/${maxTurns} - AI 1 is thinking...`;
-      modelsStatus.style.color = 'var(--accent)';
-      
-      try {
-        // For AI 1, the conversation history should end with a 'user' message
-        const ai1SystemInstructions = ai1SystemPrompt?.value || '';
-        const ai1Response = await generateResponse(
-          ai1Engine,
-          conversationHistory,
-          'ai1',
-          ai1SystemInstructions
-        );
         
-        // Add AI 1's response to history as 'assistant'
-        conversationHistory.push({
-          role: 'assistant',
-          content: ai1Response
-        });
+        modelsStatus.textContent = `Turn ${turn + 1}/${maxTurns} - AI ${aiIndex + 1} is thinking...`;
+        modelsStatus.style.color = 'var(--accent)';
         
-        appendMessage('ai1', ai1Response);
-      } catch (error) {
-        toast(`AI 1 error: ${error.message}`, 'error');
-        appendMessage('ai1', `[Error: ${error.message}]`);
-        break;
-      }
-      
-      if (shouldStopConversation) break;
-      
-      // Check for pause after AI 1's turn
-      if (isPaused) {
-        await waitForInterjection();
-        
-        if (interjectionMessage) {
-          // Add user's interjection - convert AI 1's last message to user perspective
-          const ai2History = conversationHistory.map((msg) => {
+        try {
+          // Transform history so all 'assistant' messages become 'user' for this AI
+          const aiHistory = conversationHistory.map((msg) => {
             if (msg.role === 'assistant') {
               return { role: 'user', content: msg.content };
             }
             return msg;
           });
           
-          // Add interjection
-          ai2History.push({
-            role: 'user',
-            content: interjectionMessage
-          });
+          const systemInstructions = config.systemPrompt.value || '';
+          const aiResponse = await generateResponse(
+            config.engine,
+            aiHistory,
+            aiIndex,
+            systemInstructions
+          );
           
+          // Add response to history
+          // Use 'assistant' for first AI, 'user' for others so they alternate properly
           conversationHistory.push({
-            role: 'user',
-            content: interjectionMessage
+            role: aiIndex === 0 ? 'assistant' : 'user',
+            content: aiResponse
           });
           
-          appendMessage('user', interjectionMessage);
-          interjectionMessage = null;
+          appendMessage('ai', aiResponse, aiIndex);
+        } catch (error) {
+          toast(`AI ${aiIndex + 1} error: ${error.message}`, 'error');
+          appendMessage('ai', `[Error: ${error.message}]`, aiIndex);
+          shouldStopConversation = true;
+          break;
         }
-        
-        isPaused = false;
-        
-        if (shouldStopConversation) break;
-      }
-      
-      // AI 2's turn
-      modelsStatus.textContent = `Turn ${turn + 1}/${maxTurns} - AI 2 is thinking...`;
-      
-      try {
-        // For AI 2, we need to transform the history so AI 1's response becomes a 'user' message
-        // Create a copy of history where the last 'assistant' message is converted to 'user'
-        const ai2History = conversationHistory.map((msg, idx) => {
-          // Convert all 'assistant' messages to 'user' for AI 2's perspective
-          // This makes it seem like AI 1's messages are coming from the user
-          if (msg.role === 'assistant') {
-            return { role: 'user', content: msg.content };
-          }
-          return msg;
-        });
-        
-        const ai2SystemInstructions = ai2SystemPrompt?.value || '';
-        const ai2Response = await generateResponse(
-          ai2Engine,
-          ai2History,
-          'ai2',
-          ai2SystemInstructions
-        );
-        
-        // Add AI 2's response to history as 'user' (so it becomes input for AI 1 next turn)
-        conversationHistory.push({
-          role: 'user',
-          content: ai2Response
-        });
-        
-        appendMessage('ai2', ai2Response);
-      } catch (error) {
-        toast(`AI 2 error: ${error.message}`, 'error');
-        appendMessage('ai2', `[Error: ${error.message}]`);
-        break;
       }
     }
     
@@ -631,14 +749,17 @@ async function startConversation() {
     pauseConversationBtn.disabled = true;
     stopConversationBtn.disabled = true;
     conversationTopic.disabled = false;
-    ai1ModelSelect.disabled = false;
-    ai2ModelSelect.disabled = false;
-    ai1SystemPrompt.disabled = false;
-    ai2SystemPrompt.disabled = false;
     temperatureInput.disabled = false;
     maxTokensInput.disabled = false;
     maxTurnsInput.disabled = false;
     downloadModelsBtn.disabled = false;
+    addAiBtn.disabled = false;
+    
+    // Re-enable all AI configs
+    aiConfigs.forEach(config => {
+      config.modelSelect.disabled = false;
+      config.systemPrompt.disabled = false;
+    });
     
     // Hide interjection panel if shown
     if (interjectionPanel) {
@@ -738,7 +859,7 @@ function stopConversation() {
 }
 
 function clearConversation() {
-  conversationLog.innerHTML = '<p class="text-sm text-muted">Select models, enter a conversation topic, then click "Start Conversation" to watch two AIs discuss the topic.</p>';
+  conversationLog.innerHTML = '<p class="text-sm text-muted">Select models, enter a conversation topic, then click "Start Conversation" to watch the AIs discuss the topic.</p>';
   conversationHistory = [];
 }
 
@@ -751,16 +872,16 @@ if (modelSelectionToggle && modelSelectionPane) {
     if (isCollapsed) {
       modelSelectionPane.classList.remove('collapsed');
       modelSelectionToggle.textContent = '−';
-      modelSelectionToggle.title = 'Collapse model configuration';
+      modelSelectionToggle.title = 'Collapse AI configuration';
     } else {
       modelSelectionPane.classList.add('collapsed');
       modelSelectionToggle.textContent = '+';
-      modelSelectionToggle.title = 'Expand model configuration';
+      modelSelectionToggle.title = 'Expand AI configuration';
     }
   });
   
   if (modelSelectionToggle) {
-    modelSelectionToggle.title = 'Collapse model configuration';
+    modelSelectionToggle.title = 'Collapse AI configuration';
   }
 }
 
@@ -773,6 +894,7 @@ if (stopConversationBtn) on(stopConversationBtn, 'click', stopConversation);
 if (clearConversationBtn) on(clearConversationBtn, 'click', clearConversation);
 if (submitInterjectionBtn) on(submitInterjectionBtn, 'click', submitInterjection);
 if (cancelInterjectionBtn) on(cancelInterjectionBtn, 'click', cancelInterjection);
+if (addAiBtn) on(addAiBtn, 'click', addAiConfig);
 
 // Allow Enter to submit interjection (Shift+Enter for new line)
 if (interjectionInput) {
@@ -784,22 +906,8 @@ if (interjectionInput) {
   });
 }
 
-// Model change handlers
-if (ai1ModelSelect) {
-  on(ai1ModelSelect, 'change', () => {
-    ai1Engine = null;
-    modelsStatus.textContent = 'AI 1 model changed. Click "Check Models Status" or "Download & Cache Models".';
-    modelsStatus.style.color = 'var(--muted)';
-  });
-}
-
-if (ai2ModelSelect) {
-  on(ai2ModelSelect, 'change', () => {
-    ai2Engine = null;
-    modelsStatus.textContent = 'AI 2 model changed. Click "Check Models Status" or "Download & Cache Models".';
-    modelsStatus.style.color = 'var(--muted)';
-  });
-}
+// Initialize with 2 AIs
+initializeAiConfigs();
 
 // On load: check WebGPU and models status
 if (!checkWebGPUSupport()) {
@@ -810,4 +918,3 @@ if (!checkWebGPUSupport()) {
 } else {
   checkModelsStatus().catch(console.error);
 }
-
