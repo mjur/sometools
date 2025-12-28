@@ -20,14 +20,21 @@ const checkModelsBtn = qs('#check-models-btn');
 const modelsStatus = qs('#models-status');
 const conversationTopic = qs('#conversation-topic');
 const startConversationBtn = qs('#start-conversation-btn');
+const pauseConversationBtn = qs('#pause-conversation-btn');
 const stopConversationBtn = qs('#stop-conversation-btn');
 const clearConversationBtn = qs('#clear-conversation-btn');
 const conversationLog = qs('#conversation-log');
 const modelSelectionToggle = qs('#model-selection-toggle');
 const modelSelectionPane = qs('#model-selection-pane');
+const interjectionPanel = qs('#interjection-panel');
+const interjectionInput = qs('#interjection-input');
+const submitInterjectionBtn = qs('#submit-interjection-btn');
+const cancelInterjectionBtn = qs('#cancel-interjection-btn');
 
 let conversationHistory = [];
 let shouldStopConversation = false;
+let isPaused = false;
+let interjectionMessage = null;
 
 function checkWebGPUSupport() {
   return typeof navigator !== 'undefined' && !!navigator.gpu;
@@ -345,9 +352,22 @@ function appendMessage(speaker, content) {
   const messageDiv = document.createElement('div');
   messageDiv.className = `ai-message ${speaker}`;
   
+  // Special styling for user interjections
+  if (speaker === 'user') {
+    messageDiv.style.background = 'linear-gradient(135deg, var(--bg-elev) 0%, rgba(168, 85, 247, 0.1) 100%)';
+    messageDiv.style.borderLeft = '3px solid #a855f7';
+  }
+  
   const speakerDiv = document.createElement('div');
   speakerDiv.className = 'speaker';
-  speakerDiv.textContent = speaker === 'ai1' ? 'AI 1' : 'AI 2';
+  if (speaker === 'ai1') {
+    speakerDiv.textContent = 'AI 1';
+  } else if (speaker === 'ai2') {
+    speakerDiv.textContent = 'AI 2';
+  } else {
+    speakerDiv.textContent = 'You';
+    speakerDiv.style.color = '#a855f7';
+  }
   
   const contentDiv = document.createElement('div');
   contentDiv.className = 'content';
@@ -413,6 +433,7 @@ async function startConversation() {
   try {
     // Disable controls
     startConversationBtn.disabled = true;
+    pauseConversationBtn.disabled = false;
     stopConversationBtn.disabled = false;
     conversationTopic.disabled = true;
     ai1ModelSelect.disabled = true;
@@ -424,6 +445,8 @@ async function startConversation() {
     
     isConversationRunning = true;
     shouldStopConversation = false;
+    isPaused = false;
+    interjectionMessage = null;
     conversationHistory = [];
     
     // Clear previous conversation
@@ -452,6 +475,26 @@ async function startConversation() {
     
     // Conversation loop
     for (let turn = 0; turn < maxTurns && !shouldStopConversation; turn++) {
+      // Check for user interjection
+      if (isPaused) {
+        // Wait for user to submit interjection or cancel
+        await waitForInterjection();
+        
+        if (interjectionMessage) {
+          // Add user's interjection to the conversation
+          conversationHistory.push({
+            role: 'user',
+            content: interjectionMessage
+          });
+          appendMessage('user', interjectionMessage);
+          interjectionMessage = null;
+        }
+        
+        isPaused = false;
+        
+        if (shouldStopConversation) break;
+      }
+      
       // AI 1's turn
       if (shouldStopConversation) break;
       
@@ -480,6 +523,39 @@ async function startConversation() {
       }
       
       if (shouldStopConversation) break;
+      
+      // Check for pause after AI 1's turn
+      if (isPaused) {
+        await waitForInterjection();
+        
+        if (interjectionMessage) {
+          // Add user's interjection - convert AI 1's last message to user perspective
+          const ai2History = conversationHistory.map((msg) => {
+            if (msg.role === 'assistant') {
+              return { role: 'user', content: msg.content };
+            }
+            return msg;
+          });
+          
+          // Add interjection
+          ai2History.push({
+            role: 'user',
+            content: interjectionMessage
+          });
+          
+          conversationHistory.push({
+            role: 'user',
+            content: interjectionMessage
+          });
+          
+          appendMessage('user', interjectionMessage);
+          interjectionMessage = null;
+        }
+        
+        isPaused = false;
+        
+        if (shouldStopConversation) break;
+      }
       
       // AI 2's turn
       modelsStatus.textContent = `Turn ${turn + 1}/${maxTurns} - AI 2 is thinking...`;
@@ -533,6 +609,7 @@ async function startConversation() {
   } finally {
     // Re-enable controls
     startConversationBtn.disabled = false;
+    pauseConversationBtn.disabled = true;
     stopConversationBtn.disabled = true;
     conversationTopic.disabled = false;
     ai1ModelSelect.disabled = false;
@@ -542,8 +619,94 @@ async function startConversation() {
     maxTurnsInput.disabled = false;
     downloadModelsBtn.disabled = false;
     
+    // Hide interjection panel if shown
+    if (interjectionPanel) {
+      interjectionPanel.style.display = 'none';
+    }
+    
     isConversationRunning = false;
+    isPaused = false;
   }
+}
+
+function pauseConversation() {
+  if (isConversationRunning && !isPaused) {
+    isPaused = true;
+    pauseConversationBtn.disabled = true;
+    modelsStatus.textContent = '⏸️ Conversation paused - Enter your message below';
+    modelsStatus.style.color = 'var(--accent)';
+    
+    // Show interjection panel
+    if (interjectionPanel) {
+      interjectionPanel.style.display = 'block';
+      if (interjectionInput) {
+        interjectionInput.value = '';
+        interjectionInput.focus();
+      }
+    }
+    
+    toast('Conversation paused. Enter your message to interject.', 'info');
+  }
+}
+
+function waitForInterjection() {
+  return new Promise((resolve) => {
+    const checkInterval = setInterval(() => {
+      if (!isPaused || shouldStopConversation) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 100);
+  });
+}
+
+function submitInterjection() {
+  const message = interjectionInput?.value?.trim();
+  
+  if (!message) {
+    toast('Please enter a message to interject.', 'error');
+    return;
+  }
+  
+  interjectionMessage = message;
+  isPaused = false;
+  
+  // Hide interjection panel
+  if (interjectionPanel) {
+    interjectionPanel.style.display = 'none';
+  }
+  
+  // Re-enable pause button
+  if (pauseConversationBtn) {
+    pauseConversationBtn.disabled = false;
+  }
+  
+  modelsStatus.textContent = '▶️ Resuming conversation...';
+  modelsStatus.style.color = 'var(--accent)';
+  toast('Message added. Resuming conversation...', 'success');
+}
+
+function cancelInterjection() {
+  isPaused = false;
+  interjectionMessage = null;
+  
+  // Hide interjection panel
+  if (interjectionPanel) {
+    interjectionPanel.style.display = 'none';
+  }
+  
+  // Re-enable pause button
+  if (pauseConversationBtn) {
+    pauseConversationBtn.disabled = false;
+  }
+  
+  if (interjectionInput) {
+    interjectionInput.value = '';
+  }
+  
+  modelsStatus.textContent = '▶️ Resuming conversation...';
+  modelsStatus.style.color = 'var(--accent)';
+  toast('Interjection cancelled. Resuming conversation...', 'info');
 }
 
 function stopConversation() {
@@ -584,8 +747,21 @@ if (modelSelectionToggle && modelSelectionPane) {
 if (downloadModelsBtn) on(downloadModelsBtn, 'click', downloadModels);
 if (checkModelsBtn) on(checkModelsBtn, 'click', checkModelsStatus);
 if (startConversationBtn) on(startConversationBtn, 'click', startConversation);
+if (pauseConversationBtn) on(pauseConversationBtn, 'click', pauseConversation);
 if (stopConversationBtn) on(stopConversationBtn, 'click', stopConversation);
 if (clearConversationBtn) on(clearConversationBtn, 'click', clearConversation);
+if (submitInterjectionBtn) on(submitInterjectionBtn, 'click', submitInterjection);
+if (cancelInterjectionBtn) on(cancelInterjectionBtn, 'click', cancelInterjection);
+
+// Allow Enter to submit interjection (Shift+Enter for new line)
+if (interjectionInput) {
+  on(interjectionInput, 'keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitInterjection();
+    }
+  });
+}
 
 // Model change handlers
 if (ai1ModelSelect) {
