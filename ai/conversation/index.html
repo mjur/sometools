@@ -223,6 +223,23 @@
             </div>
           </div>
 
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+              <label for="ai1-system-prompt">AI 1 System Instructions</label>
+              <textarea id="ai1-system-prompt" rows="3" placeholder="You are a helpful AI assistant. Be concise and informative." style="resize: vertical; font-size: 0.875rem;">You are a helpful AI assistant participating in a conversation. Be concise and informative.</textarea>
+              <small style="color: var(--muted); display: block; margin-top: 0.25rem;">
+                Define AI 1's personality, role, or expertise
+              </small>
+            </div>
+            <div>
+              <label for="ai2-system-prompt">AI 2 System Instructions</label>
+              <textarea id="ai2-system-prompt" rows="3" placeholder="You are a helpful AI assistant. Be concise and informative." style="resize: vertical; font-size: 0.875rem;">You are a helpful AI assistant participating in a conversation. Be concise and informative.</textarea>
+              <small style="color: var(--muted); display: block; margin-top: 0.25rem;">
+                Define AI 2's personality, role, or expertise
+              </small>
+            </div>
+          </div>
+
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
             <div>
               <label for="temperature-input">Temperature</label>
@@ -296,7 +313,11 @@
       </details>
       <details>
         <summary>What are good settings for a conversation?</summary>
-        <p>Start with smaller models like Qwen2.5 0.5B or Llama 3.2 1B. Set temperature to 0.7-0.9 for more varied responses. Keep max tokens around 256 for faster responses. Start with 5-10 turns to see how the conversation flows.</p>
+        <p>Start with smaller models like Qwen2.5 0.5B or Llama 3.2 1B. Set temperature to 0.7-0.9 for more varied responses. Keep max tokens around 256 for faster responses. Start with 5-10 turns to see how the conversation flows. Use system instructions to give each AI a distinct personality or role for more interesting exchanges.</p>
+      </details>
+      <details>
+        <summary>How do I use system instructions?</summary>
+        <p>System instructions define each AI's personality, role, or expertise. For example, you could set AI 1 as "You are a skeptical scientist who questions claims" and AI 2 as "You are an optimistic entrepreneur who sees opportunities." This creates more dynamic and interesting conversations as each AI maintains its unique perspective.</p>
       </details>
       <details>
         <summary>Is my data sent to a server?</summary>

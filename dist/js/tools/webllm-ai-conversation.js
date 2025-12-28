@@ -12,6 +12,8 @@ let isConversationRunning = false;
 
 const ai1ModelSelect = qs('#ai1-model-select');
 const ai2ModelSelect = qs('#ai2-model-select');
+const ai1SystemPrompt = qs('#ai1-system-prompt');
+const ai2SystemPrompt = qs('#ai2-system-prompt');
 const temperatureInput = qs('#temperature-input');
 const maxTokensInput = qs('#max-tokens-input');
 const maxTurnsInput = qs('#max-turns-input');
@@ -382,16 +384,26 @@ function appendMessage(speaker, content) {
   return messageDiv;
 }
 
-async function generateResponse(engine, messages, speaker) {
+async function generateResponse(engine, messages, speaker, systemPrompt) {
   try {
     const temperature = parseFloat(temperatureInput.value) || 0.7;
     const maxTokens = parseInt(maxTokensInput.value) || 256;
+    
+    // Get system prompt, use default if empty
+    const defaultSystemPrompt = 'You are a helpful AI assistant participating in a conversation. Be concise and informative.';
+    const finalSystemPrompt = systemPrompt?.trim() || defaultSystemPrompt;
+    
+    // Prepend system message to the conversation
+    const messagesWithSystem = [
+      { role: 'system', content: finalSystemPrompt },
+      ...messages
+    ];
     
     let reply = '';
     
     if (engine.chat && engine.chat.completions && engine.chat.completions.create) {
       const response = await engine.chat.completions.create({
-        messages: messages,
+        messages: messagesWithSystem,
         temperature: temperature,
         max_tokens: maxTokens,
       });
@@ -400,7 +412,7 @@ async function generateResponse(engine, messages, speaker) {
       }
     } else if (engine.chat) {
       const response = await engine.chat({
-        messages: messages,
+        messages: messagesWithSystem,
         temperature: temperature,
         max_tokens: maxTokens,
       });
@@ -410,7 +422,8 @@ async function generateResponse(engine, messages, speaker) {
         reply = response.content;
       }
     } else if (engine.generate) {
-      const fullPrompt = messages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n') + '\nAssistant:';
+      // For generate method, include system prompt in the full prompt
+      const fullPrompt = `${finalSystemPrompt}\n\n` + messages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n') + '\nAssistant:';
       reply = await engine.generate(fullPrompt, { temperature: temperature, max_tokens: maxTokens });
     } else {
       throw new Error('WebLLM engine does not support chat or generate methods');
@@ -438,6 +451,8 @@ async function startConversation() {
     conversationTopic.disabled = true;
     ai1ModelSelect.disabled = true;
     ai2ModelSelect.disabled = true;
+    ai1SystemPrompt.disabled = true;
+    ai2SystemPrompt.disabled = true;
     temperatureInput.disabled = true;
     maxTokensInput.disabled = true;
     maxTurnsInput.disabled = true;
@@ -503,10 +518,12 @@ async function startConversation() {
       
       try {
         // For AI 1, the conversation history should end with a 'user' message
+        const ai1SystemInstructions = ai1SystemPrompt?.value || '';
         const ai1Response = await generateResponse(
           ai1Engine,
           conversationHistory,
-          'ai1'
+          'ai1',
+          ai1SystemInstructions
         );
         
         // Add AI 1's response to history as 'assistant'
@@ -572,10 +589,12 @@ async function startConversation() {
           return msg;
         });
         
+        const ai2SystemInstructions = ai2SystemPrompt?.value || '';
         const ai2Response = await generateResponse(
           ai2Engine,
           ai2History,
-          'ai2'
+          'ai2',
+          ai2SystemInstructions
         );
         
         // Add AI 2's response to history as 'user' (so it becomes input for AI 1 next turn)
@@ -614,6 +633,8 @@ async function startConversation() {
     conversationTopic.disabled = false;
     ai1ModelSelect.disabled = false;
     ai2ModelSelect.disabled = false;
+    ai1SystemPrompt.disabled = false;
+    ai2SystemPrompt.disabled = false;
     temperatureInput.disabled = false;
     maxTokensInput.disabled = false;
     maxTurnsInput.disabled = false;
